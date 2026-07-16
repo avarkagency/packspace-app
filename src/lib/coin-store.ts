@@ -1,0 +1,116 @@
+"use client"
+
+import { useSyncExternalStore } from "react"
+
+// Screen geometry shared between the DOM grid and the R3F coin overlay. The DOM stays the source of
+// truth for layout, hit-testing and labels; the canvas only draws. Each card registers the box its coin
+// should fill, and the frame loop reads those boxes back out.
+//
+// Lives outside React for the same reason as drag-store: the frame loop reads this every tick and must
+// never cause a render. Hover is the one thing React can opt into, via useCoinHover — the frame loop
+// still reads `coinView.hoverId` straight off the object and subscribes to nothing.
+
+/** A coin's screen box: centre + diameter, in viewport px (the ortho camera maps 1 unit = 1 px). */
+export type CoinRect = { cx: number; cy: number; size: number }
+
+const slots = new Map<string, HTMLElement>()
+let viewport: HTMLElement | null = null
+let floor: HTMLElement | null = null
+
+export const coinView = {
+  rects: new Map<string, CoinRect>(),
+  /** The box resting coins clip to, in px. */
+  clip: { top: 0, right: 0, bottom: 0, left: 0 },
+  hoverId: null as string | null,
+  /** Viewport px, written imperatively by the pointer handlers. */
+  cursor: { x: 0, y: 0 }
+}
+
+const hoverListeners = new Set<() => void>()
+
+export const setCoinHover = (id: string | null) => {
+  if (coinView.hoverId === id) return
+  coinView.hoverId = id
+  hoverListeners.forEach((l) => l())
+}
+
+export const clearCoinHover = (id: string) => {
+  if (coinView.hoverId === id) setCoinHover(null)
+}
+
+function subscribeHover(onChange: () => void) {
+  hoverListeners.add(onChange)
+  return () => {
+    hoverListeners.delete(onChange)
+  }
+}
+
+/** Opt-in reactive read of the hover, for the one component that has to render on it. Everything else —
+ *  the frame loop above all — reads `coinView.hoverId` directly and never subscribes, so hovering still
+ *  costs no renders anywhere it isn't wanted. */
+export function useCoinHover() {
+  return useSyncExternalStore(
+    subscribeHover,
+    () => coinView.hoverId,
+    () => null
+  )
+}
+
+export const setCoinCursor = (x: number, y: number) => {
+  coinView.cursor.x = x
+  coinView.cursor.y = y
+}
+
+/** Register the box a coin should fill. Returns a cleanup for the effect that called it. */
+export function registerCoinSlot(id: string, el: HTMLElement) {
+  slots.set(id, el)
+  return () => {
+    slots.delete(id)
+    coinView.rects.delete(id)
+  }
+}
+
+/** The grid's scroll container — resting coins clip to it so they don't bleed over the chrome. */
+export function registerCoinViewport(el: HTMLElement) {
+  viewport = el
+  return () => {
+    viewport = null
+  }
+}
+
+/** An element that slides up over the grid (the split dock). The canvas sits above the whole shell, so
+ *  without clipping against this the resting coins would draw straight over the top of it. */
+export function registerCoinFloor(el: HTMLElement) {
+  floor = el
+  return () => {
+    floor = null
+  }
+}
+
+/** Recompute every coin's screen box, once per frame, from inside the render loop.
+ *
+ *  Measured every frame rather than on a scroll/resize dirty flag. A flag defers the read to the frame
+ *  after the event, and scroll events aren't guaranteed to land before that frame's rAF — so the labels
+ *  scrolled and the coins arrived a frame late, which read as the coin sliding around on its own card.
+ *  Reading ~a dozen rects costs one layout flush (they're batched, with no writes interleaved), which is
+ *  far cheaper than that lag looked. */
+export function measureCoins() {
+  for (const [id, el] of slots) {
+    const r = el.getBoundingClientRect()
+    coinView.rects.set(id, {
+      cx: r.left + r.width / 2,
+      cy: r.top + r.height / 2,
+      size: Math.min(r.width, r.height)
+    })
+  }
+
+  if (!viewport) return
+  const v = viewport.getBoundingClientRect()
+  coinView.clip.top = v.top
+  coinView.clip.left = v.left
+  coinView.clip.right = v.right
+
+  // the dock's transform is part of its rect, so the clip follows it up and down as it slides
+  const f = floor?.getBoundingClientRect()
+  coinView.clip.bottom = f ? Math.min(v.bottom, f.top) : v.bottom
+}
