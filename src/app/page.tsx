@@ -1,10 +1,10 @@
-import { PackSpaceWorkspace } from "@/components/workspace/PackSpaceWorkspace"
+import { DesktopWorkspace } from "@/components/workspace/DesktopWorkspace"
 
-// Full-viewport workspace. No document scroll — the canvas owns the screen (spec §3.13).
+// Full-viewport desktop. No document scroll — the desktop owns the screen (spec §3.13).
 export default function Home() {
   return (
-    <main className="fui-field fixed inset-0 overflow-hidden">
-      <PackSpaceWorkspace />
+    <main className="fixed inset-0 overflow-hidden bg-background">
+      <DesktopWorkspace />
     </main>
   )
 }

@@ -2,53 +2,59 @@
 
 import { useEffect, useMemo } from "react"
 
-import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
+import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
 
-import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import { isSameToken } from "@/lib/asset-ops"
-import { coinView, measureCoins } from "@/lib/coin-store"
+import { coinView, measureCoins, runCoinFrameTask } from "@/lib/coin-store"
 import { useDrag } from "@/lib/drag-store"
-import type { AssetObj, PackObj } from "@/lib/types"
+import type { DesktopObj } from "@/lib/types"
 
 import { ObjectMesh, type ObjectShape } from "./ObjectMesh"
 import { clipPlanes } from "./clip-planes"
 import { objectTint } from "./objectVisual"
 
-// The 3D layer over the dashboard. Deliberately thin: the DOM grid keeps layout, hit-testing, scrolling
-// and the labels, and this only draws an object into the box each card reserves. That keeps the existing
+// The 3D layer over the desktop. Deliberately thin: the DOM keeps layout, hit-testing and the labels,
+// and this only draws an object into the box each desktop icon reserves. That keeps the existing
 // pointer/drop machinery untouched and avoids reprojecting DOM overlays every frame.
 //
-// The canvas is pointer-events-none and sits above the shell (so a dragged object flies over the
-// contacts panel intact) but below the modals at z-200+.
+// The canvas is pointer-events-none and sits above the desktop (so a dragged object flies over the
+// wallet icons intact) but below the modals at z-200+.
 
-/** A one-of-one reads as a picture, not currency. Everything else is still a coin — packs and stacks are
- *  their own shapes to come. */
-const objectShape = (obj: AssetObj | PackObj): ObjectShape => (obj.class === "asset" && obj.kind === "nft" ? "nft" : "coin")
+/** Wallets are the black tokens for the time being — their rim colour, matched to the dark face. */
+const WALLET_TINT = "#212429"
 
-/** Packs carry no ticker. Initials, not a truncated first word — "Chase Pack" has to strike as CP; CHAS
- *  just reads as a broken string. Words with no leading alphanumeric (the "—" in "Gift — Charizard")
- *  contribute nothing. */
-function coinSymbol(obj: AssetObj | PackObj) {
-  if ("symbol" in obj) return obj.symbol
-  const initials = obj.label
-    .split(/\s+/)
-    .filter((w) => /^[a-z0-9]/i.test(w))
-    .map((w) => w[0])
-    .slice(0, 3)
-    .join("")
-  return initials.toUpperCase() || "PACK"
+/** A one-of-one reads as a picture, not currency. Everything else — wallets included — is a coin. */
+const objectShape = (obj: DesktopObj): ObjectShape => (obj.class === "asset" && obj.kind === "nft" ? "nft" : "coin")
+
+/** Wallets carry no ticker, so their coin face takes a monogram: initials for a multi-word name
+ *  ("Mia — PackMarket" strikes as MP), the first letters otherwise. Words with no leading alphanumeric
+ *  (the "—") contribute nothing. */
+function coinSymbol(obj: DesktopObj) {
+  if (obj.class === "asset") return obj.symbol
+  const words = obj.label.split(/\s+/).filter((w) => /^[a-z0-9]/i.test(w))
+  if (words.length >= 2)
+    return words
+      .map((w) => w[0])
+      .slice(0, 3)
+      .join("")
+      .toUpperCase()
+  return (words[0] ?? "?").slice(0, 3).toUpperCase()
 }
 
 /** Refreshes the shared screen geometry once per frame, before any object reads it. Mounted first in the
  *  tree on purpose: r3f runs useFrame callbacks in registration order, and giving this an explicit
  *  priority would hand us responsibility for rendering. */
 function ObjectRig() {
-  useFrame((state) => {
+  useFrame((state, dt) => {
+    // any imperative desk animation (the fling) moves the DOM first, so the measurement below — and
+    // every coin drawn from it this frame — sees where the icons are NOW, not a frame ago
+    runCoinFrameTask(Math.min(dt, 1 / 30))
     measureCoins()
 
-    // clip the resting objects to the grid's scroll viewport. THREE.Plane keeps the half-space where
+    // clip the resting objects to the desktop surface. THREE.Plane keeps the half-space where
     // normal·p + constant > 0, and the ortho camera puts world origin at the viewport centre.
     const { width: w, height: h } = state.size
     const { clip } = coinView
@@ -81,9 +87,10 @@ function ObjectEnvironment() {
   return <primitive object={env} attach="environment" />
 }
 
-export function ObjectScene({ items }: { items: (AssetObj | PackObj)[] }) {
+export function ObjectScene({ items }: { items: DesktopObj[] }) {
   // drag
-  const { asset: dragged } = useDrag()
+  const { obj: dragged } = useDrag()
+  const draggedAsset = dragged?.class === "asset" ? dragged : null
 
   // hooks
   const reduced = usePrefersReducedMotion()
@@ -101,8 +108,7 @@ export function ObjectScene({ items }: { items: (AssetObj | PackObj)[] }) {
         style={{ pointerEvents: "none" }}
         onCreated={({ gl }) => {
           gl.localClippingEnabled = true
-        }}
-      >
+        }}>
         <ObjectRig />
         <ObjectEnvironment />
         {/* ambient stays low on purpose: it lights metal flatly and washes the milling out. The
@@ -115,11 +121,13 @@ export function ObjectScene({ items }: { items: (AssetObj | PackObj)[] }) {
             key={obj.id}
             id={obj.id}
             shape={objectShape(obj)}
-            tint={objectTint(obj)}
+            tint={obj.class === "person" ? WALLET_TINT : objectTint(obj)}
             symbol={coinSymbol(obj)}
+            finish={obj.class === "person" ? "dark" : "light"}
             dragging={dragged?.id === obj.id}
             anyDragging={!!dragged}
-            dimmed={!!dragged && !isSameToken(dragged, obj)}
+            // wallets never recede — they're where a dragged coin is headed
+            dimmed={!!draggedAsset && obj.class === "asset" && !isSameToken(draggedAsset, obj)}
             reduced={reduced}
           />
         ))}

@@ -7,6 +7,7 @@ import {
   Coins,
   Gem,
   Layers,
+  type LucideIcon,
   Package,
   PackageOpen,
   Radar,
@@ -17,8 +18,7 @@ import {
   Store,
   Ticket,
   User,
-  Vault,
-  type LucideIcon
+  Vault
 } from "lucide-react"
 
 import type { CanvasObj, Chain } from "@/lib/types"

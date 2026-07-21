@@ -1,0 +1,5 @@
+# Ignore all SVG files:
+*.svg
+
+# Build output:
+.next

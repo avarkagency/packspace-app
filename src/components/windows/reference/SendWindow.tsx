@@ -6,7 +6,6 @@
 //
 // It still typechecks and lints, deliberately: if a shared type moves under it, you'll hear about it here
 // rather than on the day you re-wire it.
-
 import { useRef, useState } from "react"
 
 import { ArrowRight, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion } from "lucide-react"
@@ -100,8 +99,7 @@ export function SendWindow({ asset, to, z, onClose, onSettle, onLog }: Props) {
             </Button>
           </div>
         )
-      }
-    >
+      }>
       <div className="flex flex-col gap-16 p-16">
         {/* directional summary: asset → arrow → person */}
         <div className="flex items-center gap-12">
@@ -116,7 +114,9 @@ export function SendWindow({ asset, to, z, onClose, onSettle, onLog }: Props) {
           </div>
           <ArrowRight className="size-18 shrink-0 text-accent" />
           <div className="fui-glass flex flex-1 items-center gap-8 rounded-md p-10">
-            <span className="grid size-28 place-items-center rounded-full text-12 font-semibold" style={{ background: `hsl(${to.hue} 70% 22%)`, color: `hsl(${to.hue} 80% 70%)` }}>
+            <span
+              className="grid size-28 place-items-center rounded-full text-12 font-semibold"
+              style={{ background: `hsl(${to.hue} 70% 22%)`, color: `hsl(${to.hue} 80% 70%)` }}>
               {to.label[0]}
             </span>
             <div className="min-w-0">
@@ -164,8 +164,8 @@ export function SendWindow({ asset, to, z, onClose, onSettle, onLog }: Props) {
         <div className="rounded-md border border-hairline bg-accent-dim/30 p-12">
           <p className="mb-4 text-10 tracking-[0.14em] text-accent uppercase">Transaction Interpreter</p>
           <p className="text-13 leading-140">
-            You will send <span className="tnum font-semibold text-foreground">{asset.kind === "nft" ? asset.label : `${units(amount)} ${asset.symbol}`}</span> ({usd(valueUsd)}) to{" "}
-            <span className="font-semibold text-foreground">{to.label}</span> on {asset.chain}.{" "}
+            You will send <span className="tnum font-semibold text-foreground">{asset.kind === "nft" ? asset.label : `${units(amount)} ${asset.symbol}`}</span>{" "}
+            ({usd(valueUsd)}) to <span className="font-semibold text-foreground">{to.label}</span> on {asset.chain}.{" "}
             <span className="text-danger">This cannot be reversed.</span>
           </p>
         </div>
@@ -181,10 +181,7 @@ export function SendWindow({ asset, to, z, onClose, onSettle, onLog }: Props) {
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               placeholder={to.label}
-              className={cn(
-                "fui-glass w-full rounded-md px-12 py-8 text-13 outline-none",
-                typed && (typeOk ? "border-success/50" : "border-danger/50")
-              )}
+              className={cn("fui-glass w-full rounded-md px-12 py-8 text-13 outline-none", typed && (typeOk ? "border-success/50" : "border-danger/50"))}
             />
           </div>
         )}
@@ -223,7 +220,9 @@ function SafetyRow({ blocked, caution, to }: { blocked?: boolean; caution?: bool
         <ShieldQuestion className="mt-1 size-16 shrink-0 text-warning" />
         <div>
           <p className="text-12 font-semibold text-warning">{to.retired ? "Caution — address RETIRED" : "Caution — unconfirmed contact"}</p>
-          <p className="text-11 text-muted-foreground">{to.retired ? "The owner marked this address as no longer in use." : "You haven't confirmed this contact yet."}</p>
+          <p className="text-11 text-muted-foreground">
+            {to.retired ? "The owner marked this address as no longer in use." : "You haven't confirmed this contact yet."}
+          </p>
         </div>
       </div>
     )

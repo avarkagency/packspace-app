@@ -29,10 +29,6 @@ export type AssetObj = ObjBase & {
   color: string
   /** Commodity assets convert 1-tap to USDC in My Assets (spec §3.7). */
   convertible?: boolean
-  /** Where this object ranks in a value sort, when that isn't its own value. Split portions inherit the
-   *  value they were divided from, so halving a holding doesn't fling both halves down the grid — you
-   *  asked to divide something, not to re-order everything around it. */
-  sortUsd?: number
 }
 
 export type TrustState = "unconfirmed" | "confirmed" | "mutual" | "verified"
@@ -56,15 +52,7 @@ export type PackObj = ObjBase & {
   color: string
 }
 
-export type AppKind =
-  | "gacha"
-  | "bag"
-  | "aboyz"
-  | "packmarket"
-  | "handoff"
-  | "lspot"
-  | "approval-radar"
-  | "pack-builder"
+export type AppKind = "gacha" | "bag" | "aboyz" | "packmarket" | "handoff" | "lspot" | "approval-radar" | "pack-builder"
 
 export type AppObj = ObjBase & {
   class: "app"
@@ -76,8 +64,17 @@ export type AppObj = ObjBase & {
   color: string
 }
 
-export type VaultObj = ObjBase & { class: "vault"; usd: number; note: string; color: string }
-export type CampaignObj = ObjBase & { class: "campaign"; note: string; color: string }
+export type VaultObj = ObjBase & {
+  class: "vault"
+  usd: number
+  note: string
+  color: string
+}
+export type CampaignObj = ObjBase & {
+  class: "campaign"
+  note: string
+  color: string
+}
 export type ApprovalObj = ObjBase & {
   class: "approval"
   app: string
@@ -85,14 +82,10 @@ export type ApprovalObj = ObjBase & {
   color: string
 }
 
-export type CanvasObj =
-  | AssetObj
-  | PersonObj
-  | PackObj
-  | AppObj
-  | VaultObj
-  | CampaignObj
-  | ApprovalObj
+export type CanvasObj = AssetObj | PersonObj | PackObj | AppObj | VaultObj | CampaignObj | ApprovalObj
+
+/** What sits on the desktop: your holdings on the left, your wallets (contacts) on the right. */
+export type DesktopObj = AssetObj | PersonObj
 
 // ── Handoff / Send domain ────────────────────────────────────────────────────
 

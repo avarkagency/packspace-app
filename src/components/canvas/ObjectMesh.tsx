@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useRef } from "react"
 
-import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
+import { useFrame } from "@react-three/fiber"
 
 import { coinView } from "@/lib/coin-store"
 
 import { clipPlanes, makeObjectPlanes, noClipPlanes } from "./clip-planes"
-import { COIN_HALF_THICKNESS, coinFaceGeometry, coinRimGeometry, makeCoinMaterials } from "./coin-geometry"
+import { COIN_HALF_THICKNESS, type CoinFinish, coinFaceGeometry, coinRimGeometry, makeCoinMaterials } from "./coin-geometry"
 import { NFT_FACE_Z, makeNftMaterials, nftCardGeometry, nftImageGeometry } from "./nft-geometry"
 import { loadObjectArt } from "./object-art"
 
@@ -37,6 +37,8 @@ type Props = {
   shape: ObjectShape
   tint: string
   symbol: string
+  /** Wallets are the black coins for now — dark face, near-black rim. */
+  finish: CoinFinish
   dragging: boolean
   /** Whether any object is mid-drag — the resting ones go inert while one is in hand. */
   anyDragging: boolean
@@ -45,7 +47,7 @@ type Props = {
   reduced: boolean
 }
 
-export function ObjectMesh({ id, shape, tint, symbol, dragging, anyDragging, dimmed, reduced }: Props) {
+export function ObjectMesh({ id, shape, tint, symbol, finish, dragging, anyDragging, dimmed, reduced }: Props) {
   // refs — scale wraps spin so the two compose rather than fight; slide carries the screen position
   const slideRef = useRef<THREE.Group>(null!)
   const scaleRef = useRef<THREE.Group>(null!)
@@ -55,13 +57,15 @@ export function ObjectMesh({ id, shape, tint, symbol, dragging, anyDragging, dim
   const blendedRef = useRef(false)
   const wasDraggingRef = useRef(false)
   const returningRef = useRef(false)
+  /** Whether the returning object has caught its rect and now rides it exactly (see the frame loop). */
+  const pinnedRef = useRef(false)
 
   // data — this object's own plane array. The materials hold this reference for life and the frame loop
   // copies either clip source into it, so swapping clip modes can never recompile the shader.
   const planes = useMemo(() => makeObjectPlanes(), [])
   const materials = useMemo(
-    () => (shape === "nft" ? makeNftMaterials(planes) : makeCoinMaterials(tint, symbol, planes)),
-    [shape, tint, symbol, planes]
+    () => (shape === "nft" ? makeNftMaterials(planes) : makeCoinMaterials(tint, symbol, planes, finish)),
+    [shape, tint, symbol, planes, finish]
   )
 
   // data — the textures this object drew for itself. Captured now, before any token art swaps in, so
@@ -78,9 +82,10 @@ export function ObjectMesh({ id, shape, tint, symbol, dragging, anyDragging, dim
     [materials, ownTextures]
   )
 
-  // effects — real art replaces whatever the object drew for itself. A symbol with no art (the stack, the
-  // packs) simply keeps its drawn face.
+  // effects — real art replaces whatever the object drew for itself. A symbol with no art (the stack)
+  // simply keeps its drawn face, and a dark coin never takes art — black is the whole point of it.
   useEffect(() => {
+    if (finish === "dark") return
     let live = true
 
     loadObjectArt(symbol).then((art) => {
@@ -108,7 +113,7 @@ export function ObjectMesh({ id, shape, tint, symbol, dragging, anyDragging, dim
     return () => {
       live = false
     }
-  }, [shape, symbol, materials])
+  }, [shape, symbol, materials, finish])
 
   // frame — the DOM grid owns layout, so position comes from the measured card rect, not from 3D state.
   // The ortho camera maps 1 world unit to 1 px with the origin at the viewport centre.
@@ -132,18 +137,30 @@ export function ObjectMesh({ id, shape, tint, symbol, dragging, anyDragging, dim
       if (wasDraggingRef.current) {
         wasDraggingRef.current = false
         returningRef.current = true
+        pinnedRef.current = false
       }
 
       const tx = rect.cx - w / 2
       const ty = h / 2 - rect.cy
       if (returningRef.current) {
         const rk = Math.min(1, dt * RETURN_EASE)
-        g.position.x += (tx - g.position.x) * rk
-        g.position.y += (ty - g.position.y) * rk
+        // the moment it's first alongside the target, latch onto it and ride exactly — the icon may
+        // still be coasting (a fling), and an ease would trail its label for the whole z-descent. The
+        // check can't re-pass against a moving target, which is why the pin latches rather than
+        // re-tests. The ortho camera can't see z, so only x/y matter visually.
+        if (!pinnedRef.current) {
+          g.position.x += (tx - g.position.x) * rk
+          g.position.y += (ty - g.position.y) * rk
+          if (Math.hypot(tx - g.position.x, ty - g.position.y) < RETURN_SNAP) pinnedRef.current = true
+        }
+        if (pinnedRef.current) {
+          g.position.x = tx
+          g.position.y = ty
+        }
         g.position.z += (0 - g.position.z) * rk
-        // an exponential ease never quite lands, so close the last fraction of a pixel by hand
-        if (Math.hypot(tx - g.position.x, ty - g.position.y) < RETURN_SNAP && g.position.z < RETURN_SNAP) {
-          g.position.set(tx, ty, 0)
+        // an exponential ease never quite lands, so the last fraction closes by hand
+        if (pinnedRef.current && g.position.z < RETURN_SNAP) {
+          g.position.z = 0
           returningRef.current = false
         }
       } else {

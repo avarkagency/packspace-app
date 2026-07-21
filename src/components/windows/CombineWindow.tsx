@@ -43,7 +43,6 @@ export function CombineWindow({ a, b, z, onClose, onCombine }: Props) {
       icon={<ObjectMark obj={a} />}
       width={440}
       z={z}
-      cut
       onClose={onClose}
       footer={
         <div className="flex justify-end gap-8">
@@ -52,17 +51,16 @@ export function CombineWindow({ a, b, z, onClose, onCombine }: Props) {
           </Button>
           <Button onClick={onConfirm}>Combine</Button>
         </div>
-      }
-    >
-      <div className="flex flex-col gap-16 p-36">
+      }>
+      <div className="flex flex-col gap-16 p-20">
         <div className="flex items-center gap-10">
           <Portion amount={a.balance} symbol={a.symbol} value={a.usd} />
           <Plus className="size-16 shrink-0 text-muted-foreground" />
           <Portion amount={b.balance} symbol={b.symbol} value={b.usd} />
         </div>
 
-        <div className="rounded-lg border border-accent/40 bg-accent-dim/30 p-14">
-          <p className="text-10 tracking-[0.1em] text-accent uppercase">Result</p>
+        <div className="rounded-lg border border-accent/40 bg-accent-dim/50 p-14">
+          <p className="text-11 font-medium text-accent">Result</p>
           <p className="tnum mt-8 text-24 font-semibold leading-100">
             {units(balance)} <span className="text-13 font-medium text-muted-foreground">{a.symbol}</span>
           </p>

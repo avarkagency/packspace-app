@@ -6,7 +6,6 @@
 //
 // It still typechecks and lints, deliberately: if a shared type moves under it, you'll hear about it here
 // rather than on the day you re-wire it.
-
 import { useEffect, useRef, useState } from "react"
 
 import { Check, Loader2, Lock, Plus, Unlock, X } from "lucide-react"
@@ -37,9 +36,7 @@ export function HandoffWindow({ seed, to, z, onClose, onSettle, onLog }: Props) 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
 
   // state
-  const [yourItems, setYourItems] = useState<DealItem[]>([
-    { key: seed.id, asset: seed, amount: seed.kind === "nft" ? 1 : Math.min(500, seed.balance) }
-  ])
+  const [yourItems, setYourItems] = useState<DealItem[]>([{ key: seed.id, asset: seed, amount: seed.kind === "nft" ? 1 : Math.min(500, seed.balance) }])
   const [theirItems, setTheirItems] = useState<DealItem[]>([])
   const [requested, setRequested] = useState(false)
   const [youLocked, setYouLocked] = useState(false)
@@ -59,12 +56,21 @@ export function HandoffWindow({ seed, to, z, onClose, onSettle, onLog }: Props) 
   const highValue = Math.max(giveUsd, receiveUsd) >= HIGH_VALUE_USD
   const typeOk = !highValue || typed.trim().toLowerCase() === to.label.toLowerCase()
 
-  const direction =
-    yourItems.length && theirItems.length ? "trading" : yourItems.length ? "sending" : "requesting"
+  const direction = yourItems.length && theirItems.length ? "trading" : yourItems.length ? "sending" : "requesting"
   const summary = buildSummary(direction, yourItems, theirItems, to, seed.chain ?? "Base")
 
   const currentStep: (typeof STEPS)[number] =
-    phase === "settled" ? "Settled" : phase === "launching" ? "Launch" : youConfirmed || confirmReady ? "Confirm" : reviewing ? "Review" : youLocked || themLocked ? "Lock" : "Negotiate"
+    phase === "settled"
+      ? "Settled"
+      : phase === "launching"
+        ? "Launch"
+        : youConfirmed || confirmReady
+          ? "Confirm"
+          : reviewing
+            ? "Review"
+            : youLocked || themLocked
+              ? "Lock"
+              : "Negotiate"
 
   // events
   const breakLocks = () => {
@@ -171,14 +177,7 @@ export function HandoffWindow({ seed, to, z, onClose, onSettle, onLog }: Props) 
   const addable = ASSETS.filter((a) => !yourItems.some((i) => i.key === a.id)).slice(0, 3)
 
   return (
-    <Window
-      title="Trade"
-      subtitle="Confirmed exchange — both sides must lock & confirm"
-      width={620}
-      z={z}
-      onClose={onClose}
-      footer={<Footer />}
-    >
+    <Window title="Trade" subtitle="Confirmed exchange — both sides must lock & confirm" width={620} z={z} onClose={onClose} footer={<Footer />}>
       <div className="flex flex-col gap-14 p-16">
         {/* phase stepper */}
         <div className="flex items-center gap-4">
@@ -192,8 +191,7 @@ export function HandoffWindow({ seed, to, z, onClose, onSettle, onLog }: Props) 
                     className={cn(
                       "grid size-18 place-items-center rounded-full border text-10 tnum trans-base",
                       now ? "border-accent bg-accent text-accent-foreground" : done ? "border-success/60 text-success" : "border-border text-muted-foreground"
-                    )}
-                  >
+                    )}>
                     {done ? <Check className="size-10" /> : i + 1}
                   </span>
                 </div>
@@ -206,9 +204,7 @@ export function HandoffWindow({ seed, to, z, onClose, onSettle, onLog }: Props) 
 
         {/* live header + self-writing summary */}
         <div className="rounded-md border border-hairline bg-accent-dim/25 p-12">
-          <p className="text-11 tracking-[0.14em] text-accent uppercase">
-            You&apos;re {direction}
-          </p>
+          <p className="text-11 tracking-[0.14em] text-accent uppercase">You&apos;re {direction}</p>
           <p className="mt-4 text-13 leading-140 text-foreground/90">{summary}</p>
         </div>
 
@@ -230,7 +226,10 @@ export function HandoffWindow({ seed, to, z, onClose, onSettle, onLog }: Props) 
               addable.length > 0 && (
                 <div className="flex flex-wrap gap-4">
                   {addable.map((a) => (
-                    <button key={a.id} onClick={() => addYour(a)} className="flex items-center gap-4 rounded-sm border border-border px-6 py-4 text-10 text-muted-foreground trans-base hover:border-accent/50 hover:text-accent">
+                    <button
+                      key={a.id}
+                      onClick={() => addYour(a)}
+                      className="flex items-center gap-4 rounded-sm border border-border px-6 py-4 text-10 text-muted-foreground trans-base hover:border-accent/50 hover:text-accent">
                       <Plus className="size-10" /> {a.symbol}
                     </button>
                   ))}
@@ -258,7 +257,9 @@ export function HandoffWindow({ seed, to, z, onClose, onSettle, onLog }: Props) 
               !requested &&
               theirItems.length === 0 &&
               phase === "negotiate" && (
-                <button onClick={requestBack} className="flex items-center gap-4 rounded-sm border border-border px-8 py-4 text-10 text-muted-foreground trans-base hover:border-accent/50 hover:text-accent">
+                <button
+                  onClick={requestBack}
+                  className="flex items-center gap-4 rounded-sm border border-border px-8 py-4 text-10 text-muted-foreground trans-base hover:border-accent/50 hover:text-accent">
                   <Plus className="size-10" /> Request something back
                 </button>
               )
@@ -294,7 +295,8 @@ export function HandoffWindow({ seed, to, z, onClose, onSettle, onLog }: Props) 
         )}
 
         <p className="text-11 text-muted-foreground/70">
-          No escrow — negotiation is off-chain; the only on-chain event is settlement launch. Both parties confirm in every mode, including one-way. Cancel is free at any stage before launch.
+          No escrow — negotiation is off-chain; the only on-chain event is settlement launch. Both parties confirm in every mode, including one-way. Cancel is
+          free at any stage before launch.
         </p>
       </div>
     </Window>
@@ -397,7 +399,9 @@ function Side({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
           {hue != null ? (
-            <span className="grid size-18 place-items-center rounded-full text-10 font-semibold" style={{ background: `hsl(${hue} 70% 22%)`, color: `hsl(${hue} 80% 70%)` }}>
+            <span
+              className="grid size-18 place-items-center rounded-full text-10 font-semibold"
+              style={{ background: `hsl(${hue} 70% 22%)`, color: `hsl(${hue} 80% 70%)` }}>
               {title[0]}
             </span>
           ) : (
@@ -421,7 +425,9 @@ function Side({
       </div>
 
       <div className="flex flex-col gap-6">
-        {items.length === 0 && <p className="rounded-sm border border-dashed border-border px-8 py-12 text-center text-11 text-muted-foreground/60">{emptyHint}</p>}
+        {items.length === 0 && (
+          <p className="rounded-sm border border-dashed border-border px-8 py-12 text-center text-11 text-muted-foreground/60">{emptyHint}</p>
+        )}
         {items.map((it) => (
           <ItemRow key={it.key} item={it} editable={editable} onAmount={onAmount} onRemove={onRemove} />
         ))}
@@ -466,9 +472,7 @@ function ItemRow({
             className="tnum w-full bg-transparent text-11 text-accent outline-none"
           />
         ) : (
-          <p className="tnum text-10 text-accent">
-            {isNft ? "1 item" : `${units(item.amount)} ${item.asset.symbol}`}
-          </p>
+          <p className="tnum text-10 text-accent">{isNft ? "1 item" : `${units(item.amount)} ${item.asset.symbol}`}</p>
         )}
       </div>
       {editable && onRemove && (

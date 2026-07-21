@@ -18,32 +18,55 @@ export const coinFaceGeometry = new THREE.CircleGeometry(1, SEGMENTS)
 
 const FACE_PX = 256
 
-/** Shared drawing for both faces. The texture is greyscale on purpose: `map` multiplies the material's
+/** The two face palettes. The light one is greyscale on purpose: `map` multiplies the material's
  *  colour, so white reads as the asset's full tint and darker values shade it — one canvas recipe
- *  tints itself for every coin. */
-function faceCanvas() {
+ *  tints itself for every coin. The dark one is drawn at its final colours instead (its face material
+ *  stays white), because a multiply can only darken — light lettering on a black field is unreachable
+ *  from a tinted white canvas. */
+export type CoinFinish = "light" | "dark"
+
+const FACE_INK: Record<CoinFinish, { base: string; ring: string; field: string; device: string; hub: string }> = {
+  light: {
+    base: "#ffffff",
+    ring: "#b4b4b4",
+    field: "#ededed",
+    device: "#4d4d4d",
+    hub: "#bdbdbd"
+  },
+  // a step lighter than the desktop's charcoal, so a black coin still separates from a dark field
+  dark: {
+    base: "#212429",
+    ring: "#464c55",
+    field: "#292d33",
+    device: "#d3d7dd",
+    hub: "#464c55"
+  }
+}
+
+/** Shared drawing for both faces: base, milled ring just inside the rim, recessed field for the device. */
+function faceCanvas(finish: CoinFinish) {
   const c = document.createElement("canvas")
   c.width = FACE_PX
   c.height = FACE_PX
   const ctx = c.getContext("2d")!
   const r = FACE_PX / 2
+  const ink = FACE_INK[finish]
 
-  ctx.fillStyle = "#ffffff"
+  ctx.fillStyle = ink.base
   ctx.fillRect(0, 0, FACE_PX, FACE_PX)
 
-  // milled ring just inside the rim, then a recessed field for the device
-  ctx.strokeStyle = "#b4b4b4"
+  ctx.strokeStyle = ink.ring
   ctx.lineWidth = FACE_PX * 0.018
   ctx.beginPath()
   ctx.arc(r, r, r * 0.86, 0, Math.PI * 2)
   ctx.stroke()
 
-  ctx.fillStyle = "#ededed"
+  ctx.fillStyle = ink.field
   ctx.beginPath()
   ctx.arc(r, r, r * 0.78, 0, Math.PI * 2)
   ctx.fill()
 
-  return { c, ctx, r }
+  return { c, ctx, r, ink }
 }
 
 function toTexture(c: HTMLCanvasElement) {
@@ -54,11 +77,11 @@ function toTexture(c: HTMLCanvasElement) {
 }
 
 /** Front face — carries the ticker. */
-export function makeCoinFrontTexture(symbol: string) {
-  const { c, ctx, r } = faceCanvas()
+export function makeCoinFrontTexture(symbol: string, finish: CoinFinish = "light") {
+  const { c, ctx, r, ink } = faceCanvas(finish)
   const fit = symbol.length <= 3 ? 0.4 : symbol.length <= 4 ? 0.32 : 0.24
 
-  ctx.fillStyle = "#4d4d4d"
+  ctx.fillStyle = ink.device
   ctx.textAlign = "center"
   ctx.textBaseline = "middle"
   ctx.font = `700 ${FACE_PX * fit}px ui-sans-serif, system-ui, sans-serif`
@@ -69,10 +92,10 @@ export function makeCoinFrontTexture(symbol: string) {
 
 /** Back face — concentric milling, no text. It's viewed from behind, so any lettering would read
  *  mirrored anyway. */
-export function makeCoinBackTexture() {
-  const { c, ctx, r } = faceCanvas()
+export function makeCoinBackTexture(finish: CoinFinish = "light") {
+  const { c, ctx, r, ink } = faceCanvas(finish)
 
-  ctx.strokeStyle = "#c9c9c9"
+  ctx.strokeStyle = ink.ring
   ctx.lineWidth = FACE_PX * 0.012
   for (const scale of [0.62, 0.46, 0.3]) {
     ctx.beginPath()
@@ -80,7 +103,7 @@ export function makeCoinBackTexture() {
     ctx.stroke()
   }
 
-  ctx.fillStyle = "#bdbdbd"
+  ctx.fillStyle = ink.hub
   ctx.beginPath()
   ctx.arc(r, r, r * 0.12, 0, Math.PI * 2)
   ctx.fill()
@@ -97,13 +120,30 @@ export function makeCoinBackTexture() {
  *  read pale against their own source images. The rim is curved, so it still catches the environment
  *  properly and carries the coin. `toneMapped: false` takes the faces around ACES as well, so art lands
  *  at exactly the colour it was authored. */
-export function makeCoinMaterials(tint: string, symbol: string, planes: THREE.Plane[]) {
-  const color = new THREE.Color(tint)
-  const common = { color, clippingPlanes: planes, clipShadows: false }
+export function makeCoinMaterials(tint: string, symbol: string, planes: THREE.Plane[], finish: CoinFinish = "light") {
+  // a dark face is authored at its final colours, so its material must not tint it — the rim still
+  // carries the coin's own (near-black) colour
+  const faceColor = finish === "dark" ? new THREE.Color("#ffffff") : new THREE.Color(tint)
+  const clip = { clippingPlanes: planes, clipShadows: false }
 
   return [
-    new THREE.MeshStandardMaterial({ ...common, metalness: 0.9, roughness: 0.32 }),
-    new THREE.MeshBasicMaterial({ ...common, map: makeCoinFrontTexture(symbol), toneMapped: false }),
-    new THREE.MeshBasicMaterial({ ...common, map: makeCoinBackTexture(), toneMapped: false })
+    new THREE.MeshStandardMaterial({
+      ...clip,
+      color: new THREE.Color(tint),
+      metalness: 0.9,
+      roughness: 0.32
+    }),
+    new THREE.MeshBasicMaterial({
+      ...clip,
+      color: faceColor,
+      map: makeCoinFrontTexture(symbol, finish),
+      toneMapped: false
+    }),
+    new THREE.MeshBasicMaterial({
+      ...clip,
+      color: faceColor.clone(),
+      map: makeCoinBackTexture(finish),
+      toneMapped: false
+    })
   ]
 }

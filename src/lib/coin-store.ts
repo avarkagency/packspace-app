@@ -15,7 +15,6 @@ export type CoinRect = { cx: number; cy: number; size: number }
 
 const slots = new Map<string, HTMLElement>()
 let viewport: HTMLElement | null = null
-let floor: HTMLElement | null = null
 
 export const coinView = {
   rects: new Map<string, CoinRect>(),
@@ -61,6 +60,17 @@ export const setCoinCursor = (x: number, y: number) => {
   coinView.cursor.y = y
 }
 
+// One imperative task run at the top of every canvas frame, before the coins are measured. The fling
+// animation lives here rather than in its own requestAnimationFrame: a separate rAF lands *after* the
+// canvas has measured for that frame, so the coin would read a one-frame-old rect and trail the label
+// by exactly one fling step the whole throw.
+let frameTask: ((dt: number) => void) | null = null
+
+export const setCoinFrameTask = (fn: ((dt: number) => void) | null) => {
+  frameTask = fn
+}
+export const runCoinFrameTask = (dt: number) => frameTask?.(dt)
+
 /** Register the box a coin should fill. Returns a cleanup for the effect that called it. */
 export function registerCoinSlot(id: string, el: HTMLElement) {
   slots.set(id, el)
@@ -70,20 +80,12 @@ export function registerCoinSlot(id: string, el: HTMLElement) {
   }
 }
 
-/** The grid's scroll container — resting coins clip to it so they don't bleed over the chrome. */
+/** The desktop surface — resting coins clip to it. On the desktop this is the whole viewport, so in
+ *  practice it only keeps the clip planes honest rather than ever visibly cutting anything. */
 export function registerCoinViewport(el: HTMLElement) {
   viewport = el
   return () => {
     viewport = null
-  }
-}
-
-/** An element that slides up over the grid (the split dock). The canvas sits above the whole shell, so
- *  without clipping against this the resting coins would draw straight over the top of it. */
-export function registerCoinFloor(el: HTMLElement) {
-  floor = el
-  return () => {
-    floor = null
   }
 }
 
@@ -109,8 +111,5 @@ export function measureCoins() {
   coinView.clip.top = v.top
   coinView.clip.left = v.left
   coinView.clip.right = v.right
-
-  // the dock's transform is part of its rect, so the clip follows it up and down as it slides
-  const f = floor?.getBoundingClientRect()
-  coinView.clip.bottom = f ? Math.min(v.bottom, f.top) : v.bottom
+  coinView.clip.bottom = v.bottom
 }

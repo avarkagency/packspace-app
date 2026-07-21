@@ -1,49 +1,48 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useLayoutEffect, useRef } from "react"
 
 import { coinView, useCoinHover } from "@/lib/coin-store"
 import { useDrag } from "@/lib/drag-store"
-import type { AssetObj, PackObj } from "@/lib/types"
+import type { DesktopObj } from "@/lib/types"
 import { shortAddr } from "@/lib/utils"
 
 import { BaseScrambleText } from "../base/BaseScrambleText"
-import { objectKindLabel } from "../canvas/objectVisual"
+import { chainImage, objectKindLabel } from "../canvas/objectVisual"
 
-// The readout that rides with the cursor while an object is hovered. It carries only what the cell
-// doesn't already say — the cell has the holding, the value and the network mark, so this has the name,
-// the type, the network's name and the raw address (truth-always-available, spec DEV5).
+// The readout that rides with the cursor while an object is hovered. It carries only what the icon
+// doesn't already say — the icon has the holding and the name, so this has the type, the network and
+// the raw address (truth-always-available, spec DEV5).
 //
 // It trails the cursor rather than pinning to it: a readout welded to the pointer reads as part of the
 // cursor, where a slight lag reads as an object being carried along. Position is lerped in a frame loop
 // and written imperatively, like the drag label — this moves every frame and must never re-render to do
-// it. It re-renders only when the hovered object changes, which is also what replays the scramble.
+// it. It re-renders only when the hovered object changes.
 
 const GAP = 18
 const WIDTH = 240
 const LERP = 16 // per second — enough lag to feel carried, not enough to feel late
 
-type Row = { label: string; value: string }
+type Row = { label: string; value: string; icon?: string | null }
 
-function rowsFor(obj: AssetObj | PackObj): Row[] {
-  if (obj.class === "pack")
+function rowsFor(obj: DesktopObj): Row[] {
+  const network: Row = { label: "Network", value: obj.chain ?? "—", icon: obj.chain ? chainImage(obj.chain) : null }
+
+  if (obj.class === "person")
     return [
       { label: "Type", value: objectKindLabel(obj) },
-      { label: "Contents", value: obj.contents },
-      { label: "Network", value: obj.chain ?? "—" },
-      { label: "State", value: obj.sealed ? "Sealed" : "Opened" }
+      { label: "Handle", value: obj.handle },
+      { label: "Trust", value: obj.trust },
+      network,
+      { label: "Address", value: obj.address ? shortAddr(obj.address) : "—" }
     ]
 
-  return [
-    { label: "Type", value: objectKindLabel(obj) },
-    { label: "Network", value: obj.chain ?? "—" },
-    { label: "Address", value: obj.address ? shortAddr(obj.address) : "—" }
-  ]
+  return [{ label: "Type", value: objectKindLabel(obj) }, network, { label: "Address", value: obj.address ? shortAddr(obj.address) : "—" }]
 }
 
-/** Flip rather than spill, against the *grid's* edges rather than the viewport's — the readout belongs to
- *  the grid, and the rail and the split dock own what's beyond it. `coinView.clip` is already exactly
- *  that box: it's what the objects themselves clip to, and it tracks the dock as it slides. */
+/** Flip rather than spill against the desktop's edges. `coinView.clip` is already exactly that box —
+ *  it's what the objects themselves clip to. */
 function aimAt(x: number, y: number, height: number) {
   const { right, bottom } = coinView.clip
   const dx = x + GAP + WIDTH > right ? -(GAP + WIDTH) : GAP
@@ -51,7 +50,7 @@ function aimAt(x: number, y: number, height: number) {
   return { x: x + dx, y: y + dy }
 }
 
-export function ObjectHoverInfo({ items }: { items: (AssetObj | PackObj)[] }) {
+export function ObjectHoverInfo({ items }: { items: DesktopObj[] }) {
   // refs
   const ref = useRef<HTMLDivElement>(null)
   const heightRef = useRef(0)
@@ -61,7 +60,7 @@ export function ObjectHoverInfo({ items }: { items: (AssetObj | PackObj)[] }) {
 
   // hover / drag
   const hoverId = useCoinHover()
-  const { asset: dragging } = useDrag()
+  const { obj: dragging } = useDrag()
 
   // data — the drag label already rides the cursor, so this stands down while one is in hand
   const obj = hoverId ? items.find((o) => o.id === hoverId) : null
@@ -119,16 +118,21 @@ export function ObjectHoverInfo({ items }: { items: (AssetObj | PackObj)[] }) {
 
   return (
     <div ref={ref} className="pointer-events-none fixed top-0 left-0 z-[900]" style={{ width: WIDTH, willChange: "transform" }}>
-      <div key={obj.id} className="fui-glass rounded-md px-12 py-10 shadow-[0_12px_40px_-12px_#000000cc]">
+      <div key={obj.id} className="panel rounded-lg px-12 py-10">
         <p className="truncate text-13 font-semibold text-foreground">
           <BaseScrambleText text={obj.label} />
         </p>
-        <dl className="mt-8 flex flex-col gap-4">
+        <dl className="mt-6 flex flex-col gap-4">
           {rowsFor(obj).map((row) => (
-            <div key={row.label} className="flex items-baseline justify-between gap-10">
-              <dt className="shrink-0 text-10 tracking-wide text-muted-foreground/60 uppercase">{row.label}</dt>
-              <dd className="tnum truncate text-11 text-accent">
-                <BaseScrambleText text={row.value} />
+            <div key={row.label} className="flex items-center justify-between gap-10">
+              <dt className="shrink-0 text-11 text-muted-foreground">{row.label}</dt>
+              <dd className="flex min-w-0 items-center gap-6 text-11 font-medium text-foreground/80">
+                {/* `unoptimized` for the same reason as everywhere these marks appear: Next's dev image
+                    converter drops the connection on the tiny variants it would request */}
+                {row.icon && <Image src={row.icon} alt="" width={16} height={16} unoptimized className="size-16 shrink-0 rounded-full object-cover" />}
+                <span className="tnum truncate">
+                  <BaseScrambleText text={row.value} />
+                </span>
               </dd>
             </div>
           ))}

@@ -16,7 +16,13 @@ export function ReceiptWindow({ receipt, z, onClose }: { receipt: Receipt; z: nu
     ["You gave", receipt.give]
   ]
   if (receipt.receive) rows.push(["You received", receipt.receive])
-  rows.push(["Counterparty", receipt.counterparty], ["Chain", receipt.chain], ["Confirmation", receipt.confirmation], ["Tx hash", shortAddr(receipt.hash, 10, 6)], ["Time", receipt.at])
+  rows.push(
+    ["Counterparty", receipt.counterparty],
+    ["Chain", receipt.chain],
+    ["Confirmation", receipt.confirmation],
+    ["Tx hash", shortAddr(receipt.hash, 10, 6)],
+    ["Time", receipt.at]
+  )
 
   return (
     <Window title="Receipt" subtitle="Proof card" tint="#34d399" width={360} z={z} onClose={onClose}>
@@ -35,7 +41,7 @@ export function ReceiptWindow({ receipt, z, onClose }: { receipt: Receipt; z: nu
         <div className="flex flex-col divide-y divide-border rounded-md border border-border">
           {rows.map(([k, v]) => (
             <div key={k} className="flex items-center justify-between gap-8 px-12 py-8">
-              <span className="text-11 tracking-wide text-muted-foreground/80 uppercase">{k}</span>
+              <span className="text-11 text-muted-foreground">{k}</span>
               <span className="tnum text-12">{v}</span>
             </div>
           ))}

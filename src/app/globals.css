@@ -18,47 +18,43 @@
 @custom-variant t (@media (max-width: 350px));
 
 /*
-  PackSpace prototype — its own identity: a cyberpunk terminal. A deep navy canvas, one electric
-  cyan signal, monospace throughout, hard corners, hairline lattices and corner brackets.
-  "Desktop FEEL, dApp REALITY" (spec §3.1 / DEV2) — we borrow the sci-fi workspace look, never
-  fake an OS. Object/state colour is data-driven, not chrome. Shares only the px design-scale
-  system with the sibling apps, not the palette.
-
-  Values below are sampled from the Gacha Labs design (Figma 611:56), not eyeballed.
+  PackSpace — a clean desktop OS in dark. Neutral charcoal field (not the old navy), soft panels,
+  one restrained blue accent, Inter throughout. The objects carry all the colour; the chrome stays
+  quiet. Object/state colour is data-driven, not chrome. Shares only the px design-scale system
+  with the sibling apps, not the palette.
 */
 
 :root {
-  --background: #001222;
-  --surface: #001a2c;
-  --foreground: #ffffff;
+  --background: #131315;
+  --surface: #1d1d20;
+  --foreground: #f4f4f5;
 
-  --card: #001a2c;
-  --card-foreground: #ffffff;
+  --card: #1d1d20;
+  --card-foreground: #f4f4f5;
 
-  --muted: #0a1f30;
-  --muted-foreground: #85929a;
+  --muted: #2a2a2e;
+  --muted-foreground: #9d9da6;
 
-  --accent: #00ddff; /* electric cyan signal */
-  --accent-foreground: #001018;
-  --accent-dim: #002538;
+  --accent: #0a84ff;
+  --accent-foreground: #ffffff;
+  --accent-dim: #16283f;
 
   --teal: #2dd4bf;
   --violet: #a78bfa;
   --magenta: #f472b6;
   --amber: #f59e0b;
 
-  --success: #34d399;
-  --warning: #f59e0b;
-  --danger: #ff4665;
+  --success: #30d158;
+  --warning: #ff9f0a;
+  --danger: #ff453a;
 
-  /* Each action carries its own signal, outside the chrome's cyan: give, exchange, divide. */
-  --action-send: #34d399;
-  --action-trade: #3b82f6;
-  --action-split: #f0b90b;
+  /* Each action carries its own signal: give, exchange, divide. */
+  --action-send: #30d158;
+  --action-trade: #0a84ff;
+  --action-split: #ff9f0a;
 
-  --border: #2b3745; /* the lattice — a real line, not a wash of white */
-  --hairline: #00ddff2e; /* cyan hairline for HUD frames */
-  --ring: #00ddff;
+  --border: #303034;
+  --ring: #0a84ff;
 }
 
 @theme inline {
@@ -88,15 +84,12 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-border: var(--border);
-  --color-hairline: var(--hairline);
   --color-ring: var(--ring);
 
-  /* Near-square: the terminal look is built on hard corners. Stated outright rather than derived
-     from one --radius, because deriving a `sm` from a 2px base lands on a negative. */
-  --radius-sm: 0px;
-  --radius-md: 2px;
-  --radius-lg: 2px;
-  --radius-xl: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-victor-mono), ui-monospace, monospace;
@@ -145,8 +138,7 @@
 
 /* Must stay inside @layer base. Unlayered, this beats every layer — including `utilities` — and silently
    kills every border-{color} utility in the app: border-accent, border-danger, the lot all resolve to
-   --border and nothing looks broken enough to notice. (A Tailwind v3 idiom; back then preflight was
-   itself layered, so an unlayered default lost to utilities.) */
+   --border and nothing looks broken enough to notice. */
 @layer base {
   * {
     border-color: var(--border);
@@ -159,156 +151,45 @@ html {
   font-synthesis: none;
 }
 
-/* Victor Mono everywhere — it's the whole voice of the thing, not an accent — applied as the `font-mono`
-   utility on <body> in layout.tsx, since `@theme inline` never emits --font-mono as a real variable.
-   `ss02` is the stylistic set the design sets on it. Casing is set per component, never globally: an
-   uppercase rule would turn every address into 0X8335…2913. */
+/* Inter everywhere — applied as the `font-sans` utility on <body> in layout.tsx, since `@theme inline`
+   never emits --font-sans as a real variable. Victor Mono stays available via `font-mono` for raw
+   addresses and hashes. */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-feature-settings: "ss02" 1;
-  line-height: 1.2;
-  overflow: hidden; /* the workspace owns the viewport */
+  color-scheme: dark; /* native controls (inputs, scrollbars) match the theme */
+  line-height: 1.4;
+  overflow: hidden; /* the desktop owns the viewport */
 }
 
 /*
-  ── Holographic FUI utilities ────────────────────────────────────────────────
+  ── Desktop UI utilities ─────────────────────────────────────────────────────
 */
 
-/* Ambient background: a deep navy field lifted where the work is and falling away at the edges. */
-@utility fui-field {
-  background-color: var(--background);
-  background-image:
-    radial-gradient(70% 60% at 22% 8%, #0a2f4a66 0%, transparent 60%),
-    radial-gradient(50% 50% at 4% -6%, color-mix(in srgb, var(--accent) 8%, transparent) 0%, transparent 50%),
-    radial-gradient(60% 50% at 100% 100%, #00060f88 0%, transparent 60%);
-}
-
-/* Frosted panel with a cyan hairline — the base object/window surface. */
-@utility fui-glass {
-  background:
-    linear-gradient(180deg, #ffffff08, #ffffff02),
-    color-mix(in srgb, var(--card) 88%, transparent);
-  backdrop-filter: blur(8px);
+/* The base floating surface — menus, tooltips, windows. A hairline of inner light along the top edge
+   does the lifting that a drop shadow can't on a dark field. */
+@utility panel {
+  background: var(--surface);
   border: 1px solid var(--border);
   box-shadow:
-    inset 0 1px 0 #ffffff10,
-    0 12px 40px -12px #00000090;
-}
-
-/* Corner-bracket frame drawn with layered gradients (no extra DOM). */
-@utility fui-brackets {
-  position: relative;
-}
-@utility fui-brackets-lines {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background:
-    linear-gradient(var(--accent), var(--accent)) 0 0 / 12px 1px no-repeat,
-    linear-gradient(var(--accent), var(--accent)) 0 0 / 1px 12px no-repeat,
-    linear-gradient(var(--accent), var(--accent)) 100% 0 / 12px 1px no-repeat,
-    linear-gradient(var(--accent), var(--accent)) 100% 0 / 1px 12px no-repeat,
-    linear-gradient(var(--accent), var(--accent)) 0 100% / 12px 1px no-repeat,
-    linear-gradient(var(--accent), var(--accent)) 0 100% / 1px 12px no-repeat,
-    linear-gradient(var(--accent), var(--accent)) 100% 100% / 12px 1px no-repeat,
-    linear-gradient(var(--accent), var(--accent)) 100% 100% / 1px 12px no-repeat;
-  opacity: 0.9;
-}
-
-/* An armed object cell — selected, or a live drop target. The brackets mark it, the fill lifts it off
-   the field. Deliberately not a full border: the design leaves the cell's own lattice edges intact and
-   lets the corners do the work. */
-@utility fui-cell-live {
-  background-image: linear-gradient(120deg, color-mix(in srgb, var(--accent) 15%, transparent) 0%, #ffffff0c 100%);
-}
-
-/* Caution hatching — the shared fill for every action zone. Geometry taken from the design's own export
-   rather than guessed: stripes at 48.57°, 1.2px thick, 8px apart along x (so 6px between them
-   perpendicular), at 20%. Drawn rather than shipped as the SVG it came as, so it costs no asset and each
-   zone can tint it by setting --zone-stripe to its own signal.
-   Keep the stops written out: `color-mix()` with double-position stops (`… 0 1.2px`) makes Lightning CSS
-   drop this whole utility, silently. */
-@utility fui-zone {
-  background-image: repeating-linear-gradient(
-    311.43deg,
-    var(--zone-stripe) 0,
-    var(--zone-stripe) 1.2px,
-    transparent 1.2px,
-    transparent 6px
-  );
-}
-
-/* Sci-fi panel: two opposite corners chamfered off. */
-@utility fui-cut {
-  --cut: 24px;
-  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
-}
-
-/* The outline for a cut panel — a genuine ring, hollow in the middle.
-   A border is no use: clip-path cuts it off the diagonals and leaves it on the straight edges. The
-   obvious workaround — a filled tinted layer with the panel inset a pixel on top — only holds while the
-   panel is opaque. Make the panel translucent and it samples that layer as its backdrop and turns the
-   colour of the outline.
-   So: one path clockwise round the outside, a 1px seam, then back round 1px in. Under `evenodd` the
-   middle is crossed twice and drops out, leaving just the line — with nothing behind the panel at all.
-   Both seams land along the chamfer, where the line is anyway. */
-@utility fui-cut-ring {
-  --cut: 24px;
-  clip-path: polygon(
-    evenodd,
-    var(--cut) 0,
-    100% 0,
-    100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%,
-    0 100%,
-    0 var(--cut),
-    1px calc(var(--cut) + 0.5px),
-    1px calc(100% - 1px),
-    calc(100% - var(--cut) - 0.5px) calc(100% - 1px),
-    calc(100% - 1px) calc(100% - var(--cut) - 0.5px),
-    calc(100% - 1px) 1px,
-    calc(var(--cut) + 0.5px) 1px
-  );
+    inset 0 1px 0 #ffffff0a,
+    0 12px 32px -8px #00000073;
 }
 
 /* Panels arrive from their own centre. Never from scale(0) — that reads as a pop rather than an
    approach, and the label inside it stretches on the way. */
-@keyframes fui-panel-in {
+@keyframes panel-in {
   from {
     opacity: 0;
-    transform: scale(0.92);
+    transform: scale(0.96);
   }
   to {
     opacity: 1;
     transform: scale(1);
   }
 }
-.fui-panel-in {
-  animation: fui-panel-in 260ms var(--ease-out-quart);
-}
-
-/* Subtle scanline overlay for the "projected display" feel. */
-@utility fui-scanlines {
-  position: relative;
-}
-@utility fui-scanlines-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom,
-    #ffffff05 0px,
-    #ffffff05 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  mix-blend-mode: overlay;
-}
-
-@utility text-glow {
-  text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 55%, transparent);
+.panel-in {
+  animation: panel-in 200ms var(--ease-out-quart);
 }
 
 @utility trans-base {
@@ -317,9 +198,7 @@ body {
   transition-duration: 200ms;
 }
 
-/* Value / address readouts hold their columns. The family is already Victor Mono from <body>; this only
-   ever needed the numerals, and setting font-family here via var(--font-mono) silently resolved to
-   nothing (see the note on <body>). */
+/* Value / address readouts hold their columns. */
 @utility tnum {
   font-variant-numeric: tabular-nums;
 }
@@ -330,57 +209,6 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-/* Blip animation for locks / confirms. */
-@keyframes fui-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
-.fui-pulse {
-  animation: fui-pulse 1.4s var(--ease-in-out-quart) infinite;
-}
-
-/* A cell that just arrived from a split. Amber — the split's own signal — because a clone lands next to
-   an identical-looking twin and nothing else says which one is new.
-   One stroke: it snaps on, then decays over the rest of the run. The per-keyframe timing functions are
-   what make that asymmetric — a single easing on the shorthand would give the fade the same haste as the
-   arrival. The border is the cell's own lattice edge, so it lights and settles back with it. */
-@keyframes fui-clone {
-  0% {
-    background-color: transparent;
-    border-color: var(--border);
-    animation-timing-function: var(--ease-out-quart);
-  }
-  14% {
-    background-color: color-mix(in srgb, var(--action-split) 45%, transparent);
-    border-color: var(--action-split);
-    animation-timing-function: var(--ease-in-out-quart);
-  }
-  100% {
-    background-color: transparent;
-    border-color: var(--border);
-  }
-}
-.fui-clone {
-  animation: fui-clone 1.8s 1;
-}
-
-@keyframes fui-sweep {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(200%);
-  }
-}
-.fui-sweep {
-  animation: fui-sweep 1.6s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -400,6 +228,6 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-  border-radius: 0;
+  background: #ffffff26;
+  border-radius: 5px;
 }

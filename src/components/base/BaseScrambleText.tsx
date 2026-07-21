@@ -2,10 +2,9 @@
 
 import { useMemo, useRef } from "react"
 
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
-
-import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 
 type BaseScrambleTextProps = {
   text: string
@@ -76,8 +75,7 @@ export function BaseScrambleText({ text, duration = 0.3, className = "" }: BaseS
           ref={(el) => {
             if (el) charsRef.current[i] = el
           }}
-          className="inline-block"
-        >
+          className="inline-block">
           {visibleChar(c)}
         </span>
       ))}

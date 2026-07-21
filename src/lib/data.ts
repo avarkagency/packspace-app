@@ -1,12 +1,4 @@
-import type {
-  AppObj,
-  ApprovalObj,
-  AssetObj,
-  CampaignObj,
-  PackObj,
-  PersonObj,
-  VaultObj
-} from "./types"
+import type { AppObj, ApprovalObj, AssetObj, CampaignObj, Chain, PackObj, PersonObj, VaultObj } from "./types"
 
 // Dummy data only — no backend, no chain (spec: "full fake product"). Values are illustrative.
 
@@ -32,6 +24,9 @@ export const BALANCE_DELTA = { usd: -2.73, pct: -0.26 }
 /** You. The address is held in full rather than pre-truncated, because it seeds your avatar as well as
  *  being displayed — the same rule every contact follows. */
 export const WALLET = { label: "You", address: "0x7Afd3C81b9E24f05a6D7c8B1e0F9a2D3c4B5e63D" }
+
+/** The session's network, shown in the top bar. A fixture — nothing here actually connects. */
+export const CONNECTED_NETWORK: Chain = "Base"
 
 export const ASSETS: AssetObj[] = [
   {
@@ -254,9 +249,7 @@ export const APPS: AppObj[] = [
   { id: "app-builder", class: "app", label: "Pack Builder", appKind: "pack-builder", machine: "packing machine", href: "#", color: "#a78bfa" }
 ]
 
-export const VAULTS: VaultObj[] = [
-  { id: "v-lspot", class: "vault", label: "LSPOT Vault", usd: 5000, note: "display-only", color: "#34d399", chain: "Base" }
-]
+export const VAULTS: VaultObj[] = [{ id: "v-lspot", class: "vault", label: "LSPOT Vault", usd: 5000, note: "display-only", color: "#34d399", chain: "Base" }]
 
 export const CAMPAIGNS: CampaignObj[] = [
   { id: "c-neon", class: "campaign", label: "Neon Charizard Drop", note: "live · deploy to roll", color: "#f472b6", chain: "Base" }
@@ -298,15 +291,7 @@ export const COUNTERPARTY_OFFERS: AssetObj[] = [
 // Threshold above which a Handoff/Send demands type-to-confirm (spec §3.5.2; value is PS-Q1, open).
 export const HIGH_VALUE_USD = 500
 
-export const ALL_OBJECTS = [
-  ...ASSETS,
-  ...PEOPLE,
-  ...PACKS,
-  ...APPS,
-  ...VAULTS,
-  ...CAMPAIGNS,
-  ...APPROVALS
-]
+export const ALL_OBJECTS = [...ASSETS, ...PEOPLE, ...PACKS, ...APPS, ...VAULTS, ...CAMPAIGNS, ...APPROVALS]
 
 export function objectById(id: string) {
   return ALL_OBJECTS.find((o) => o.id === id)
