@@ -60,11 +60,11 @@ export function ObjectHoverInfo({ items }: { items: DesktopObj[] }) {
 
   // hover / drag
   const hoverId = useCoinHover()
-  const { obj: dragging } = useDrag()
+  const { obj: dragging, carriedIds } = useDrag()
 
-  // data — the drag label already rides the cursor, so this stands down while one is in hand
+  // data — the readout stands down while anything is in hand, one object or a carried selection
   const obj = hoverId ? items.find((o) => o.id === hoverId) : null
-  const show = !!obj && !dragging
+  const show = !!obj && !dragging && !carriedIds
 
   // effects — measure and aim before the first paint. On the way in it snaps to the cursor; after that
   // the frame loop below eases it, so moving between objects trails rather than teleports.
@@ -119,14 +119,14 @@ export function ObjectHoverInfo({ items }: { items: DesktopObj[] }) {
   return (
     <div ref={ref} className="pointer-events-none fixed top-0 left-0 z-[900]" style={{ width: WIDTH, willChange: "transform" }}>
       <div key={obj.id} className="panel rounded-lg px-12 py-10">
-        <p className="truncate text-13 font-semibold text-foreground">
+        <p className="truncate text-13 font-semibold text-white">
           <BaseScrambleText text={obj.label} />
         </p>
         <dl className="mt-6 flex flex-col gap-4">
           {rowsFor(obj).map((row) => (
             <div key={row.label} className="flex items-center justify-between gap-10">
-              <dt className="shrink-0 text-11 text-muted-foreground">{row.label}</dt>
-              <dd className="flex min-w-0 items-center gap-6 text-11 font-medium text-foreground/80">
+              <dt className="shrink-0 text-11 text-white/50">{row.label}</dt>
+              <dd className="flex min-w-0 items-center gap-6 text-11 font-medium text-white/80">
                 {/* `unoptimized` for the same reason as everywhere these marks appear: Next's dev image
                     converter drops the connection on the tiny variants it would request */}
                 {row.icon && <Image src={row.icon} alt="" width={16} height={16} unoptimized className="size-16 shrink-0 rounded-full object-cover" />}

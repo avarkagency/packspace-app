@@ -1,14 +1,14 @@
-import type { AppObj, ApprovalObj, AssetObj, CampaignObj, Chain, PackObj, PersonObj, VaultObj } from "./types"
+import type { AppObj, ApprovalObj, AssetObj, CampaignObj, Chain, NavItem, PackObj, PersonObj, VaultObj } from "./types"
 
 // Dummy data only — no backend, no chain (spec: "full fake product"). Values are illustrative.
 
 // Token colour signatures (data-driven, per doctrine — chrome stays monochrome-cyan).
 const C = {
-  usdc: "#3b82f6",
-  eth: "#8b93ff",
-  usdt: "#26a17b",
+  usdc: "#2775ca",
+  eth: "#627eeb",
+  usdt: "#1ba27a",
   sol: "#14f195",
-  bnb: "#f0b90b",
+  bnb: "#f1b90c",
   // the polaroids take their colour from their own artwork; these only feed the chrome that still reads
   // objectTint() — the drag label and the coins' fallback faces
   bayc: "#f0a03c",
@@ -28,20 +28,9 @@ export const WALLET = { label: "You", address: "0x7Afd3C81b9E24f05a6D7c8B1e0F9a2
 /** The session's network, shown in the top bar. A fixture — nothing here actually connects. */
 export const CONNECTED_NETWORK: Chain = "Base"
 
+// Ordered as the desk lays them out: columns of five filled top-to-bottom, so this reads column one
+// (ETH → 100 USDC) then column two (BNB → BAYC); the Other Tokens folder takes the slot after BAYC.
 export const ASSETS: AssetObj[] = [
-  {
-    id: "a-usdc",
-    class: "asset",
-    label: "USD Coin",
-    symbol: "USDC",
-    kind: "stablecoin",
-    balance: 4820.5,
-    usd: 4820.5,
-    chain: "Base",
-    color: C.usdc,
-    convertible: true,
-    address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
-  },
   {
     id: "a-eth",
     class: "asset",
@@ -49,24 +38,11 @@ export const ASSETS: AssetObj[] = [
     symbol: "ETH",
     kind: "token",
     balance: 1.35,
-    usd: 4590.0,
+    usd: 4821.0,
     chain: "Base",
     color: C.eth,
     convertible: true,
     address: "0x4200000000000000000000000000000000000006"
-  },
-  {
-    id: "a-usdt",
-    class: "asset",
-    label: "Tether",
-    symbol: "USDT",
-    kind: "stablecoin",
-    balance: 1200,
-    usd: 1200.0,
-    chain: "Solana",
-    color: C.usdt,
-    convertible: true,
-    address: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
   },
   {
     id: "a-sol",
@@ -74,50 +50,25 @@ export const ASSETS: AssetObj[] = [
     label: "Solana",
     symbol: "SOL",
     kind: "token",
-    balance: 42,
-    usd: 6300.0,
+    balance: 10204,
+    usd: 2918.0,
     chain: "Solana",
     color: C.sol,
     convertible: true,
     address: "So11111111111111111111111111111111111111112"
   },
   {
-    id: "a-bnb",
+    id: "a-usdt",
     class: "asset",
-    label: "BNB",
-    symbol: "BNB",
-    kind: "token",
-    balance: 3.1,
-    usd: 2015.0,
-    chain: "BNB",
-    color: C.bnb,
+    label: "Tether",
+    symbol: "USDT",
+    kind: "stablecoin",
+    balance: 1550,
+    usd: 1550.0,
+    chain: "Solana",
+    color: C.usdt,
     convertible: true,
-    address: "0xB8c77482e45F1F44dE1745F52C74426C631bDD52"
-  },
-  // the three collections are all Ethereum mainnet, as their real counterparts are
-  {
-    id: "a-bayc",
-    class: "asset",
-    label: "Bored Ape Yacht Club",
-    symbol: "BAYC",
-    kind: "nft",
-    balance: 1,
-    usd: 1450.0,
-    chain: "Ethereum",
-    color: C.bayc,
-    address: "0xBC4C…8817"
-  },
-  {
-    id: "a-azuki",
-    class: "asset",
-    label: "Azuki",
-    symbol: "AZUKI",
-    kind: "nft",
-    balance: 1,
-    usd: 880.0,
-    chain: "Ethereum",
-    color: C.azuki,
-    address: "0xED5A…4521"
+    address: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
   },
   {
     id: "a-doodles",
@@ -131,73 +82,147 @@ export const ASSETS: AssetObj[] = [
     color: C.doodles,
     address: "0x8a90…1893"
   },
+  // the same token twice on purpose — the dust pile demonstrates drag-to-combine
   {
-    id: "a-stack",
+    id: "a-usdc-dust",
     class: "asset",
-    label: "Foil Sleeve",
-    symbol: "FOIL",
-    kind: "stack",
-    balance: 12,
-    usd: 240.0,
+    label: "USD Coin",
+    symbol: "USDC",
+    kind: "stablecoin",
+    balance: 100,
+    usd: 100.0,
     chain: "Base",
-    color: C.stack,
-    address: "0x5c02…1155"
+    color: C.usdc,
+    convertible: true,
+    address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+  },
+  {
+    id: "a-bnb",
+    class: "asset",
+    label: "BNB",
+    symbol: "BNB",
+    kind: "token",
+    balance: 548,
+    usd: 3183.0,
+    chain: "BNB",
+    color: C.bnb,
+    convertible: true,
+    address: "0xB8c77482e45F1F44dE1745F52C74426C631bDD52"
+  },
+  {
+    id: "a-usdc",
+    class: "asset",
+    label: "USD Coin",
+    symbol: "USDC",
+    kind: "stablecoin",
+    balance: 2500,
+    usd: 2500.0,
+    chain: "Base",
+    color: C.usdc,
+    convertible: true,
+    address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+  },
+  {
+    id: "a-azuki",
+    class: "asset",
+    label: "Azuki",
+    symbol: "AZUKI",
+    kind: "nft",
+    balance: 1,
+    usd: 999.0,
+    chain: "Ethereum",
+    color: C.azuki,
+    address: "0xED5A…4521"
+  },
+  {
+    id: "a-bayc",
+    class: "asset",
+    label: "Bored Ape Yacht Club",
+    symbol: "BAYC",
+    kind: "nft",
+    balance: 1,
+    usd: 150.0,
+    chain: "Ethereum",
+    color: C.bayc,
+    address: "0xBC4C…8817"
   }
 ]
 
+// Laid out three across, two rows, anchored under the balance card. The two bare addresses are
+// counterparties you've transacted with but never saved — their icons wear the warning treatment.
 export const PEOPLE: PersonObj[] = [
   {
-    id: "p-kev",
+    id: "p-mum",
     class: "person",
-    label: "Kev",
-    handle: "@kev.base",
+    label: "Mum",
+    handle: "@mum.base",
     trust: "mutual",
-    hue: 172,
+    hue: 152,
     chain: "Base",
-    address: "0x2E9f4b1A7c0D5e6F8a3B2c1D0e9F8a7b6C5d4E3f"
+    address: "0x43A6f2C81b9E24f05a6D7c8B1e0F9a2D3c4B5e10"
   },
   {
-    id: "p-mia",
+    id: "p-john",
     class: "person",
-    label: "Mia — PackMarket",
-    handle: "@mia.eth",
+    label: "John MetaMask",
+    handle: "@john.eth",
     trust: "verified",
-    hue: 190,
+    hue: 32,
     chain: "Ethereum",
-    address: "0x71C7…9A20"
+    address: "0xe02C4b1A7c0D5e6F8a3B2c1D0e9F8a7b6C5d4Aa1"
   },
   {
-    id: "p-arc",
+    id: "p-4f47",
     class: "person",
-    label: "0xArc",
+    label: "0x4F47…",
     handle: "unconfirmed",
     trust: "unconfirmed",
     hue: 210,
     chain: "Base",
-    address: "0xA7c3…D19b"
+    address: "0x4F47b2C81b9E24f05a6D7c8B1e0F9a2D3c4B5c77"
   },
   {
-    id: "p-dez",
+    id: "p-98a3",
     class: "person",
-    label: "Dez (old wallet)",
-    handle: "retired",
-    trust: "confirmed",
-    hue: 40,
-    retired: true,
-    chain: "Base",
-    address: "0x0dEz…4417"
-  },
-  {
-    id: "p-ghost",
-    class: "person",
-    label: "ghost.eth",
-    handle: "flagged",
-    trust: "confirmed",
-    hue: 350,
-    compromised: true,
+    label: "0x98a3…",
+    handle: "unconfirmed",
+    trust: "unconfirmed",
+    hue: 260,
     chain: "Ethereum",
-    address: "0xdead…beef"
+    address: "0x98a3f2C81b9E24f05a6D7c8B1e0F9a2D3c4B5b19"
+  },
+  {
+    id: "p-binance",
+    class: "person",
+    label: "Binance Wallet",
+    handle: "@binance",
+    trust: "confirmed",
+    hue: 44,
+    chain: "BNB",
+    address: "0xfb39a2C81b9E24f05a6D7c8B1e0F9a2D3c4B5d02"
+  },
+  {
+    id: "p-uniswap",
+    class: "person",
+    label: "Uniswap",
+    handle: "@uniswap",
+    trust: "verified",
+    hue: 320,
+    chain: "Ethereum",
+    address: "0x9179a2C81b9E24f05a6D7c8B1e0F9a2D3c4B448d"
   }
+]
+
+/** The bottom dock, left to right. Labels surface as hover tooltips; the icons themselves are drawn by
+ *  the 3D scene so desktop objects can be dropped onto the first two (Pack Builder and Inspector). */
+export const NAV_ITEMS: NavItem[] = [
+  { id: "nav-builder", label: "Pack Builder", icon: "/images/nav-icons/1.png" },
+  { id: "nav-inspector", label: "Inspector", icon: "/images/nav-icons/2.png" },
+  { id: "nav-approvals", label: "Approvals", icon: "/images/nav-icons/3.png" },
+  { id: "nav-cards", label: "Cards", icon: "/images/nav-icons/4.png" },
+  { id: "nav-receipts", label: "Receipts", icon: "/images/nav-icons/5.png" },
+  { id: "nav-training", label: "Training", icon: "/images/nav-icons/6.png" },
+  { id: "nav-reset", label: "Reset Demo", icon: "/images/nav-icons/7.png" }
 ]
 
 export const PACKS: PackObj[] = [

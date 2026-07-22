@@ -3,7 +3,7 @@
 import { useState } from "react"
 
 import type { AssetObj, PersonObj, Receipt } from "@/lib/types"
-import { units } from "@/lib/utils"
+import { units, usd } from "@/lib/utils"
 
 import { ObjectMark } from "../canvas/ObjectMark"
 import { objectTint } from "../canvas/objectVisual"
@@ -11,13 +11,15 @@ import { HandoffWindow } from "./HandoffWindow"
 import { SendWindow } from "./SendWindow"
 import { Window } from "./Window"
 
-// The modal a wallet drop opens. ONE window for the whole flow: the frame stays mounted while its
-// content moves from the choice the drop left open — Send or Trade — into that action's own body, so
-// choosing never fades one modal out and another in. Send and Trade stay separate components on
-// purpose; this only fronts them, so either can be reworked without touching the other.
+// The modal a wallet drop opens — for one asset or several: a multi-select dropped onto a contact
+// cascades into this single window (the tokens listed together above the choice) rather than a stack
+// of one-asset modals. ONE window for the whole flow: the frame stays mounted while its content moves
+// from the choice the drop left open — Send or Trade — into that action's own body, so choosing never
+// fades one modal out and another in. Send and Trade stay separate components on purpose; this only
+// fronts them, so either can be reworked without touching the other.
 
 type Props = {
-  asset: AssetObj
+  assets: AssetObj[]
   to: PersonObj
   z: number
   onClose: () => void
@@ -27,38 +29,73 @@ type Props = {
 
 const TITLE = { choose: "Transfer", send: "Send", handoff: "Trade" } as const
 
-export function TransferWindow({ asset, to, z, onClose, onSettle, onLog }: Props) {
+export function TransferWindow({ assets, to, z, onClose, onSettle, onLog }: Props) {
   // state
   const [action, setAction] = useState<"send" | "handoff" | null>(null)
+
+  // data
+  const lead = assets[0]
+  const many = assets.length > 1
+  const subtitle = many ? `${assets.length} assets → ${to.label}` : `${units(lead.balance)} ${lead.symbol} → ${to.label}`
 
   return (
     <Window
       title={TITLE[action ?? "choose"]}
-      subtitle={`${units(asset.balance)} ${asset.symbol} → ${to.label}`}
-      tint={objectTint(asset)}
-      icon={<ObjectMark obj={asset} />}
+      subtitle={subtitle}
+      tint={objectTint(lead)}
+      icon={
+        many ? (
+          // the dropped set, worn as a fanned stack in the header
+          <span className="flex shrink-0 -space-x-10">
+            {assets.slice(0, 3).map((a) => (
+              <ObjectMark key={a.id} obj={a} />
+            ))}
+          </span>
+        ) : (
+          <ObjectMark obj={lead} />
+        )
+      }
       width={440}
       z={z}
       onClose={onClose}>
       {action === "send" ? (
-        <SendWindow asset={asset} to={to} onClose={onClose} onSettle={onSettle} onLog={onLog} />
+        <SendWindow assets={assets} to={to} onClose={onClose} onSettle={onSettle} onLog={onLog} />
       ) : action === "handoff" ? (
-        <HandoffWindow seed={asset} to={to} onClose={onClose} onSettle={onSettle} onLog={onLog} />
+        <HandoffWindow seeds={assets} to={to} onClose={onClose} onSettle={onSettle} onLog={onLog} />
       ) : (
-        <div className="grid grid-cols-2 gap-12 p-20">
-          <TransferChoice
-            label="Send"
-            blurb={`Give it to ${to.label} — one-way, nothing comes back.`}
-            color="var(--action-send)"
-            onClick={() => setAction("send")}
-          />
-          <TransferChoice
-            label="Trade"
-            blurb={`Propose a swap — both sides settle together or not at all.`}
-            color="var(--action-trade)"
-            onClick={() => setAction("handoff")}
-          />
-        </div>
+        <>
+          {/* what's on the table — only worth a list when there's more than the subtitle already says */}
+          {many && (
+            <ul className="flex flex-col gap-8 border-b border-border px-20 py-14">
+              {assets.map((a) => (
+                <li key={a.id} className="flex items-center justify-between gap-12">
+                  <span className="flex min-w-0 items-center gap-8">
+                    <ObjectMark obj={a} size={20} />
+                    <span className="tnum truncate text-12 font-medium">
+                      {units(a.balance)} {a.symbol}
+                    </span>
+                  </span>
+                  <span className="tnum text-12 text-muted-foreground">{usd(a.usd, { cents: false })}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="grid grid-cols-2 gap-12 p-20">
+            <TransferChoice
+              label="Send"
+              blurb={`Give ${many ? "them" : "it"} to ${to.label} — one-way, nothing comes back.`}
+              color="var(--action-send)"
+              onClick={() => setAction("send")}
+            />
+            <TransferChoice
+              label="Trade"
+              blurb={`Propose a swap — both sides settle together or not at all.`}
+              color="var(--action-trade)"
+              onClick={() => setAction("handoff")}
+            />
+          </div>
+        </>
       )}
 
       {action && (

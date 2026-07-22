@@ -3,17 +3,20 @@
 import dynamic from "next/dynamic"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 
-import { TRASH_DROP_KEY, assetDropId, assetDropKey, canCombine, isSameToken, isSplittable, walletDropId, walletDropKey } from "@/lib/asset-ops"
-import { coinView, registerCoinViewport, setCoinFrameTask } from "@/lib/coin-store"
-import { ASSETS, CONNECTED_NETWORK, PEOPLE } from "@/lib/data"
-import { useDrag } from "@/lib/drag-store"
+import { ArrowDownUp, FolderPlus, Image as ImageIcon, LayoutGrid, Pencil, Scissors, Search, SquarePen, Trash2, UserPlus } from "lucide-react"
+
+import { assetDropId, assetDropKey, canCombine, isSameToken, isSplittable, navDropId, navDropKey, walletDropId, walletDropKey } from "@/lib/asset-ops"
+import { coinView, registerCoinViewport, setCoinHover } from "@/lib/coin-store"
+import { ASSETS, CONNECTED_NETWORK, NAV_ITEMS, PEOPLE } from "@/lib/data"
+import { endDrag, setOver, startGroupDrag, useDrag } from "@/lib/drag-store"
 import type { AssetObj, DesktopObj, PersonObj, Receipt } from "@/lib/types"
 import { cn, desktopLabel } from "@/lib/utils"
 
-import { BAR_H, DesktopBar } from "../desktop/DesktopBar"
+import { CHROME_KEEPOUT_H, CHROME_KEEPOUT_W, DesktopBar } from "../desktop/DesktopBar"
+import { DOCK_GAP, DOCK_H, DOCK_W, DesktopDock, dropTileAt } from "../desktop/DesktopDock"
+import { DesktopFolder } from "../desktop/DesktopFolder"
 import { DesktopIcon, ICON_PAD, ICON_SLOT, ICON_W } from "../desktop/DesktopIcon"
 import { DesktopMenu, type DesktopMenuItem } from "../desktop/DesktopMenu"
-import { DesktopTrash } from "../desktop/DesktopTrash"
 import { useDesktopDrag } from "../desktop/useDesktopDrag"
 import { ObjectHoverInfo } from "../shell/ObjectHoverInfo"
 import { CombineWindow } from "../windows/CombineWindow"
@@ -23,9 +26,10 @@ import { ReceiptWindow } from "../windows/ReceiptWindow"
 import { SplitWindow } from "../windows/SplitWindow"
 import { TransferWindow } from "../windows/TransferWindow"
 
-// The desktop. A thin OS bar on top; below it, every object sits wherever it was last put — holdings
-// start in columns on the left, wallets on the right, and dragging anywhere just places the icon there
-// (a moving release keeps its momentum and coasts). Everything happens on the objects themselves:
+// The desktop. Floating chrome over the wallpaper — greeting and balance card up top, the app dock
+// along the bottom; between them every object sits wherever it was last put — holdings start in
+// columns on the left, wallets on the right, and dragging anywhere just places the icon
+// exactly where it's released. Everything happens on the objects themselves:
 // hover to inspect, drop a holding on a wallet to act on it (the transfer modal asks Send or Trade),
 // drop onto a matching portion to combine, right-click for the object's own menu (Split on a token;
 // Rename / Edit / Delete on a wallet). The desk itself right-clicks to housekeeping: New Contact,
@@ -35,7 +39,7 @@ import { TransferWindow } from "../windows/TransferWindow"
 const ObjectScene = dynamic(() => import("../canvas/ObjectScene").then((m) => m.ObjectScene), { ssr: false })
 
 type WinBody =
-  | { kind: "transfer"; asset: AssetObj; to: PersonObj }
+  | { kind: "transfer"; assets: AssetObj[]; to: PersonObj }
   | { kind: "split"; asset: AssetObj }
   | { kind: "combine"; a: AssetObj; b: AssetObj }
   | { kind: "contact"; contact: PersonObj }
@@ -51,21 +55,35 @@ type MenuSpec = { x: number; y: number; obj: DesktopObj }
 /** An icon's top-left corner, in viewport px. */
 type Pos = { x: number; y: number }
 
-// The default arrangement: columns of 4 filled top-to-bottom, assets from the left edge, wallets from
-// the right — like a freshly set-up desk. Only the starting point; every drag rewrites it.
-const EDGE = 28
-const TOP = BAR_H + 24
-const ROWS = 4
-const COL_W = ICON_W + 16
-const ROW_H = 128 // tall enough for slot + label + value pill
+// The default arrangement, straight from the design: assets in columns of 5 filled top-to-bottom from
+// the left edge (the Other Tokens folder takes the slot after the last asset), contacts in rows of 3
+// anchored top-right under the balance card. Only the starting point; every drag rewrites it.
+const EDGE = 32
+const TOP = 192 // clears the greeting block top-left and the balance card top-right
+const ROWS = 5
+const COL_W = 97
+const ROW_H = 112
+/** The slot sits centred in the icon's wrapper; layout speaks slot edges, positions speak wrappers. */
+const SLOT_INSET = (ICON_W - ICON_SLOT) / 2
+const CONTACT_COLS = 3
+
+/** The Other Tokens folder's desk id — a fixture, not one of the draggable objects (yet). */
+export const FOLDER_ID = "folder-other"
+
+/** A desk folder. Display-only for now — contents, drops and its window come with the folder features. */
+type FolderSpec = { id: string; label: string; items: number }
 
 function defaultPositions(assets: AssetObj[], contacts: PersonObj[], width: number): Record<string, Pos> {
   const pos: Record<string, Pos> = {}
+  const assetSlot = (i: number): Pos => ({ x: EDGE - SLOT_INSET + Math.floor(i / ROWS) * COL_W, y: TOP + (i % ROWS) * ROW_H })
   assets.forEach((a, i) => {
-    pos[a.id] = { x: EDGE + Math.floor(i / ROWS) * COL_W, y: TOP + (i % ROWS) * ROW_H }
+    pos[a.id] = assetSlot(i)
   })
+  pos[FOLDER_ID] = assetSlot(assets.length)
   contacts.forEach((c, i) => {
-    pos[c.id] = { x: width - EDGE - ICON_W - Math.floor(i / ROWS) * COL_W, y: TOP + (i % ROWS) * ROW_H }
+    const row = Math.floor(i / CONTACT_COLS)
+    const col = i % CONTACT_COLS
+    pos[c.id] = { x: width - EDGE - ICON_SLOT - SLOT_INSET - (CONTACT_COLS - 1 - col) * COL_W, y: TOP + row * ROW_H }
   })
   return pos
 }
@@ -73,16 +91,27 @@ function defaultPositions(assets: AssetObj[], contacts: PersonObj[], width: numb
 /** Room under the slot for the label and the value pill, so the bottom clamp keeps both on screen. */
 const ICON_FOOT = 64
 
-/** Keep an icon on the desk — fully visible, never under the bar. */
+/** Keep an icon on the desk — fully visible edge to edge (the chrome floats; nothing owns a strip),
+ *  and never under the pieces of chrome that sit above the icon layer (the dock shelf, the top-right
+ *  toggles + balance card): an icon parked beneath those could never be picked back up through them.
+ *  Anything landing there steps clear. */
 function clampPos(x: number, y: number): Pos {
-  return {
-    x: Math.min(Math.max(x, 4), window.innerWidth - ICON_W - 4),
-    y: Math.min(Math.max(y, BAR_H + 4), window.innerHeight - ICON_SLOT - ICON_FOOT)
-  }
+  const cx = Math.min(Math.max(x, 4), window.innerWidth - ICON_W - 4)
+  let cy = Math.min(Math.max(y, 4), window.innerHeight - ICON_SLOT - ICON_FOOT)
+
+  const dockTop = window.innerHeight - DOCK_GAP - DOCK_H
+  const dockLeft = (window.innerWidth - DOCK_W) / 2
+  const overlapsDock = cx + ICON_W > dockLeft - 4 && cx < dockLeft + DOCK_W + 4 && cy + ICON_SLOT + ICON_FOOT > dockTop
+  if (overlapsDock) cy = dockTop - ICON_SLOT - ICON_FOOT
+
+  const overlapsChrome = cx + ICON_W > window.innerWidth - CHROME_KEEPOUT_W && cy < CHROME_KEEPOUT_H
+  if (overlapsChrome) cy = CHROME_KEEPOUT_H
+
+  return { x: cx, y: cy }
 }
 
 /** Two icons closer than this read as overlapping. Roughly the icon's own footprint. */
-const MIN_DIST = 112
+const MIN_DIST = 100
 
 function isFree(p: Pos, positions: Record<string, Pos>, ignoreId: string) {
   for (const [id, q] of Object.entries(positions)) {
@@ -107,21 +136,10 @@ function nearestFreeSpot(desired: Pos, positions: Record<string, Pos>, ignoreId:
   return d
 }
 
-// Momentum. A release still moving above FLING_MIN keeps its velocity and coasts, bleeding speed to
-// exponential friction and bouncing (dampened) off the desk's edges; below it, a release is just a
-// placement. Tuned by feel: a lazy drop stays put, a flick sails.
-const FLING_MIN = 220 // px/s
-const FLING_MAX = 3200 // px/s — a wild gesture shouldn't cross the desk twice
-const FRICTION = 8.4 // 1/s exponential decay — doubled halves how long a throw coasts
-const BOUNCE = 0.45 // energy kept on an edge hit
-const REST = 40 // px/s — below this it has stopped
-
-/** The wallpaper choices behind "Change Wallpaper ▸". CSS backgrounds, so they cost nothing. */
+/** The wallpaper choices behind "Change Wallpaper ▸" — the design's two gradient images. */
 const WALLPAPERS = [
-  { label: "Graphite", css: "var(--background)" },
-  { label: "Midnight", css: "radial-gradient(120% 110% at 50% 0%, #16203a 0%, #0d1017 70%)" },
-  { label: "Aurora", css: "linear-gradient(160deg, #101418 0%, #0e1f1c 55%, #1c1420 100%)" },
-  { label: "Ember", css: "radial-gradient(110% 120% at 85% 100%, #2a1712 0%, #131315 60%)" }
+  { label: "Dusk", css: "#000014 url(/images/bg.png) center / cover no-repeat" },
+  { label: "Sea", css: "#000a10 url(/images/bg2.png) center / cover no-repeat" }
 ] as const
 
 export function DesktopWorkspace() {
@@ -130,27 +148,32 @@ export function DesktopWorkspace() {
   const idc = useRef(0)
   const assetIdc = useRef(0)
   const contactIdc = useRef(0)
-  /** The icon wrapper nodes, for the drag and the fling to move without a render. */
+  const folderIdc = useRef(0)
+  /** The icon wrapper nodes, for the drag to move without a render. */
   const iconNodes = useRef(new Map<string, HTMLElement>())
-  /** Where the current coast has got to, so an interruption can park it in place. */
-  const flingState = useRef<{ id: string; x: number; y: number } | null>(null)
 
   // state — assets divide and recombine; wallets rename, edit and delete; positions are the desk itself
   const [assets, setAssets] = useState<AssetObj[]>(ASSETS)
   const [contacts, setContacts] = useState<PersonObj[]>(PEOPLE)
+  const [folders, setFolders] = useState<FolderSpec[]>([{ id: FOLDER_ID, label: "Other tokens", items: 26 }])
   const [positions, setPositions] = useState<Record<string, Pos> | null>(null)
   const [wins, setWins] = useState<WinSpec[]>([])
   const [menu, setMenu] = useState<MenuSpec | null>(null)
   const [deskMenu, setDeskMenu] = useState<{ x: number; y: number } | null>(null)
-  const [wallpaper, setWallpaper] = useState<(typeof WALLPAPERS)[number]>(WALLPAPERS[1])
+  const [wallpaper, setWallpaper] = useState<(typeof WALLPAPERS)[number]>(WALLPAPERS[0])
   const [renamingId, setRenamingId] = useState<string | null>(null)
+  /** Multi-select: the ids swept up by the marquee. Dragging any of them moves the whole set. */
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set())
+  const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
 
-  // drag
-  const { obj: dragged, over } = useDrag()
+  // drag — one object in hand, or a carried multi-selection; the store treats both as "dragging"
+  const { obj: dragged, carriedIds, over } = useDrag()
 
   // data — one flat list feeds the canvas and the hover readout; position is per-icon layout
   const deskItems: DesktopObj[] = [...assets, ...contacts]
   const draggedAsset = dragged?.class === "asset" ? dragged : null
+  const carriedHasAsset = !!carriedIds && assets.some((a) => carriedIds.has(a.id))
+  const anyDragging = !!dragged || !!carriedIds
 
   // events — window manager (centered modals)
   const close = (id: string) => setWins((w) => w.filter((x) => x.id !== id))
@@ -164,78 +187,12 @@ export function DesktopWorkspace() {
   const onSettle = useCallback((receipt: Receipt) => open({ kind: "receipt", receipt, matchKey: receipt.id }), [open])
   const noop = useCallback(() => {}, [])
 
-  // events — placement. Letting go over nothing IS the placement gesture; (x, y) is the cursor, which
-  // carried the coin's centre, so the icon lands with its slot centred there. A release still moving
-  // keeps its velocity and coasts to rest.
-  //
-  // The coast runs as the canvas's frame task, writing the icon's DOM position directly right before
-  // the coins are measured — label and coin then read the same frame. Its own requestAnimationFrame
-  // would land *after* that measurement, and the coin would trail the label by one step all the way.
-  // State only hears about it when the flight ends (or is interrupted), via the commit below.
-
-  /** Park the in-flight icon exactly where its coast has taken it so far. */
-  const stopFling = () => {
-    const f = flingState.current
-    flingState.current = null
-    setCoinFrameTask(null)
-    if (f) setPositions((pos) => (pos ? { ...pos, [f.id]: nearestFreeSpot({ x: f.x, y: f.y }, pos, f.id) } : pos))
-  }
-
-  const flingObject = (id: string, from: Pos, vx: number, vy: number) => {
-    let { x, y } = from
-    // cap the speed, preserving direction
-    const cap = Math.min(1, FLING_MAX / Math.hypot(vx, vy))
-    let vX = vx * cap
-    let vY = vy * cap
-
-    const step = (dt: number) => {
-      x += vX * dt
-      y += vY * dt
-      const decay = Math.exp(-FRICTION * dt)
-      vX *= decay
-      vY *= decay
-
-      // dampened bounce off the desk's edges
-      const minX = 4
-      const maxX = window.innerWidth - ICON_W - 4
-      const minY = BAR_H + 4
-      const maxY = window.innerHeight - ICON_SLOT - ICON_FOOT
-      if (x < minX || x > maxX) {
-        x = Math.min(Math.max(x, minX), maxX)
-        vX = -vX * BOUNCE
-      }
-      if (y < minY || y > maxY) {
-        y = Math.min(Math.max(y, minY), maxY)
-        vY = -vY * BOUNCE
-      }
-
-      if (Math.hypot(vX, vY) > REST) {
-        flingState.current = { id, x, y }
-        const el = iconNodes.current.get(id)
-        if (el) {
-          el.style.left = `${x}px`
-          el.style.top = `${y}px`
-        }
-      } else {
-        // mid-flight it just flies over everything; coming to rest is a placement, so it settles into
-        // the nearest clear spot like any other drop
-        stopFling()
-      }
-    }
-    flingState.current = { id, x, y }
-    setCoinFrameTask(step)
-  }
-
-  const moveObject = (obj: DesktopObj, x: number, y: number, vx: number, vy: number) => {
-    stopFling()
+  // events — placement. Letting go IS the placement gesture; (x, y) is the cursor, which carried the
+  // coin's centre, so the icon lands with its slot centred there (pushed aside if something's already
+  // sitting there).
+  const moveObject = (obj: DesktopObj, x: number, y: number) => {
     const p = clampPos(x - ICON_W / 2, y - ICON_PAD - ICON_SLOT / 2)
-    if (Math.hypot(vx, vy) >= FLING_MIN) {
-      // launch from the raw drop point — collision resolution happens where it lands, not where it left
-      setPositions((pos) => (pos ? { ...pos, [obj.id]: p } : pos))
-      flingObject(obj.id, p, vx, vy)
-    } else {
-      setPositions((pos) => (pos ? { ...pos, [obj.id]: nearestFreeSpot(p, pos, obj.id) } : pos))
-    }
+    setPositions((pos) => (pos ? { ...pos, [obj.id]: nearestFreeSpot(p, pos, obj.id) } : pos))
   }
 
   // events — asset actions
@@ -313,14 +270,15 @@ export function DesktopWorkspace() {
     const p = clampPos(coinView.cursor.x - ICON_W / 2, coinView.cursor.y - ICON_PAD - ICON_SLOT / 2)
     setPositions((pos) => (pos ? { ...pos, [obj.id]: nearestFreeSpot(p, pos, obj.id) } : pos))
 
-    if (obj.class === "person") {
-      if (dropKey === TRASH_DROP_KEY) open({ kind: "delete-contact", contact: obj, matchKey: `delete-${obj.id}` })
-      return
-    }
+    // a wallet drag recognises no zones (deleting lives in its menu) — it only ever lands
+    if (obj.class === "person") return
+    // a dock app took the drop. The interaction itself arrives with the dock features; today the drop
+    // lands cleanly and the icon has already stepped back off the shelf (the placement clamp above).
+    if (navDropId(dropKey)) return
     const walletId = walletDropId(dropKey)
     if (walletId) {
       const to = contacts.find((c) => c.id === walletId)
-      if (to) open({ kind: "transfer", asset: obj, to, matchKey: `transfer-${obj.id}-${to.id}` })
+      if (to) open({ kind: "transfer", assets: [obj], to, matchKey: `transfer-${obj.id}-${to.id}` })
       return
     }
     const targetId = assetDropId(dropKey)
@@ -329,7 +287,7 @@ export function DesktopWorkspace() {
       if (target && canCombine(obj, target)) startCombine(obj, target)
     }
   }
-  /** Sit the icon so its slot is centred on (cx, cy) — the drag and the fling both speak cursor. */
+  /** Sit the icon so its slot is centred on (cx, cy) — the drag speaks cursor. */
   const placeNode = (id: string, cx: number, cy: number) => {
     const el = iconNodes.current.get(id)
     if (!el) return
@@ -337,18 +295,148 @@ export function DesktopWorkspace() {
     el.style.top = `${cy - ICON_PAD - ICON_SLOT / 2}px`
   }
   const { onPointerDown } = useDesktopDrag({ onDrop, onMove: moveObject, onDragMove: (obj, x, y) => placeNode(obj.id, x, y) })
-  // grabbing anything catches whatever is still coasting — two things can't be in motion at once
-  const onIconPress = (obj: DesktopObj) => {
-    const press = onPointerDown(obj)
-    return (e: React.PointerEvent) => {
-      stopFling()
-      press(e)
+
+  // events — marquee select. Starts only on the desk itself (a press on an icon is a pick-up, not a
+  // sweep), draws the box, and re-derives the selection from whichever icons it crosses. The coins
+  // need nothing: they follow their slots whatever moves them.
+  const onDeskPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0 || e.target !== rootRef.current || !positions) return
+    const sx = e.clientX
+    const sy = e.clientY
+    const boxes = deskItems
+      .map((o) => ({ id: o.id, p: positions[o.id] }))
+      .filter((b): b is { id: string; p: Pos } => !!b.p)
+    setSelectedIds(new Set())
+
+    const onSweep = (ev: PointerEvent) => {
+      const x0 = Math.min(sx, ev.clientX)
+      const y0 = Math.min(sy, ev.clientY)
+      const x1 = Math.max(sx, ev.clientX)
+      const y1 = Math.max(sy, ev.clientY)
+      setMarquee({ x0: sx, y0: sy, x1: ev.clientX, y1: ev.clientY })
+      setSelectedIds(
+        new Set(
+          boxes
+            .filter(({ p }) => p.x < x1 && p.x + ICON_W > x0 && p.y < y1 && p.y + ICON_SLOT + ICON_FOOT > y0)
+            .map(({ id }) => id)
+        )
+      )
     }
+    const onLift = () => {
+      window.removeEventListener("pointermove", onSweep)
+      window.removeEventListener("pointerup", onLift)
+      setMarquee(null)
+    }
+    window.addEventListener("pointermove", onSweep)
+    window.addEventListener("pointerup", onLift)
   }
 
-  // events — desk housekeeping (the desktop's own right-click menu)
-  const cleanUp = (assetOrder = assets, contactOrder = contacts) => setPositions(defaultPositions(assetOrder, contactOrder, window.innerWidth))
+  /** Carry the whole selection: every selected wrapper rides the same delta, imperatively (the coins
+   *  follow their slots), and the set settles with its formation intact — clamped per icon, but never
+   *  pushed apart. The carry registers with the drag store, so the scene, the badges and the hover
+   *  readout treat it exactly like a single drag. Released over a contact, it's a drop, not a move:
+   *  the carried tokens open one transfer flow onto that contact, and the icons settle beside it
+   *  rather than on it. The contact is found by geometry, not elementFromPoint — the carried icons
+   *  are under the cursor, in the way. */
+  const grabSelection = (e: React.PointerEvent) => {
+    if (!positions) return
+    const origins = new Map<string, Pos>()
+    for (const id of selectedIds) {
+      const p = positions[id]
+      if (p) origins.set(id, p)
+    }
+    const sx = e.clientX
+    const sy = e.clientY
+    const hasAsset = [...origins.keys()].some((id) => assets.some((a) => a.id === id))
+    let started = false
+
+    /** The contact under (x, y), if any — the drop target, found by geometry. */
+    const contactAt = (x: number, y: number) =>
+      contacts.find((c) => {
+        if (origins.has(c.id)) return false
+        const p = positions[c.id]
+        return !!p && x >= p.x && x <= p.x + ICON_W && y >= p.y && y <= p.y + ICON_SLOT + ICON_FOOT
+      })
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - sx
+      const dy = ev.clientY - sy
+      if (!started && Math.hypot(dx, dy) < 6) return
+      if (!started) {
+        started = true
+        setCoinHover(null) // the readout would ride under the carried set the whole way
+        startGroupDrag(new Set(origins.keys()))
+      }
+      for (const [id, o] of origins) {
+        const el = iconNodes.current.get(id)
+        if (!el) continue
+        el.style.left = `${o.x + dx}px`
+        el.style.top = `${o.y + dy}px`
+      }
+      // light the target underneath — a dock drop tile or a contact. The store bails on same values,
+      // so this is free while cruising.
+      const hitNav = hasAsset ? dropTileAt(ev.clientX, ev.clientY) : undefined
+      const hit = hasAsset && !hitNav ? contactAt(ev.clientX, ev.clientY) : undefined
+      setOver(hitNav ? navDropKey(hitNav.id) : hit ? walletDropKey(hit.id) : null)
+    }
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", onUp)
+      endDrag()
+      if (!started) return
+      const dx = ev.clientX - sx
+      const dy = ev.clientY - sy
+
+      // a dock app took the drop — like the single-drag version, the interaction itself arrives with
+      // the dock features; the placement below steps the set back off the shelf (the dock keep-out)
+      const hitNav = hasAsset ? dropTileAt(ev.clientX, ev.clientY) : undefined
+      const hitContact = hitNav ? undefined : contactAt(ev.clientX, ev.clientY)
+
+      setPositions((pos) => {
+        if (!pos) return pos
+        const next = { ...pos }
+        for (const [id, o] of origins) {
+          const at = clampPos(o.x + dx, o.y + dy)
+          // a drop can't stay ON its target — settle beside it, formation yielding to the contact
+          next[id] = hitContact ? nearestFreeSpot(at, next, id) : at
+        }
+        return next
+      })
+
+      if (hitContact) {
+        // the whole handful cascades into ONE transfer window, not a stack of one-asset modals
+        const dropped = [...origins.keys()].map((id) => assets.find((a) => a.id === id)).filter((a): a is AssetObj => !!a)
+        if (dropped.length) {
+          const key = dropped
+            .map((a) => a.id)
+            .sort()
+            .join("+")
+          open({ kind: "transfer", assets: dropped, to: hitContact, matchKey: `transfer-${key}-${hitContact.id}` })
+        }
+      }
+    }
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+  }
+
+  /** A press on an icon: carried with its selection if it has one, an ordinary single drag (and the
+   *  selection stands down) if not. */
+  const onIconPointerDown = (obj: DesktopObj) => (e: React.PointerEvent) => {
+    if (e.button !== 0) return
+    if (selectedIds.has(obj.id) && selectedIds.size > 1) return grabSelection(e)
+    if (selectedIds.size) setSelectedIds(new Set())
+    onPointerDown(obj)(e)
+  }
+
+  // events — desk housekeeping (the desktop's own right-click menu). The last-used arrangement is
+  // remembered so a window resize can re-run it: an icon layout tuned to one width is wrong at another.
+  const cleanupKeyRef = useRef<"name" | "kind" | "value" | null>(null)
+  // merged over the old map, not swapped in: defaultPositions only knows the stock objects, and a
+  // wholesale replace would strand any user-made folders without a position
+  const cleanUp = (assetOrder = assets, contactOrder = contacts) =>
+    setPositions((pos) => ({ ...pos, ...defaultPositions(assetOrder, contactOrder, window.innerWidth) }))
   const cleanUpBy = (key: "name" | "kind" | "value") => {
+    cleanupKeyRef.current = key
     const byName = (a: DesktopObj, b: DesktopObj) => a.label.localeCompare(b.label)
     const sorted = [...assets].sort(
       key === "name" ? byName : key === "value" ? (a, b) => b.usd - a.usd : (a, b) => a.kind.localeCompare(b.kind) || b.usd - a.usd
@@ -371,6 +459,17 @@ export function DesktopWorkspace() {
     }
     open({ kind: "new-contact", draft, at, matchKey: "new-contact" })
   }
+  /** A fresh folder lands right where the menu was opened, pushed aside like any placement. */
+  const addFolder = (at: Pos) => {
+    const id = `folder-new-${folderIdc.current++}`
+    setFolders((list) => [...list, { id, label: "New Folder", items: 0 }])
+    setPositions((pos) => {
+      if (!pos) return pos
+      const p = clampPos(at.x - ICON_W / 2, at.y - ICON_PAD - ICON_SLOT / 2)
+      return { ...pos, [id]: nearestFreeSpot(p, pos, id) }
+    })
+  }
+
   const createContact = (draft: PersonObj, patch: Pick<PersonObj, "label" | "handle" | "address">, at: Pos) => {
     const contact = { ...draft, ...patch }
     setContacts((list) => [...list, contact])
@@ -399,22 +498,37 @@ export function DesktopWorkspace() {
 
   const menuItems = (obj: DesktopObj): DesktopMenuItem[] =>
     obj.class === "asset"
-      ? [{ label: "Split", onSelect: () => startSplit(obj) }]
+      ? [
+          { label: "Split asset", icon: Scissors, onSelect: () => startSplit(obj) },
+          // design-only for now — the inspector arrives with the dock features
+          { label: "Inspect asset", icon: Search, onSelect: () => {} }
+        ]
       : [
-          { label: "Rename", onSelect: () => setRenamingId(obj.id) },
-          { label: "Edit", onSelect: () => open({ kind: "contact", contact: obj, matchKey: `contact-${obj.id}` }) },
+          { label: "Rename", icon: Pencil, onSelect: () => setRenamingId(obj.id) },
+          { label: "Edit", icon: SquarePen, onSelect: () => open({ kind: "contact", contact: obj, matchKey: `contact-${obj.id}` }) },
           // same confirm as the trash — permanent is permanent, whichever gesture asked
-          { label: "Delete", danger: true, onSelect: () => open({ kind: "delete-contact", contact: obj, matchKey: `delete-${obj.id}` }) }
+          { label: "Delete", icon: Trash2, danger: true, onSelect: () => open({ kind: "delete-contact", contact: obj, matchKey: `delete-${obj.id}` }) }
         ]
   const deskMenuItems = (at: Pos): DesktopMenuItem[] => [
-    { label: "New Contact", onSelect: () => addContact(at) },
+    { label: "New Contact", icon: UserPlus, onSelect: () => addContact(at) },
+    { label: "New Folder", icon: FolderPlus, onSelect: () => addFolder(at) },
     {
       label: "Change Wallpaper",
+      icon: ImageIcon,
       children: WALLPAPERS.map((w) => ({ label: w.label, checked: w.label === wallpaper.label, onSelect: () => setWallpaper(w) }))
     },
-    { label: "Clean Up", separator: true, onSelect: () => cleanUp() },
+    {
+      label: "Clean Up",
+      icon: LayoutGrid,
+      separator: true,
+      onSelect: () => {
+        cleanupKeyRef.current = null
+        cleanUp()
+      }
+    },
     {
       label: "Clean Up By",
+      icon: ArrowDownUp,
       children: [
         { label: "Name", onSelect: () => cleanUpBy("name") },
         { label: "Kind", onSelect: () => cleanUpBy("kind") },
@@ -434,25 +548,54 @@ export function DesktopWorkspace() {
     setPositions(defaultPositions(ASSETS, PEOPLE, window.innerWidth))
   }, [])
 
-  // effects — don't let a coasting icon outlive the desk
-  useEffect(() => stopFling, [])
+  // effects — a resize re-runs the last clean-up (the plain one, or whichever "Clean Up By" was used
+  // last). The listener reads through a ref so it always sees the current assets and contacts without
+  // re-registering on every change.
+  const relayoutRef = useRef(() => {})
+  useEffect(() => {
+    relayoutRef.current = () => (cleanupKeyRef.current ? cleanUpBy(cleanupKeyRef.current) : cleanUp())
+  })
+  useEffect(() => {
+    const onResize = () => relayoutRef.current()
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [])
 
   // effects — the dragged icon is positioned imperatively, and any re-render mid-drag (targets
   // lighting, dimming) resets its wrapper to the stale state position. Re-pin it after every render,
-  // before paint, so the stale value never shows.
+  // before paint, so the stale value never shows. And once nothing is in hand, write every wrapper
+  // back to its stored spot: React skips re-writing a style prop it considers unchanged, so a drop
+  // that resolves to the icon's existing position (a second drop pushed off the dock to the same
+  // clearance spot, say) would otherwise leave the wrapper wherever the drag left it.
   useLayoutEffect(() => {
-    if (dragged) placeNode(dragged.id, coinView.cursor.x, coinView.cursor.y)
+    if (dragged) {
+      placeNode(dragged.id, coinView.cursor.x, coinView.cursor.y)
+      return
+    }
+    // a selection mid-carry is placed imperatively too — resyncing now would snap it out of the hand
+    if (carriedIds) return
+    if (!positions) return
+    for (const [id, el] of iconNodes.current) {
+      const p = positions[id]
+      if (!p) continue
+      el.style.left = `${p.x}px`
+      el.style.top = `${p.y}px`
+    }
   })
 
   return (
     <>
-      <DesktopBar totalUsd={assets.reduce((t, a) => t + a.usd, 0)} />
+      {/* the wallpaper is its own bottom layer, so the greeting (painted next) shows over it while
+          still sitting under every icon, coin and badge */}
+      <div aria-hidden className="fixed inset-0" style={{ background: wallpaper.css }} />
+
+      <DesktopBar assets={assets} />
 
       {/* icon positions are viewport coordinates, so this layer must be the viewport — offsetting it
           (say, below the bar) would land every drop that offset away from the cursor. The clamp is what
-          keeps icons out from under the bar, not the container. It also wears the wallpaper and owns
-          the desk's own right-click menu. */}
-      <div ref={rootRef} className="absolute inset-0" style={{ background: wallpaper.css }} onContextMenu={onDeskMenu}>
+          keeps icons out from under the bar, not the container. It owns the desk's own right-click
+          menu; the wallpaper lives on the underlay above so the greeting can slot between them. */}
+      <div ref={rootRef} className="absolute inset-0" onContextMenu={onDeskMenu} onPointerDown={onDeskPointerDown}>
         {positions &&
           assets.map((a) => {
             const p = positions[a.id]
@@ -466,7 +609,7 @@ export function DesktopWorkspace() {
                 }}
                 // in hand: above everything on the desk, and pointer-transparent so the drop
                 // hit-testing sees the zones underneath rather than the icon being carried
-                className={cn("absolute", dragged?.id === a.id && "pointer-events-none z-[70]")}
+                className={cn("absolute", (dragged?.id === a.id || carriedIds?.has(a.id)) && "pointer-events-none z-[70]")}
                 style={{ left: p.x, top: p.y }}>
                 <DesktopIcon
                   obj={a}
@@ -476,8 +619,9 @@ export function DesktopWorkspace() {
                   dimmed={!!draggedAsset && !isSameToken(draggedAsset, a)}
                   target={!!draggedAsset && canCombine(draggedAsset, a)}
                   over={!!draggedAsset && over === assetDropKey(a.id)}
-                  anyDragging={!!dragged}
-                  onPointerDown={onIconPress(a)}
+                  selected={menu?.obj.id === a.id || selectedIds.has(a.id)}
+                  anyDragging={anyDragging}
+                  onPointerDown={onIconPointerDown(a)}
                   onContextMenu={onIconMenu(a)}
                 />
               </div>
@@ -495,36 +639,65 @@ export function DesktopWorkspace() {
                   if (el) iconNodes.current.set(c.id, el)
                   else iconNodes.current.delete(c.id)
                 }}
-                className={cn("absolute", dragged?.id === c.id && "pointer-events-none z-[70]")}
+                className={cn("absolute", (dragged?.id === c.id || carriedIds?.has(c.id)) && "pointer-events-none z-[70]")}
                 style={{ left: p.x, top: p.y }}>
                 <DesktopIcon
                   obj={c}
                   label={desktopLabel(c)}
                   dropKey={walletDropKey(c.id)}
-                  target={!!draggedAsset}
-                  over={!!draggedAsset && over === walletDropKey(c.id)}
-                  anyDragging={!!dragged}
+                  target={!!draggedAsset || (carriedHasAsset && !carriedIds?.has(c.id))}
+                  over={(!!draggedAsset || carriedHasAsset) && over === walletDropKey(c.id)}
+                  selected={menu?.obj.id === c.id || selectedIds.has(c.id)}
+                  anyDragging={anyDragging}
                   renaming={renamingId === c.id}
                   onRename={(name) => renameContact(c.id, name)}
                   onRenameCancel={() => setRenamingId(null)}
-                  onPointerDown={onIconPress(c)}
+                  onPointerDown={onIconPointerDown(c)}
                   onContextMenu={onIconMenu(c)}
                 />
               </div>
             )
           })}
 
-        <DesktopTrash armed={dragged?.class === "person"} over={over === TRASH_DROP_KEY} />
+        {/* the folders — Other Tokens plus any the desk menu created. Fixtures for now; drops and
+            their own windows come later */}
+        {positions &&
+          folders.map((f) => {
+            const p = positions[f.id]
+            if (!p) return null
+            return (
+              <div key={f.id} className="absolute" style={{ left: p.x, top: p.y }}>
+                <DesktopFolder label={f.label} count={f.items} />
+              </div>
+            )
+          })}
+
+        {/* the marquee — drawn while a selection is being dragged out on the desk itself */}
+        {marquee && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute z-[80] rounded-4 border border-dashed border-white/60 bg-white/10"
+            style={{
+              left: Math.min(marquee.x0, marquee.x1),
+              top: Math.min(marquee.y0, marquee.y1),
+              width: Math.abs(marquee.x1 - marquee.x0),
+              height: Math.abs(marquee.y1 - marquee.y0)
+            }}
+          />
+        )}
       </div>
 
+      {/* the dock — the DOM shelf; its icons are drawn by the scene below */}
+      <DesktopDock carriedAsset={carriedHasAsset} />
+
       {/* the 3D objects — draws into the slots the icons above registered */}
-      <ObjectScene items={deskItems} />
+      <ObjectScene items={deskItems} nav={NAV_ITEMS} />
 
       {/* modals */}
       {wins.map((w, i) => {
         const z = 200 + i
         if (w.kind === "transfer")
-          return <TransferWindow key={w.id} asset={w.asset} to={w.to} z={z} onClose={() => close(w.id)} onSettle={onSettle} onLog={noop} />
+          return <TransferWindow key={w.id} assets={w.assets} to={w.to} z={z} onClose={() => close(w.id)} onSettle={onSettle} onLog={noop} />
         if (w.kind === "split") return <SplitWindow key={w.id} asset={w.asset} z={z} onClose={() => close(w.id)} onSplit={(p) => splitAsset(w.asset, p)} />
         if (w.kind === "combine")
           return <CombineWindow key={w.id} a={w.a} b={w.b} z={z} onClose={() => close(w.id)} onCombine={() => combineAssets(w.a, w.b)} />

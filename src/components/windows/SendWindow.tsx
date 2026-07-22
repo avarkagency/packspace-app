@@ -10,7 +10,8 @@ import type { AssetObj, PersonObj, Receipt } from "@/lib/types"
 // The props are the real ones on purpose: nothing has to change to bring the full machine back.
 
 type Props = {
-  asset: AssetObj
+  /** Everything the drop carried — one asset from a plain drag, several from a multi-select. */
+  assets: AssetObj[]
   to: PersonObj
   onClose: () => void
   onSettle: (r: Receipt) => void

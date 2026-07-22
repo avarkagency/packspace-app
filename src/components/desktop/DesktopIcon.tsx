@@ -3,7 +3,7 @@
 import Image from "next/image"
 import { memo, useEffect, useRef } from "react"
 
-import { User } from "lucide-react"
+import { Check, TriangleAlert } from "lucide-react"
 
 import { clearCoinHover, registerCoinSlot, setCoinCursor, setCoinHover } from "@/lib/coin-store"
 import type { DesktopObj } from "@/lib/types"
@@ -20,7 +20,7 @@ import { chainImage } from "../canvas/objectVisual"
 
 /** The icon's fixed footprint — the workspace lays out and clamps with these. */
 export const ICON_W = 96
-export const ICON_SLOT = 60
+export const ICON_SLOT = 48
 export const ICON_PAD = 8
 
 type Props = {
@@ -34,6 +34,8 @@ type Props = {
   target?: boolean
   /** ...and is currently over it. */
   over?: boolean
+  /** This icon's right-click menu is open — it wears the drop-hover treatment while it is. */
+  selected?: boolean
   /** Some object is in hand. The badges normally float above the canvas ("in front of the 3D object"),
    *  but while one flies they duck underneath it — a badge must never sit on top of the coin being
    *  carried across it. The carried icon's own badge is unaffected: its wrapper stacks above the
@@ -54,6 +56,7 @@ export const DesktopIcon = memo(function DesktopIcon({
   dimmed = false,
   target = false,
   over = false,
+  selected = false,
   anyDragging = false,
   renaming = false,
   onRename,
@@ -99,8 +102,8 @@ export const DesktopIcon = memo(function DesktopIcon({
       className={cn(
         "group relative flex cursor-grab touch-none flex-col items-center gap-8 rounded-lg trans-base select-none active:cursor-grabbing",
         dimmed && "opacity-40",
-        target && "bg-accent/8 ring-1 ring-accent/30",
-        over && "bg-accent/15 ring-1 ring-accent"
+        target && "bg-white/10 outline-1 outline-dashed outline-white/40",
+        (over || selected) && "bg-white/20 outline-1 outline-dashed outline-white"
       )}>
       {/* the object's box — drawn by the canvas overlay, not here. Empty by design: it exists only to
           be measured, so nothing shows if WebGL is unavailable. Hover lives here rather than on the
@@ -112,19 +115,29 @@ export const DesktopIcon = memo(function DesktopIcon({
         onPointerMove={onMove}
         style={{ width: ICON_SLOT, height: ICON_SLOT }}
         className="relative shrink-0">
-        {/* class badge on the object's shoulder — the network mark for a holding, a person mark for a
-            wallet. z-[60] lifts it over the canvas (z-50), which is what "in front of the 3D object"
-            means here; while something is being carried it ducks to z-[40] so the flying coin passes
-            over it rather than under. */}
-        <span
-          className={cn(
-            "pointer-events-none absolute -right-4 -bottom-4 grid size-22 place-items-center rounded-full border border-border bg-surface",
-            anyDragging ? "z-[40]" : "z-[60]"
-          )}>
+        {/* class badge on the object's shoulder — the network mark for a holding; for a wallet, its
+            standing (verified check, or the warning for a bare address not in contacts). z-[60] lifts
+            it over the canvas (z-50), which is what "in front of the 3D object" means here; while
+            something is being carried it ducks to z-[40] so the flying coin passes over it rather
+            than under. */}
+        <span className={cn("pointer-events-none absolute -right-px -bottom-px", anyDragging ? "z-[40]" : "z-[60]")}>
           {obj.class === "person" ? (
-            <User className="size-12 text-muted-foreground" strokeWidth={2} />
+            obj.trust === "unconfirmed" ? (
+              <TriangleAlert className="size-14 text-black" fill="#f1b90c" strokeWidth={1.5} />
+            ) : (
+              <span className="grid size-12 place-items-center rounded-full border border-white bg-[#13e192]">
+                <Check className="size-8 text-black" strokeWidth={3} />
+              </span>
+            )
           ) : obj.chain ? (
-            <Image src={chainImage(obj.chain)} alt={obj.chain} width={16} height={16} unoptimized className="size-16 rounded-full object-cover" />
+            <Image
+              src={chainImage(obj.chain)}
+              alt={obj.chain}
+              width={12}
+              height={12}
+              unoptimized
+              className="size-12 rounded-full object-cover ring-1 ring-white/40"
+            />
           ) : null}
         </span>
       </div>
@@ -142,14 +155,22 @@ export const DesktopIcon = memo(function DesktopIcon({
             aria-label="Rename wallet"
           />
         ) : (
-          <p className={cn("tnum w-full truncate text-center text-12 font-medium leading-120 trans-base", over ? "text-accent" : "text-white")}>
+          <p className="tnum w-full truncate text-center text-12 font-medium leading-120 tracking-tight text-white trans-base">
             {over ? (obj.class === "person" ? "Drop" : "Combine") : label}
           </p>
         )}
 
-        {/* the holding's dollar value, worn as a small pill under the label. Wallets have no value to
-            wear — their line is their name. */}
-        {obj.class === "asset" && <span className="tnum rounded-full bg-white/12 px-8 py-2 text-10 leading-120 text-white/75">{usd(obj.usd)}</span>}
+        {/* the second line, worn as a small pill: the holding's dollar value for an asset, the address
+            for a wallet — or the warning that the address was never saved. */}
+        <span className="tnum max-w-full truncate rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">
+          {obj.class === "asset"
+            ? usd(obj.usd, { cents: false })
+            : obj.trust === "unconfirmed"
+              ? "Not in contacts"
+              : obj.address
+                ? `${obj.address.slice(0, 6)}...`
+                : obj.handle}
+        </span>
       </div>
     </div>
   )

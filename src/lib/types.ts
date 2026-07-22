@@ -87,6 +87,14 @@ export type CanvasObj = AssetObj | PersonObj | PackObj | AppObj | VaultObj | Cam
 /** What sits on the desktop: your holdings on the left, your wallets (contacts) on the right. */
 export type DesktopObj = AssetObj | PersonObj
 
+/** One item in the bottom dock — a flat app tile drawn by the 3D scene (a textured plane, not a coin),
+ *  so desktop objects can later be dragged onto it like any other scene object. */
+export type NavItem = {
+  id: string
+  label: string
+  icon: string
+}
+
 // ── Handoff / Send domain ────────────────────────────────────────────────────
 
 /** One placed line in a Handoff slot or a Send. */

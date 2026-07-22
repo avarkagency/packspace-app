@@ -11,7 +11,8 @@ import type { AssetObj, PersonObj, Receipt } from "@/lib/types"
 // The props are the real ones on purpose: nothing has to change to bring the full machine back.
 
 type Props = {
-  seed: AssetObj
+  /** Everything the drop carried — the trade opens seeded with all of it. */
+  seeds: AssetObj[]
   to: PersonObj
   onClose: () => void
   onSettle: (r: Receipt) => void

@@ -90,6 +90,12 @@
   --radius-md: 8px;
   --radius-lg: 10px;
   --radius-xl: 14px;
+  /* Px-named radii for the glass chrome, matching the px naming of the spacing scale. */
+  --radius-4: 4px;
+  --radius-8: 8px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+  --radius-20: 20px;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-victor-mono), ui-monospace, monospace;
@@ -166,14 +172,46 @@ body {
   ── Desktop UI utilities ─────────────────────────────────────────────────────
 */
 
-/* The base floating surface — menus, tooltips, windows. A hairline of inner light along the top edge
-   does the lifting that a drop shadow can't on a dark field. */
+/* The base floating surface — menus, tooltips, windows. Frosted glass over the wallpaper: a whisper of
+   white, heavy blur, and a light hairline border doing the lifting a drop shadow can't. */
+/* No hand-written -webkit-backdrop-filter here: Lightning CSS treats the pair as one logical property
+   and keeps only the LAST form — which silently deleted the standard `backdrop-filter` and killed the
+   blur in Chrome. Declare the standard property alone and let the compiler add prefixes. */
 @utility panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow:
-    inset 0 1px 0 #ffffff0a,
-    0 12px 32px -8px #00000073;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 32px -8px #00000059;
+}
+
+/* The glass chrome surface — the toggle bar, balance card and dock. The border isn't a border: it's a
+   gradient ring on an overlay layer, masked down to a hairline (padding-box XOR border-box leaves only
+   the 1px rim) and blended soft-light, so the edge catches light top-left and bottom-right and melts
+   away in between rather than reading as a solid white stroke. */
+@utility glass {
+  position: relative;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px) saturate(180%);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.25) 100%) border-box;
+    -webkit-mask:
+      linear-gradient(#fff 0 0) padding-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#fff 0 0) padding-box,
+      linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    /* no blend mode: soft-light crushed the ring so hard that alpha changes stopped reading at all —
+       plain compositing keeps the gradient's opacity honest */
+  }
 }
 
 /* Panels arrive from their own centre. Never from scale(0) — that reads as a pop rather than an

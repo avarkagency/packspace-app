@@ -8,10 +8,11 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
 
 import { isSameToken } from "@/lib/asset-ops"
-import { coinView, measureCoins, runCoinFrameTask } from "@/lib/coin-store"
+import { coinView, measureCoins } from "@/lib/coin-store"
 import { useDrag } from "@/lib/drag-store"
-import type { DesktopObj } from "@/lib/types"
+import type { DesktopObj, NavItem } from "@/lib/types"
 
+import { NavIconMesh } from "./NavIconMesh"
 import { ObjectMesh, type ObjectShape } from "./ObjectMesh"
 import { clipPlanes } from "./clip-planes"
 import { objectTint } from "./objectVisual"
@@ -48,10 +49,7 @@ function coinSymbol(obj: DesktopObj) {
  *  tree on purpose: r3f runs useFrame callbacks in registration order, and giving this an explicit
  *  priority would hand us responsibility for rendering. */
 function ObjectRig() {
-  useFrame((state, dt) => {
-    // any imperative desk animation (the fling) moves the DOM first, so the measurement below — and
-    // every coin drawn from it this frame — sees where the icons are NOW, not a frame ago
-    runCoinFrameTask(Math.min(dt, 1 / 30))
+  useFrame((state) => {
     measureCoins()
 
     // clip the resting objects to the desktop surface. THREE.Plane keeps the half-space where
@@ -87,10 +85,11 @@ function ObjectEnvironment() {
   return <primitive object={env} attach="environment" />
 }
 
-export function ObjectScene({ items }: { items: DesktopObj[] }) {
-  // drag
-  const { obj: dragged } = useDrag()
+export function ObjectScene({ items, nav = [] }: { items: DesktopObj[]; nav?: NavItem[] }) {
+  // drag — a single object in hand, or a carried multi-selection; either counts as "dragging"
+  const { obj: dragged, carriedIds } = useDrag()
   const draggedAsset = dragged?.class === "asset" ? dragged : null
+  const anyDragging = !!dragged || !!carriedIds
 
   // hooks
   const reduced = usePrefersReducedMotion()
@@ -125,11 +124,16 @@ export function ObjectScene({ items }: { items: DesktopObj[] }) {
             symbol={coinSymbol(obj)}
             finish={obj.class === "person" ? "dark" : "light"}
             dragging={dragged?.id === obj.id}
-            anyDragging={!!dragged}
+            carried={!!carriedIds?.has(obj.id)}
+            anyDragging={anyDragging}
             // wallets never recede — they're where a dragged coin is headed
             dimmed={!!draggedAsset && obj.class === "asset" && !isSameToken(draggedAsset, obj)}
             reduced={reduced}
           />
+        ))}
+        {/* the dock's app tiles — flat planes in the same world the coins fly through */}
+        {nav.map((item) => (
+          <NavIconMesh key={item.id} id={item.id} src={item.icon} />
         ))}
       </Canvas>
     </div>

@@ -40,6 +40,10 @@ type Props = {
   /** Wallets are the black coins for now — dark face, near-black rim. */
   finish: CoinFinish
   dragging: boolean
+  /** Part of a multi-selection in hand. Group drags move the icon wrappers, so a carried coin keeps
+   *  riding its own slot — but it takes every other drag behaviour: the z lift over the resting desk,
+   *  the clip bypass, the spin and the scale. */
+  carried: boolean
   /** Whether any object is mid-drag — the resting ones go inert while one is in hand. */
   anyDragging: boolean
   /** Recede: something unrelated is in hand. Matches the cell's own fade. */
@@ -47,7 +51,7 @@ type Props = {
   reduced: boolean
 }
 
-export function ObjectMesh({ id, shape, tint, symbol, finish, dragging, anyDragging, dimmed, reduced }: Props) {
+export function ObjectMesh({ id, shape, tint, symbol, finish, dragging, carried, anyDragging, dimmed, reduced }: Props) {
   // refs — scale wraps spin so the two compose rather than fight; slide carries the screen position
   const slideRef = useRef<THREE.Group>(null!)
   const scaleRef = useRef<THREE.Group>(null!)
@@ -132,6 +136,13 @@ export function ObjectMesh({ id, shape, tint, symbol, finish, dragging, anyDragg
     if (dragging) {
       g.position.set(coinView.cursor.x - w / 2, h / 2 - coinView.cursor.y, DRAG_Z)
       wasDraggingRef.current = true
+    } else if (carried) {
+      // the wrapper carries x/y; this only owns the lift. Sharing wasDragging means release gets the
+      // same glide home (and the same z descent) a single drop gets.
+      g.position.x = rect.cx - w / 2
+      g.position.y = h / 2 - rect.cy
+      g.position.z += (DRAG_Z - g.position.z) * k
+      wasDraggingRef.current = true
     } else {
       // let go: fly home from wherever it was dropped instead of blinking back into the cell
       if (wasDraggingRef.current) {
@@ -171,13 +182,13 @@ export function ObjectMesh({ id, shape, tint, symbol, finish, dragging, anyDragg
 
     // the object in hand reads from the pushed-out clip set so it can fly over the chrome — and it has to
     // keep reading it the whole way home, or it would be sliced off at the grid's edge on the way back
-    const src = dragging || returningRef.current ? noClipPlanes : clipPlanes
+    const src = dragging || carried || returningRef.current ? noClipPlanes : clipPlanes
     for (let i = 0; i < planes.length; i++) planes[i].copy(src[i])
 
     // the object in hand spins; every resting one holds still while it does. Dragging one over another
     // otherwise wakes the one underneath, and two spinning objects sweep through each other's space.
     const hovered = coinView.hoverId === id && !anyDragging
-    const spinning = (dragging || hovered) && !reduced
+    const spinning = (dragging || carried || hovered) && !reduced
     if (spinning) {
       spinRef.current.rotation.y += dt * SPIN_SPEED
     } else {
@@ -186,7 +197,7 @@ export function ObjectMesh({ id, shape, tint, symbol, finish, dragging, anyDragg
       spinRef.current.rotation.y += (tgt - spinRef.current.rotation.y) * Math.min(1, dt * 6)
     }
 
-    const s = dragging ? DRAG_SCALE : hovered ? HOVER_SCALE : 1
+    const s = dragging || carried ? DRAG_SCALE : hovered ? HOVER_SCALE : 1
     scaleRef.current.scale.setScalar(scaleRef.current.scale.x + (s - scaleRef.current.scale.x) * k)
 
     // fade to match the cell. `transparent` is only switched on while actually faded — an always-blended

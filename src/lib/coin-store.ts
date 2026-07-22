@@ -60,17 +60,6 @@ export const setCoinCursor = (x: number, y: number) => {
   coinView.cursor.y = y
 }
 
-// One imperative task run at the top of every canvas frame, before the coins are measured. The fling
-// animation lives here rather than in its own requestAnimationFrame: a separate rAF lands *after* the
-// canvas has measured for that frame, so the coin would read a one-frame-old rect and trail the label
-// by exactly one fling step the whole throw.
-let frameTask: ((dt: number) => void) | null = null
-
-export const setCoinFrameTask = (fn: ((dt: number) => void) | null) => {
-  frameTask = fn
-}
-export const runCoinFrameTask = (dt: number) => frameTask?.(dt)
-
 /** Register the box a coin should fill. Returns a cleanup for the effect that called it. */
 export function registerCoinSlot(id: string, el: HTMLElement) {
   slots.set(id, el)
