@@ -1,19 +1,18 @@
 "use client"
 
-import { Plus } from "lucide-react"
+import { Combine, Plus, X } from "lucide-react"
 
 import type { AssetObj } from "@/lib/types"
 import { units, usd } from "@/lib/utils"
 
+import { BaseBtn } from "../base/BaseBtn"
 import { ObjectMark } from "../canvas/ObjectMark"
-import { objectTint } from "../canvas/objectVisual"
-import { Button } from "../ui/Bits"
-import { Window } from "./Window"
 
 // The inverse of Split: pours two portions of one token back into a single object. Object-level only —
 // nothing settles, no chain semantics are implied, the holding is unchanged either way.
 //
-// Wears Split's panel, because it's Split's other half: same chamfer, same ring, same header shape.
+// Wears Split's glass frame, because it's Split's other half: same blurred desk, same floating close,
+// same header shape and inset panes.
 
 type Props = {
   a: AssetObj
@@ -25,7 +24,6 @@ type Props = {
 
 export function CombineWindow({ a, b, z, onClose, onCombine }: Props) {
   // data
-  const tint = objectTint(a)
   const balance = a.balance + b.balance
   const value = a.usd + b.usd
 
@@ -36,48 +34,61 @@ export function CombineWindow({ a, b, z, onClose, onCombine }: Props) {
   }
 
   return (
-    <Window
-      title="Combine"
-      subtitle={`${units(balance)} ${a.symbol}`}
-      tint={tint}
-      icon={<ObjectMark obj={a} />}
-      width={440}
-      z={z}
-      onClose={onClose}
-      footer={
-        <div className="flex justify-end gap-8">
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={onConfirm}>Combine</Button>
-        </div>
-      }>
-      <div className="flex flex-col gap-16 p-20">
-        <div className="flex items-center gap-10">
-          <Portion amount={a.balance} symbol={a.symbol} value={a.usd} />
-          <Plus className="size-16 shrink-0 text-muted-foreground" />
-          <Portion amount={b.balance} symbol={b.symbol} value={b.usd} />
-        </div>
+    <div className="fixed inset-0 grid place-items-center p-24" style={{ zIndex: z }}>
+      {/* the desk falls out of focus */}
+      <div className="animate-in fade-in-0 absolute inset-0 bg-black/20 backdrop-blur-xl duration-200" onClick={onClose} aria-hidden />
 
-        <div className="rounded-lg border border-accent/40 bg-accent-dim/50 p-14">
-          <p className="text-11 font-medium text-accent">Result</p>
-          <p className="tnum mt-8 text-24 font-semibold leading-100">
-            {units(balance)} <span className="text-13 font-medium text-muted-foreground">{a.symbol}</span>
-          </p>
-          <p className="tnum mt-4 text-12 text-accent">{usd(value)}</p>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="glass absolute top-28 right-28 grid size-40 cursor-pointer place-items-center rounded-12 text-white trans-base hover:bg-white/20 active:scale-97">
+        <X className="size-16" />
+      </button>
+
+      <div className="glass panel-in relative overflow-hidden rounded-16" style={{ width: 480 }}>
+        <div className="p-28">
+          <h2 className="flex items-center gap-6 text-18 leading-120 tracking-tight text-white">
+            <span className="inline-flex shrink-0 rounded-full ring-1 ring-white">
+              <ObjectMark obj={a} size={24} />
+            </span>
+            Combine {units(balance)} {a.symbol}
+          </h2>
+          <span className="tnum mt-8 inline-block rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">{usd(value)}</span>
+
+          <div className="-mx-28 mt-24 h-px bg-white/20" aria-hidden />
+
+          {/* the two portions being poured together */}
+          <div className="mt-28 grid grid-cols-[1fr_auto_1fr] items-center gap-8">
+            <Portion amount={a.balance} symbol={a.symbol} value={a.usd} />
+            <Plus className="size-16 shrink-0 text-white/70" />
+            <Portion amount={b.balance} symbol={b.symbol} value={b.usd} />
+          </div>
+
+          <div className="glass mt-8 rounded-md p-16">
+            <p className="text-11 leading-120 font-medium text-white/70">Result</p>
+            <p className="tnum mt-8 text-24 font-semibold leading-100 text-white">
+              {units(balance)} <span className="text-12 font-medium text-white/70">{a.symbol}</span>
+            </p>
+            <p className="tnum mt-4 text-11 leading-120 text-white/70">{usd(value)}</p>
+          </div>
+
+          <BaseBtn icon={Combine} className="mt-28 w-full" onClick={onConfirm}>
+            Combine assets
+          </BaseBtn>
         </div>
       </div>
-    </Window>
+    </div>
   )
 }
 
 function Portion({ amount, symbol, value }: { amount: number; symbol: string; value: number }) {
   return (
-    <div className="min-w-0 flex-1 rounded-lg border border-border bg-card/40 p-12">
-      <p className="tnum truncate text-18 font-semibold leading-100">
-        {units(amount)} <span className="text-12 font-medium text-muted-foreground">{symbol}</span>
+    <div className="glass min-w-0 rounded-md p-16">
+      <p className="tnum truncate text-18 font-semibold leading-100 text-white">
+        {units(amount)} <span className="text-12 font-medium text-white/70">{symbol}</span>
       </p>
-      <p className="tnum mt-4 text-11 text-accent">{usd(value)}</p>
+      <p className="tnum mt-4 text-11 leading-120 text-white/70">{usd(value)}</p>
     </div>
   )
 }

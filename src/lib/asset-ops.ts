@@ -30,6 +30,12 @@ export const WALLET_DROP_PREFIX = "wallet:"
 export const walletDropKey = (id: string) => `${WALLET_DROP_PREFIX}${id}`
 export const walletDropId = (key: string) => (key.startsWith(WALLET_DROP_PREFIX) ? key.slice(WALLET_DROP_PREFIX.length) : null)
 
+/** A desk folder — takes assets and contacts alike (but never another folder; folders go one level
+ *  deep and the folder icons simply never carry this key while one is being moved). */
+export const FOLDER_DROP_PREFIX = "folder:"
+export const folderDropKey = (id: string) => `${FOLDER_DROP_PREFIX}${id}`
+export const folderDropId = (key: string) => (key.startsWith(FOLDER_DROP_PREFIX) ? key.slice(FOLDER_DROP_PREFIX.length) : null)
+
 /** The dock's leading tiles — an asset can be dropped onto those apps. Display-only today: the drop
  *  lands and the icon steps back off the shelf; the app interaction arrives with the dock features. */
 export const NAV_DROP_PREFIX = "nav:"

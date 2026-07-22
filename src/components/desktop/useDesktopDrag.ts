@@ -2,6 +2,7 @@
 
 import { useRef } from "react"
 
+import { FOLDER_DROP_PREFIX } from "@/lib/asset-ops"
 import { setCoinCursor, setCoinHover } from "@/lib/coin-store"
 import { endDrag, setOver, startDrag } from "@/lib/drag-store"
 import type { DesktopObj } from "@/lib/types"
@@ -27,16 +28,17 @@ export function useDesktopDrag(handlers: {
   /** The object is mid-drag with its coin centred at (x, y) — carry the icon along. */
   onDragMove: (obj: DesktopObj, x: number, y: number) => void
 }) {
-  const drag = useRef<{ obj: DesktopObj; sx: number; sy: number; started: boolean } | null>(null)
+  const drag = useRef<{ obj: DesktopObj; sx: number; sy: number; started: boolean; onStart?: (x: number, y: number) => void } | null>(null)
 
   const dropAt = (x: number, y: number): string | null =>
     (document.elementFromPoint(x, y) as HTMLElement | null)?.closest("[data-drop]")?.getAttribute("data-drop") ?? null
 
   /** The zone under the cursor, filtered to what this object may actually drop on. A wallet drag
-   *  recognises no zones at all — moving one is only ever a move. */
+   *  recognises only folders — moving one anywhere else is only ever a move. */
   const zoneFor = (obj: DesktopObj, x: number, y: number): string | null => {
-    if (obj.class === "person") return null
-    return dropAt(x, y)
+    const key = dropAt(x, y)
+    if (obj.class === "person") return key?.startsWith(FOLDER_DROP_PREFIX) ? key : null
+    return key
   }
 
   const onMove = (e: PointerEvent) => {
@@ -47,6 +49,8 @@ export function useDesktopDrag(handlers: {
       d.started = true
       // drop the hover: the readout would otherwise ride along under the coin the whole drag
       setCoinHover(null)
+      // the pick-up hook — a folder row uses this to materialise its object on the desk first
+      d.onStart?.(e.clientX, e.clientY)
       startDrag(d.obj)
     }
     setCoinCursor(e.clientX, e.clientY)
@@ -67,9 +71,9 @@ export function useDesktopDrag(handlers: {
     endDrag()
   }
 
-  const onPointerDown = (obj: DesktopObj) => (e: React.PointerEvent) => {
+  const onPointerDown = (obj: DesktopObj, opts?: { onStart?: (x: number, y: number) => void }) => (e: React.PointerEvent) => {
     if (e.button !== 0) return
-    drag.current = { obj, sx: e.clientX, sy: e.clientY, started: false }
+    drag.current = { obj, sx: e.clientX, sy: e.clientY, started: false, onStart: opts?.onStart }
     setCoinCursor(e.clientX, e.clientY)
     window.addEventListener("pointermove", onMove)
     window.addEventListener("pointerup", onUp)

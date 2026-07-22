@@ -83,6 +83,9 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-action-send: var(--action-send);
+  --color-action-trade: var(--action-trade);
+  --color-action-split: var(--action-split);
   --color-border: var(--border);
   --color-ring: var(--ring);
 
@@ -228,6 +231,27 @@ body {
 }
 .panel-in {
   animation: panel-in 200ms var(--ease-out-quart);
+}
+
+/* The drop-target treatment in the split's yellow, worn briefly by both halves of a fresh split so
+   it's clear which icons it produced. Arrives fast, holds, then fades away — opacity only, so it
+   composites over the canvas without repaints. */
+@keyframes split-flash {
+  0% {
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.split-flash {
+  animation: split-flash 2000ms var(--ease-out-quart) forwards;
 }
 
 @utility trans-base {

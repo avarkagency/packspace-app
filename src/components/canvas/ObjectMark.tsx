@@ -18,7 +18,20 @@ export function ObjectMark({ obj, size = 28 }: { obj: AssetObj; size?: number })
   const art = artImage(obj.symbol)
   const tint = objectTint(obj)
 
-  if (art) return <Image src={art} alt="" width={size} height={size} unoptimized className="shrink-0 rounded-full" style={{ width: size, height: size }} />
+  if (art)
+    return (
+      <Image
+        src={art}
+        alt=""
+        width={size}
+        height={size}
+        unoptimized
+        // never the browser's native image drag — these sit on draggable surfaces
+        draggable={false}
+        className="shrink-0 rounded-full"
+        style={{ width: size, height: size }}
+      />
+    )
 
   return (
     <span

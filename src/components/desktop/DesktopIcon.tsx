@@ -16,7 +16,9 @@ import { chainImage } from "../canvas/objectVisual"
 // labels. The workspace places each icon absolutely, so dragging one anywhere is just new coordinates.
 //
 // The icon must never move on hover: a CSS transform would shift the slot without the canvas knowing,
-// and the object would drift off it. The object's own spin/scale is the hover feedback.
+// and the object would drift off it. The object's own spin/scale is the hover feedback. A press is
+// different: the slot rects are re-measured every frame, so the subtle press-down scale carries the
+// 3D object with it rather than leaving it behind.
 
 /** The icon's fixed footprint — the workspace lays out and clamps with these. */
 export const ICON_W = 96
@@ -36,6 +38,8 @@ type Props = {
   over?: boolean
   /** This icon's right-click menu is open — it wears the drop-hover treatment while it is. */
   selected?: boolean
+  /** Freshly made by a split — both halves flare yellow, then it fades. */
+  flash?: boolean
   /** Some object is in hand. The badges normally float above the canvas ("in front of the 3D object"),
    *  but while one flies they duck underneath it — a badge must never sit on top of the coin being
    *  carried across it. The carried icon's own badge is unaffected: its wrapper stacks above the
@@ -57,6 +61,7 @@ export const DesktopIcon = memo(function DesktopIcon({
   target = false,
   over = false,
   selected = false,
+  flash = false,
   anyDragging = false,
   renaming = false,
   onRename,
@@ -100,11 +105,18 @@ export const DesktopIcon = memo(function DesktopIcon({
       onContextMenu={onContextMenu}
       style={{ width: ICON_W, padding: ICON_PAD }}
       className={cn(
-        "group relative flex cursor-grab touch-none flex-col items-center gap-8 rounded-lg trans-base select-none active:cursor-grabbing",
+        "group relative flex cursor-grab touch-none flex-col items-center gap-8 rounded-lg trans-base select-none active:scale-97 active:cursor-grabbing",
         dimmed && "opacity-40",
         target && "bg-white/10 outline-1 outline-dashed outline-white/40",
         (over || selected) && "bg-white/20 outline-1 outline-dashed outline-white"
       )}>
+      {/* the split flare rides its own layer so only opacity animates — the icon itself never moves */}
+      {flash && (
+        <span
+          aria-hidden
+          className="split-flash pointer-events-none absolute inset-0 rounded-lg bg-action-split/20 outline-1 outline-action-split/50"
+        />
+      )}
       {/* the object's box — drawn by the canvas overlay, not here. Empty by design: it exists only to
           be measured, so nothing shows if WebGL is unavailable. Hover lives here rather than on the
           whole icon: the object is the thing you're pointing at. */}

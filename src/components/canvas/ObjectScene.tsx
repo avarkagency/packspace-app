@@ -95,7 +95,9 @@ export function ObjectScene({ items, nav = [] }: { items: DesktopObj[]; nav?: Na
   const reduced = usePrefersReducedMotion()
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50">
+    // Above the desk at rest; above the folder windows (z 100+) too while something is in hand, so a
+    // coin pulled out of a folder flies over the window instead of vanishing under its glass.
+    <div className={`pointer-events-none fixed inset-0 ${anyDragging ? "z-[150]" : "z-50"}`}>
       <Canvas
         orthographic
         camera={{ position: [0, 0, 1000], zoom: 1, near: 0.1, far: 5000 }}

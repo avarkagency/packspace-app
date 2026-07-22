@@ -12,9 +12,18 @@ const ART_IMAGE: Record<string, string> = {
   USDT: "/images/tokens/usdt.jpg",
   SOL: "/images/tokens/sol.jpg",
   BNB: "/images/tokens/bnb.jpg",
+  LINK: "/images/tokens/link.jpg",
+  ARB: "/images/tokens/arb.jpg",
+  OP: "/images/tokens/op.jpg",
+  PEPE: "/images/tokens/pepe.jpg",
+  SHIB: "/images/tokens/shib.jpg",
+  DOGE: "/images/tokens/doge.jpg",
   BAYC: "/images/nfts/bayc.jpg",
   AZUKI: "/images/nfts/azuki.jpg",
-  DOODLE: "/images/nfts/doodles.jpg"
+  DOODLE: "/images/nfts/doodles.jpg",
+  MOONBIRD: "/images/nfts/moonbirds.jpg",
+  PUDGY: "/images/nfts/pudgy.jpg",
+  CLONEX: "/images/nfts/clonex.jpg"
 }
 
 /** The same mark, for the DOM to show. Null where a symbol has no art — the callers that need one have

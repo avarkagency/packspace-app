@@ -2,17 +2,21 @@
 
 import { type CSSProperties, useState } from "react"
 
+import { Scissors, X } from "lucide-react"
+
 import type { AssetObj } from "@/lib/types"
 import { cn, units, usd } from "@/lib/utils"
 
+import { BaseBtn } from "../base/BaseBtn"
 import { ObjectMark } from "../canvas/ObjectMark"
-import { objectTint } from "../canvas/objectVisual"
-import { Button } from "../ui/Bits"
-import { Window } from "./Window"
 
 // Asset division — divides one fungible object into two so each can be sent or traded independently.
 // Object-level convenience only: nothing settles, no chain semantics are implied, both portions stay in
 // the wallet. (Spec: PLANNED, phase placement still open.)
+//
+// Wears the same glass frame as the Send/Trade flow: blurred desk, floating close, one panel. The
+// chrome stays white like its siblings; the split's yellow signal lives on the desk, where the fresh
+// halves flash once the split lands.
 
 const QUICK = [25, 50, 75]
 
@@ -26,16 +30,12 @@ type Props = {
 }
 
 export function SplitWindow({ asset, z, onClose, onSplit }: Props) {
-  // state — the ratio is Portion A's share, the one drawn on the left. The bar fills from the left too,
-  // so it grows with the portion it's pointing at rather than the one opposite it.
+  // state
   const [pct, setPct] = useState(50)
 
   // data
-  const tint = objectTint(asset)
-  // a stack is counted in whole items; everything else divides down to the display precision
   const dp = asset.kind === "stack" ? 0 : 4
   const step = asset.kind === "stack" ? 100 / asset.balance : 1
-
   const a = roundTo((asset.balance * pct) / 100, dp)
   const b = roundTo(asset.balance - a, dp)
   const rate = asset.usd / asset.balance
@@ -49,39 +49,50 @@ export function SplitWindow({ asset, z, onClose, onSplit }: Props) {
   }
 
   return (
-    <Window
-      title="Split"
-      subtitle={`${units(asset.balance)} ${asset.symbol}`}
-      tint={tint}
-      icon={<ObjectMark obj={asset} />}
-      width={440}
-      z={z}
-      onClose={onClose}
-      footer={
-        <div className="flex justify-end gap-8">
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={onConfirm} disabled={!valid}>
-            Split
-          </Button>
-        </div>
-      }>
-      <div className="flex flex-col gap-16 p-20">
-        <div className="grid grid-cols-2 gap-10">
-          <Portion amount={a} symbol={asset.symbol} value={a * rate} />
-          <Portion amount={b} symbol={asset.symbol} value={b * rate} />
-        </div>
+    <div className="fixed inset-0 grid place-items-center p-24" style={{ zIndex: z }}>
+      {/* the desk falls out of focus */}
+      <div className="animate-in fade-in-0 absolute inset-0 bg-black/20 backdrop-blur-xl duration-200" onClick={onClose} aria-hidden />
 
-        <div>
-          {/* The native input rides on top, invisible: it keeps the keyboard and pointer behaviour that
-              a hand-built slider would have to reimplement badly. */}
-          <div className="relative h-40 overflow-hidden rounded-lg">
-            <div className="absolute inset-0 rounded-lg border border-border bg-muted/60" />
-            <div className="absolute inset-y-0 left-0 border-r border-accent bg-accent/15" style={{ width: `${pct}%` } as CSSProperties} aria-hidden />
-            <span className="pointer-events-none absolute inset-0 flex items-center px-14 text-12 font-medium text-foreground">Split {pct}%</span>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="glass absolute top-28 right-28 grid size-40 cursor-pointer place-items-center rounded-12 text-white trans-base hover:bg-white/20 active:scale-97">
+        <X className="size-16" />
+      </button>
+
+      <div className="glass panel-in relative overflow-hidden rounded-16" style={{ width: 480 }}>
+        <div className="p-28">
+          <h2 className="flex items-center gap-6 text-18 leading-120 tracking-tight text-white">
+            <span className="inline-flex shrink-0 rounded-full ring-1 ring-white">
+              <ObjectMark obj={asset} size={24} />
+            </span>
+            Split {units(asset.balance)} {asset.symbol}
+          </h2>
+          <span className="tnum mt-8 inline-block rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">
+            {usd(asset.usd)}
+          </span>
+
+          <div className="-mx-28 mt-24 h-px bg-white/20" aria-hidden />
+
+          {/* the two portions the slider carves */}
+          <div className="mt-28 grid grid-cols-2 gap-8">
+            <Portion amount={a} symbol={asset.symbol} value={a * rate} />
+            <Portion amount={b} symbol={asset.symbol} value={b * rate} />
+          </div>
+
+          <div className="relative mt-8 h-40 overflow-hidden rounded-md">
+            <div className="absolute inset-0 rounded-md bg-white/10" />
+            <div
+              className="absolute inset-y-0 left-0 border-r border-white bg-white/25"
+              style={{ width: `${pct}%` } as CSSProperties}
+              aria-hidden
+            />
+            <span className="pointer-events-none absolute inset-0 flex items-center px-14 text-12 leading-120 font-medium text-white">
+              Split {pct}%
+            </span>
             <span
-              className="pointer-events-none absolute inset-y-4 w-12 rounded-sm border border-border bg-surface shadow-sm"
+              className="pointer-events-none absolute inset-y-4 w-12 rounded-sm bg-white shadow-sm"
               style={{ left: `calc(${pct}% - 6px)` }}
               aria-hidden
             />
@@ -97,35 +108,40 @@ export function SplitWindow({ asset, z, onClose, onSplit }: Props) {
             />
           </div>
 
-          <div className="mt-14 flex gap-6">
+          <div className="mt-8 flex gap-6">
             {QUICK.map((q) => (
               <button
                 key={q}
+                type="button"
                 onClick={() => setPct(q)}
                 aria-label={`Portion A ${q}%`}
                 className={cn(
-                  "tnum rounded-md border px-8 py-4 text-11 trans-base",
-                  pct === q ? "border-accent/40 bg-accent-dim text-accent" : "border-border text-muted-foreground hover:text-foreground"
+                  "tnum cursor-pointer rounded-full border border-white/20 px-10 py-4 text-11 leading-120 trans-base active:scale-97",
+                  pct === q ? "bg-white/20 text-white" : "bg-white/5 text-white/70 hover:text-white"
                 )}>
                 {q}/{100 - q}
               </button>
             ))}
           </div>
-        </div>
 
-        {!valid && <p className="text-11 text-warning">A split needs something on both sides — nudge the slider.</p>}
+          {!valid && <p className="mt-8 text-11 leading-120 text-warning">A split needs something on both sides — nudge the slider.</p>}
+
+          <BaseBtn icon={Scissors} className="mt-28 w-full" disabled={!valid} onClick={onConfirm}>
+            Split asset
+          </BaseBtn>
+        </div>
       </div>
-    </Window>
+    </div>
   )
 }
 
 function Portion({ amount, symbol, value }: { amount: number; symbol: string; value: number }) {
   return (
-    <div className="rounded-lg border border-border bg-card/40 p-12">
-      <p className="tnum text-18 font-semibold leading-100">
-        {units(amount)} <span className="text-12 font-medium text-muted-foreground">{symbol}</span>
+    <div className="glass rounded-md p-16">
+      <p className="tnum text-18 font-semibold leading-100 text-white">
+        {units(amount)} <span className="text-12 font-medium text-white/70">{symbol}</span>
       </p>
-      <p className="tnum mt-4 text-11 text-accent">{usd(value)}</p>
+      <p className="tnum mt-4 text-11 leading-120 text-white/70">{usd(value)}</p>
     </div>
   )
 }

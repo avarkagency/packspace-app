@@ -76,14 +76,14 @@ export function DesktopBar({ assets }: { assets: AssetObj[] }) {
         <button type="button" aria-label="Search" className="glass grid size-32 place-items-center rounded-full trans-base hover:bg-white/20">
           <Search className="size-12 text-white" strokeWidth={2.5} />
         </button>
-        <div className="glass flex items-center rounded-full p-4">
+        <div className="glass h-32 flex items-center rounded-full p-4">
           {VIEW_TABS.map((name) => (
             <button
               key={name}
               type="button"
               onClick={() => setActive(name)}
               className={cn(
-                "rounded-full px-12 py-4 text-12 leading-120 tracking-tight text-white trans-base",
+                "rounded-full px-12 h-24 text-12 leading-120 tracking-tight text-white trans-base",
                 active === name ? "bg-white/20" : "hover:bg-white/10"
               )}>
               {name}
@@ -92,34 +92,34 @@ export function DesktopBar({ assets }: { assets: AssetObj[] }) {
           <button
             type="button"
             onClick={() => setChainsShown((v) => !v)}
-            className="rounded-full px-12 py-4 text-12 leading-120 tracking-tight text-white trans-base hover:bg-white/10">
+            className="rounded-full w-94 py-4 text-12 leading-120 tracking-tight text-white trans-base hover:bg-white/10">
             {chainsShown ? "Hide Chains" : "Show Chains"}
           </button>
         </div>
       </div>
 
       {/* balance card */}
-      <div className="glass fixed top-48 right-8 z-[100] flex w-338 gap-16 rounded-16 p-16">
+      <div className="glass fixed top-48 right-8 z-100 flex w-332 gap-32 rounded-16 p-16">
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center gap-8">
             <Image src="/images/openfort.png" alt="Openfort" width={24} height={24} unoptimized className="size-24 shrink-0" />
             <div className="min-w-0">
-              <p className="truncate text-12 leading-120 tracking-tight text-white">Openfort balance</p>
+              <p className="truncate text-12 leading-120 tracking-tight text-white mb-2">Openfort balance</p>
               <p className="tnum truncate text-10 leading-120 text-white/70">{shortAddr(WALLET.address)}</p>
             </div>
           </div>
 
-          <p className="tnum mt-16 text-24 font-light leading-120 tracking-tight text-white">{usd(total, { cents: false })}</p>
+          <p className="tnum mt-auto text-24 font-light leading-120 tracking-tight text-white">{usd(total, { cents: false })}</p>
 
           {/* the distribution bar — one sliver per slice, hairline gaps between */}
-          <div className="mt-auto flex h-4 w-full gap-px overflow-hidden rounded-full">
+          <div className="mt-8 mb-4 flex h-4 w-full gap-px overflow-hidden rounded-full">
             {rows.map((r) => (
               <span key={r.label} style={{ width: `${r.pct}%`, background: r.color }} />
             ))}
           </div>
         </div>
 
-        <dl className="flex w-140 shrink-0 flex-col gap-4">
+        <dl className="flex w-140 shrink-0 flex-col gap-6">
           {rows.map((r) => (
             <div key={r.label} className="flex items-center justify-between gap-8">
               <dt className="flex items-center gap-8 text-10 leading-120 text-white">

@@ -5,9 +5,21 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 
 import { ArrowDownUp, FolderPlus, Image as ImageIcon, LayoutGrid, Pencil, Scissors, Search, SquarePen, Trash2, UserPlus } from "lucide-react"
 
-import { assetDropId, assetDropKey, canCombine, isSameToken, isSplittable, navDropId, navDropKey, walletDropId, walletDropKey } from "@/lib/asset-ops"
+import {
+  assetDropId,
+  assetDropKey,
+  canCombine,
+  folderDropId,
+  folderDropKey,
+  isSameToken,
+  isSplittable,
+  navDropId,
+  navDropKey,
+  walletDropId,
+  walletDropKey
+} from "@/lib/asset-ops"
 import { coinView, registerCoinViewport, setCoinHover } from "@/lib/coin-store"
-import { ASSETS, CONNECTED_NETWORK, NAV_ITEMS, PEOPLE } from "@/lib/data"
+import { ASSETS, CONNECTED_NETWORK, DUST_ASSETS, DUST_NFTS, NAV_ITEMS, PEOPLE } from "@/lib/data"
 import { endDrag, setOver, startGroupDrag, useDrag } from "@/lib/drag-store"
 import type { AssetObj, DesktopObj, PersonObj, Receipt } from "@/lib/types"
 import { cn, desktopLabel } from "@/lib/utils"
@@ -22,6 +34,7 @@ import { ObjectHoverInfo } from "../shell/ObjectHoverInfo"
 import { CombineWindow } from "../windows/CombineWindow"
 import { ContactWindow } from "../windows/ContactWindow"
 import { DeleteWindow } from "../windows/DeleteWindow"
+import { FolderWindow } from "../windows/FolderWindow"
 import { ReceiptWindow } from "../windows/ReceiptWindow"
 import { SplitWindow } from "../windows/SplitWindow"
 import { TransferWindow } from "../windows/TransferWindow"
@@ -67,19 +80,29 @@ const ROW_H = 112
 const SLOT_INSET = (ICON_W - ICON_SLOT) / 2
 const CONTACT_COLS = 3
 
-/** The Other Tokens folder's desk id — a fixture, not one of the draggable objects (yet). */
+/** The Other Tokens folder's desk id. */
 export const FOLDER_ID = "folder-other"
 
-/** A desk folder. Display-only for now — contents, drops and its window come with the folder features. */
-type FolderSpec = { id: string; label: string; items: number }
+/** A desk folder: a name and the ids it holds. Objects in a folder stay in the flat asset/contact
+ *  lists — the desk simply doesn't show them, so pulling one out is just removing its id here. */
+type FolderSpec = { id: string; label: string; contents: string[] }
 
-function defaultPositions(assets: AssetObj[], contacts: PersonObj[], width: number): Record<string, Pos> {
+/** First run: the token dust lives in Other Tokens, the NFT dust in Other NFTs. A module constant so
+ *  the initial layout effect can lay out the desk without depending on folder state. */
+const INITIAL_FOLDERS: FolderSpec[] = [
+  { id: FOLDER_ID, label: "Other tokens", contents: DUST_ASSETS.map((a) => a.id) },
+  { id: "folder-other-nfts", label: "Other NFTs", contents: DUST_NFTS.map((a) => a.id) }
+]
+
+function defaultPositions(assets: AssetObj[], contacts: PersonObj[], folderIds: string[], width: number): Record<string, Pos> {
   const pos: Record<string, Pos> = {}
   const assetSlot = (i: number): Pos => ({ x: EDGE - SLOT_INSET + Math.floor(i / ROWS) * COL_W, y: TOP + (i % ROWS) * ROW_H })
   assets.forEach((a, i) => {
     pos[a.id] = assetSlot(i)
   })
-  pos[FOLDER_ID] = assetSlot(assets.length)
+  folderIds.forEach((fid, i) => {
+    pos[fid] = assetSlot(assets.length + i)
+  })
   contacts.forEach((c, i) => {
     const row = Math.floor(i / CONTACT_COLS)
     const col = i % CONTACT_COLS
@@ -151,28 +174,38 @@ export function DesktopWorkspace() {
   const folderIdc = useRef(0)
   /** The icon wrapper nodes, for the drag to move without a render. */
   const iconNodes = useRef(new Map<string, HTMLElement>())
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // state — assets divide and recombine; wallets rename, edit and delete; positions are the desk itself
-  const [assets, setAssets] = useState<AssetObj[]>(ASSETS)
+  const [assets, setAssets] = useState<AssetObj[]>([...ASSETS, ...DUST_ASSETS, ...DUST_NFTS])
   const [contacts, setContacts] = useState<PersonObj[]>(PEOPLE)
-  const [folders, setFolders] = useState<FolderSpec[]>([{ id: FOLDER_ID, label: "Other tokens", items: 26 }])
+  const [folders, setFolders] = useState<FolderSpec[]>(INITIAL_FOLDERS)
+  /** Which folder windows are open — order is stacking order, last on top. */
+  const [folderWins, setFolderWins] = useState<string[]>([])
   const [positions, setPositions] = useState<Record<string, Pos> | null>(null)
   const [wins, setWins] = useState<WinSpec[]>([])
   const [menu, setMenu] = useState<MenuSpec | null>(null)
   const [deskMenu, setDeskMenu] = useState<{ x: number; y: number } | null>(null)
+  const [folderMenu, setFolderMenu] = useState<{ x: number; y: number; id: string } | null>(null)
   const [wallpaper, setWallpaper] = useState<(typeof WALLPAPERS)[number]>(WALLPAPERS[0])
   const [renamingId, setRenamingId] = useState<string | null>(null)
   /** Multi-select: the ids swept up by the marquee. Dragging any of them moves the whole set. */
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set())
+  /** The two halves of the freshest split — they flare yellow on the desk until the flash fades. */
+  const [flashIds, setFlashIds] = useState<ReadonlySet<string>>(new Set())
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
 
   // drag — one object in hand, or a carried multi-selection; the store treats both as "dragging"
   const { obj: dragged, carriedIds, over } = useDrag()
 
-  // data — one flat list feeds the canvas and the hover readout; position is per-icon layout
-  const deskItems: DesktopObj[] = [...assets, ...contacts]
+  // data — what's ON the desk is everything not filed in a folder; the flat lists keep everything
+  const folderedIds = new Set(folders.flatMap((f) => f.contents))
+  const allItems: DesktopObj[] = [...assets, ...contacts]
+  const deskItems: DesktopObj[] = allItems.filter((o) => !folderedIds.has(o.id))
   const draggedAsset = dragged?.class === "asset" ? dragged : null
   const carriedHasAsset = !!carriedIds && assets.some((a) => carriedIds.has(a.id))
+  /** Whether the carry holds anything a folder could take — folders themselves never file. */
+  const carriedHasFilable = !!carriedIds && [...carriedIds].some((id) => !folders.some((f) => f.id === id))
   const anyDragging = !!dragged || !!carriedIds
 
   // events — window manager (centered modals)
@@ -202,11 +235,14 @@ export function DesktopWorkspace() {
     open({ kind: "combine", a, b, matchKey: `combine-${[a.id, b.id].sort().join("-")}` })
 
   /** Divide an object: the original survives — same id, same spot — and a clone lands just beside it.
-   *  Value is proportional; a split moves nothing, it only divides what's already held. */
+   *  Value is proportional; a split moves nothing, it only divides what's already held. A split inside
+   *  a folder stays inside it: the clone files itself next to the original rather than taking a desk
+   *  slot (it gets one the day it's pulled out, like anything else filed). */
   const splitAsset = (asset: AssetObj, portion: number) => {
     const cloneId = `${asset.id}-s${assetIdc.current++}`
     const rate = asset.usd / asset.balance
     const kept = asset.balance - portion
+    const home = folders.find((f) => f.contents.includes(asset.id))
 
     setAssets((list) => {
       const i = list.findIndex((a) => a.id === asset.id)
@@ -215,17 +251,35 @@ export function DesktopWorkspace() {
       const clone: AssetObj = { ...asset, id: cloneId, balance: portion, usd: portion * rate }
       return [...list.slice(0, i), original, clone, ...list.slice(i + 1)]
     })
-    setPositions((pos) => {
-      const at = pos?.[asset.id]
-      if (!pos || !at) return pos
-      return { ...pos, [cloneId]: nearestFreeSpot({ x: at.x + COL_W * 0.6, y: at.y + ROW_H * 0.25 }, pos, cloneId) }
-    })
+    if (home) {
+      setFolders((list) =>
+        list.map((f) => {
+          if (f.id !== home.id) return f
+          const at = f.contents.indexOf(asset.id)
+          return { ...f, contents: [...f.contents.slice(0, at + 1), cloneId, ...f.contents.slice(at + 1)] }
+        })
+      )
+    } else {
+      setPositions((pos) => {
+        const at = pos?.[asset.id]
+        if (!pos || !at) return pos
+        return { ...pos, [cloneId]: nearestFreeSpot({ x: at.x + COL_W * 0.6, y: at.y + ROW_H * 0.25 }, pos, cloneId) }
+      })
+    }
+    // both halves flare — the clone that just landed, and the original it was cut from. The timeout
+    // only clears state after the CSS flash has already faded to nothing.
+    setFlashIds(new Set([asset.id, cloneId]))
+    if (flashTimer.current) clearTimeout(flashTimer.current)
+    flashTimer.current = setTimeout(() => setFlashIds(new Set()), 2100)
   }
 
   /** Pour two portions back into one. The merged object takes the target's spot — that's the coin the
-   *  other was poured into. Value is additive; the holding is identical either side of a combine. */
+   *  other was poured into. Value is additive; the holding is identical either side of a combine.
+   *  A combine inside a folder stays inside it: the merged coin takes the target's slot in the
+   *  contents and holds no desk position until it's pulled out. */
   const combineAssets = (a: AssetObj, b: AssetObj) => {
     const mergedId = `${a.id}-c${assetIdc.current++}`
+    const filed = folders.some((f) => f.contents.includes(a.id) || f.contents.includes(b.id))
     setAssets((list) => {
       const ia = list.findIndex((x) => x.id === a.id)
       const ib = list.findIndex((x) => x.id === b.id)
@@ -235,9 +289,23 @@ export function DesktopWorkspace() {
       const at = Math.min(ia, ib)
       return [...rest.slice(0, at), merged, ...rest.slice(at)]
     })
+    if (filed) {
+      setFolders((list) =>
+        list.map((f) => {
+          if (!f.contents.includes(a.id) && !f.contents.includes(b.id)) return f
+          // the merged coin takes the target's slot; if only the poured half was filed, it takes that one
+          const swapped = f.contents.map((cid) => (cid === b.id ? mergedId : cid))
+          return {
+            ...f,
+            contents: swapped.includes(mergedId) ? swapped.filter((cid) => cid !== a.id) : swapped.map((cid) => (cid === a.id ? mergedId : cid))
+          }
+        })
+      )
+    }
     setPositions((pos) => {
       if (!pos) return pos
       const { [a.id]: posA, [b.id]: posB, ...rest } = pos
+      if (filed) return rest
       return { ...rest, [mergedId]: posB ?? posA }
     })
   }
@@ -270,7 +338,13 @@ export function DesktopWorkspace() {
     const p = clampPos(coinView.cursor.x - ICON_W / 2, coinView.cursor.y - ICON_PAD - ICON_SLOT / 2)
     setPositions((pos) => (pos ? { ...pos, [obj.id]: nearestFreeSpot(p, pos, obj.id) } : pos))
 
-    // a wallet drag recognises no zones (deleting lives in its menu) — it only ever lands
+    // a folder takes anything except another folder — filed away, off the desk
+    const intoFolder = folderDropId(dropKey)
+    if (intoFolder) {
+      setFolders((list) => list.map((f) => (f.id === intoFolder && !f.contents.includes(obj.id) ? { ...f, contents: [...f.contents, obj.id] } : f)))
+      return
+    }
+    // beyond folders, a wallet drag recognises no zones (deleting lives in its menu) — it only lands
     if (obj.class === "person") return
     // a dock app took the drop. The interaction itself arrives with the dock features; today the drop
     // lands cleanly and the icon has already stepped back off the shelf (the placement clamp above).
@@ -284,7 +358,14 @@ export function DesktopWorkspace() {
     const targetId = assetDropId(dropKey)
     if (targetId) {
       const target = assets.find((x) => x.id === targetId)
-      if (target && canCombine(obj, target)) startCombine(obj, target)
+      if (target && canCombine(obj, target)) {
+        // a filed tile takes the drop too — the coin files itself in beside its target first, so
+        // cancelling the combine leaves it in the folder rather than stranded under the window
+        const home = folders.find((f) => f.contents.includes(target.id))
+        if (home)
+          setFolders((list) => list.map((f) => (f.id === home.id && !f.contents.includes(obj.id) ? { ...f, contents: [...f.contents, obj.id] } : f)))
+        startCombine(obj, target)
+      }
     }
   }
   /** Sit the icon so its slot is centred on (cx, cy) — the drag speaks cursor. */
@@ -303,9 +384,10 @@ export function DesktopWorkspace() {
     if (e.button !== 0 || e.target !== rootRef.current || !positions) return
     const sx = e.clientX
     const sy = e.clientY
-    const boxes = deskItems
-      .map((o) => ({ id: o.id, p: positions[o.id] }))
-      .filter((b): b is { id: string; p: Pos } => !!b.p)
+    // folders sweep up too — a selection is for organising, and folders are furniture worth moving
+    const boxes = [...deskItems.map((o) => ({ id: o.id, p: positions[o.id] })), ...folders.map((f) => ({ id: f.id, p: positions[f.id] }))].filter(
+      (b): b is { id: string; p: Pos } => !!b.p
+    )
     setSelectedIds(new Set())
 
     const onSweep = (ev: PointerEvent) => {
@@ -314,13 +396,7 @@ export function DesktopWorkspace() {
       const x1 = Math.max(sx, ev.clientX)
       const y1 = Math.max(sy, ev.clientY)
       setMarquee({ x0: sx, y0: sy, x1: ev.clientX, y1: ev.clientY })
-      setSelectedIds(
-        new Set(
-          boxes
-            .filter(({ p }) => p.x < x1 && p.x + ICON_W > x0 && p.y < y1 && p.y + ICON_SLOT + ICON_FOOT > y0)
-            .map(({ id }) => id)
-        )
-      )
+      setSelectedIds(new Set(boxes.filter(({ p }) => p.x < x1 && p.x + ICON_W > x0 && p.y < y1 && p.y + ICON_SLOT + ICON_FOOT > y0).map(({ id }) => id)))
     }
     const onLift = () => {
       window.removeEventListener("pointermove", onSweep)
@@ -331,99 +407,143 @@ export function DesktopWorkspace() {
     window.addEventListener("pointerup", onLift)
   }
 
-  /** Carry the whole selection: every selected wrapper rides the same delta, imperatively (the coins
-   *  follow their slots), and the set settles with its formation intact — clamped per icon, but never
-   *  pushed apart. The carry registers with the drag store, so the scene, the badges and the hover
-   *  readout treat it exactly like a single drag. Released over a contact, it's a drop, not a move:
-   *  the carried tokens open one transfer flow onto that contact, and the icons settle beside it
-   *  rather than on it. The contact is found by geometry, not elementFromPoint — the carried icons
-   *  are under the cursor, in the way. */
-  const grabSelection = (e: React.PointerEvent) => {
-    if (!positions) return
-    const origins = new Map<string, Pos>()
-    for (const id of selectedIds) {
-      const p = positions[id]
-      if (p) origins.set(id, p)
-    }
-    const sx = e.clientX
-    const sy = e.clientY
-    const hasAsset = [...origins.keys()].some((id) => assets.some((a) => a.id === id))
-    let started = false
-
-    /** The contact under (x, y), if any — the drop target, found by geometry. */
-    const contactAt = (x: number, y: number) =>
-      contacts.find((c) => {
-        if (origins.has(c.id)) return false
-        const p = positions[c.id]
-        return !!p && x >= p.x && x <= p.x + ICON_W && y >= p.y && y <= p.y + ICON_SLOT + ICON_FOOT
-      })
-
-    const onMove = (ev: PointerEvent) => {
-      const dx = ev.clientX - sx
-      const dy = ev.clientY - sy
-      if (!started && Math.hypot(dx, dy) < 6) return
-      if (!started) {
-        started = true
-        setCoinHover(null) // the readout would ride under the carried set the whole way
-        startGroupDrag(new Set(origins.keys()))
-      }
-      for (const [id, o] of origins) {
-        const el = iconNodes.current.get(id)
-        if (!el) continue
-        el.style.left = `${o.x + dx}px`
-        el.style.top = `${o.y + dy}px`
-      }
-      // light the target underneath — a dock drop tile or a contact. The store bails on same values,
-      // so this is free while cruising.
-      const hitNav = hasAsset ? dropTileAt(ev.clientX, ev.clientY) : undefined
-      const hit = hasAsset && !hitNav ? contactAt(ev.clientX, ev.clientY) : undefined
-      setOver(hitNav ? navDropKey(hitNav.id) : hit ? walletDropKey(hit.id) : null)
-    }
-    const onUp = (ev: PointerEvent) => {
-      window.removeEventListener("pointermove", onMove)
-      window.removeEventListener("pointerup", onUp)
-      endDrag()
-      if (!started) return
-      const dx = ev.clientX - sx
-      const dy = ev.clientY - sy
-
-      // a dock app took the drop — like the single-drag version, the interaction itself arrives with
-      // the dock features; the placement below steps the set back off the shelf (the dock keep-out)
-      const hitNav = hasAsset ? dropTileAt(ev.clientX, ev.clientY) : undefined
-      const hitContact = hitNav ? undefined : contactAt(ev.clientX, ev.clientY)
-
-      setPositions((pos) => {
-        if (!pos) return pos
-        const next = { ...pos }
-        for (const [id, o] of origins) {
-          const at = clampPos(o.x + dx, o.y + dy)
-          // a drop can't stay ON its target — settle beside it, formation yielding to the contact
-          next[id] = hitContact ? nearestFreeSpot(at, next, id) : at
-        }
-        return next
-      })
-
-      if (hitContact) {
-        // the whole handful cascades into ONE transfer window, not a stack of one-asset modals
-        const dropped = [...origins.keys()].map((id) => assets.find((a) => a.id === id)).filter((a): a is AssetObj => !!a)
-        if (dropped.length) {
-          const key = dropped
-            .map((a) => a.id)
-            .sort()
-            .join("+")
-          open({ kind: "transfer", assets: dropped, to: hitContact, matchKey: `transfer-${key}-${hitContact.id}` })
+  /** Carry a set of objects as one handful — the engine behind desk multi-selections AND folder
+   *  pull-outs. Every carried wrapper rides the same delta, imperatively (the coins follow their
+   *  slots), and the carry registers with the drag store so the scene, the badges and the hover
+   *  readout treat it exactly like a single drag. Targets are found by geometry or through the
+   *  pointer-transparent carried icons: a dock drop tile, a folder (icon or open window — the whole
+   *  handful files itself), or a contact (one cascaded transfer flow). Otherwise it's a move: desk
+   *  selections keep their formation; a stack pulled from a folder spreads out as it lands. */
+  const startCarry =
+    (ids: string[], opts: { settle: "formation" | "spread"; materialize?: (x: number, y: number) => Map<string, Pos> }) => (e: React.PointerEvent) => {
+      if (e.button !== 0 || !positions) return
+      const sx = e.clientX
+      const sy = e.clientY
+      const hasAsset = ids.some((id) => assets.some((a) => a.id === id))
+      // folders ride along for organising, but they can never be filed or dropped INTO anything —
+      // a carry of nothing but folders sees no targets at all
+      const folderIdSet = new Set(folders.map((f) => f.id))
+      const hasFilable = ids.some((id) => !folderIdSet.has(id))
+      let started = false
+      let origins: Map<string, Pos> | null = null
+      if (!opts.materialize) {
+        origins = new Map()
+        for (const id of ids) {
+          const p = positions[id]
+          if (p) origins.set(id, p)
         }
       }
+
+      /** The contact under (x, y), if any — found by geometry. Filed or carried contacts can't be hit. */
+      const contactAt = (x: number, y: number) =>
+        contacts.find((c) => {
+          if (ids.includes(c.id) || folderedIds.has(c.id)) return false
+          const p = positions[c.id]
+          return !!p && x >= p.x && x <= p.x + ICON_W && y >= p.y && y <= p.y + ICON_SLOT + ICON_FOOT
+        })
+
+      /** The folder under (x, y) — the desk icon by geometry, or an open folder window through the
+       *  DOM (the carried icons are pointer-transparent, so elementFromPoint sees past them). A folder
+       *  that's itself being carried can't be its own target. */
+      const folderAt = (x: number, y: number): string | null => {
+        if (!hasFilable) return null
+        const icon = folders.find((f) => {
+          if (ids.includes(f.id)) return false
+          const p = positions[f.id]
+          return !!p && x >= p.x && x <= p.x + ICON_W && y >= p.y && y <= p.y + ICON_SLOT + ICON_FOOT
+        })
+        if (icon) return icon.id
+        const key = (document.elementFromPoint(x, y) as HTMLElement | null)?.closest("[data-drop]")?.getAttribute("data-drop")
+        const id = key ? folderDropId(key) : null
+        return id && !ids.includes(id) ? id : null
+      }
+
+      const onMove = (ev: PointerEvent) => {
+        const dx = ev.clientX - sx
+        const dy = ev.clientY - sy
+        if (!started && Math.hypot(dx, dy) < 6) return
+        if (!started) {
+          started = true
+          setCoinHover(null) // the readout would ride under the carried set the whole way
+          if (!origins) origins = opts.materialize?.(ev.clientX, ev.clientY) ?? new Map()
+          startGroupDrag(new Set(origins.keys()))
+        }
+        const org = origins
+        if (!org) return
+        for (const [id, o] of org) {
+          const el = iconNodes.current.get(id)
+          if (!el) continue
+          el.style.left = `${o.x + dx}px`
+          el.style.top = `${o.y + dy}px`
+        }
+        // light the target underneath — the store bails on same values, so this is free while cruising
+        const hitNav = hasAsset ? dropTileAt(ev.clientX, ev.clientY) : undefined
+        const hitFolder = hitNav ? null : folderAt(ev.clientX, ev.clientY)
+        const hitContact = hitNav || hitFolder || !hasAsset ? undefined : contactAt(ev.clientX, ev.clientY)
+        setOver(hitNav ? navDropKey(hitNav.id) : hitFolder ? folderDropKey(hitFolder) : hitContact ? walletDropKey(hitContact.id) : null)
+      }
+      const onUp = (ev: PointerEvent) => {
+        window.removeEventListener("pointermove", onMove)
+        window.removeEventListener("pointerup", onUp)
+        endDrag()
+        const org = origins
+        if (!started || !org) return
+        const dx = ev.clientX - sx
+        const dy = ev.clientY - sy
+
+        const hitNav = hasAsset ? dropTileAt(ev.clientX, ev.clientY) : undefined
+        const hitFolder = hitNav ? null : folderAt(ev.clientX, ev.clientY)
+        const hitContact = hitNav || hitFolder ? undefined : contactAt(ev.clientX, ev.clientY)
+
+        // filed: the handful disappears into the folder — except any folders riding along, which can
+        // never be filed and settle beside the target instead
+        if (hitFolder) {
+          const fileIds = [...org.keys()].filter((id) => !folderIdSet.has(id))
+          setFolders((list) => list.map((f) => (f.id === hitFolder ? { ...f, contents: [...new Set([...f.contents, ...fileIds])] } : f)))
+          const carriedFolders = [...org].filter(([id]) => folderIdSet.has(id))
+          if (carriedFolders.length) {
+            setPositions((pos) => {
+              if (!pos) return pos
+              const next = { ...pos }
+              for (const [id, o] of carriedFolders) next[id] = nearestFreeSpot(clampPos(o.x + dx, o.y + dy), next, id)
+              return next
+            })
+          }
+          return
+        }
+
+        setPositions((pos) => {
+          if (!pos) return pos
+          const next = { ...pos }
+          for (const [id, o] of org) {
+            const at = clampPos(o.x + dx, o.y + dy)
+            // a drop can't stay ON its target, and a pulled stack spreads out — otherwise formation holds
+            next[id] = hitContact || opts.settle === "spread" ? nearestFreeSpot(at, next, id) : at
+          }
+          return next
+        })
+
+        if (hitContact) {
+          // the whole handful cascades into ONE transfer window, not a stack of one-asset modals
+          const dropped = [...org.keys()].map((id) => assets.find((a) => a.id === id)).filter((a): a is AssetObj => !!a)
+          if (dropped.length) {
+            const key = dropped
+              .map((a) => a.id)
+              .sort()
+              .join("+")
+            open({ kind: "transfer", assets: dropped, to: hitContact, matchKey: `transfer-${key}-${hitContact.id}` })
+          }
+        }
+      }
+      window.addEventListener("pointermove", onMove)
+      window.addEventListener("pointerup", onUp)
     }
-    window.addEventListener("pointermove", onMove)
-    window.addEventListener("pointerup", onUp)
-  }
 
   /** A press on an icon: carried with its selection if it has one, an ordinary single drag (and the
    *  selection stands down) if not. */
   const onIconPointerDown = (obj: DesktopObj) => (e: React.PointerEvent) => {
     if (e.button !== 0) return
-    if (selectedIds.has(obj.id) && selectedIds.size > 1) return grabSelection(e)
+    if (selectedIds.has(obj.id) && selectedIds.size > 1) return startCarry([...selectedIds], { settle: "formation" })(e)
     if (selectedIds.size) setSelectedIds(new Set())
     onPointerDown(obj)(e)
   }
@@ -432,9 +552,18 @@ export function DesktopWorkspace() {
   // remembered so a window resize can re-run it: an icon layout tuned to one width is wrong at another.
   const cleanupKeyRef = useRef<"name" | "kind" | "value" | null>(null)
   // merged over the old map, not swapped in: defaultPositions only knows the stock objects, and a
-  // wholesale replace would strand any user-made folders without a position
+  // wholesale replace would strand any user-made folders without a position. Foldered objects are
+  // skipped — they hold no desk slot while filed.
   const cleanUp = (assetOrder = assets, contactOrder = contacts) =>
-    setPositions((pos) => ({ ...pos, ...defaultPositions(assetOrder, contactOrder, window.innerWidth) }))
+    setPositions((pos) => ({
+      ...pos,
+      ...defaultPositions(
+        assetOrder.filter((a) => !folderedIds.has(a.id)),
+        contactOrder.filter((c) => !folderedIds.has(c.id)),
+        folders.map((f) => f.id),
+        window.innerWidth
+      )
+    }))
   const cleanUpBy = (key: "name" | "kind" | "value") => {
     cleanupKeyRef.current = key
     const byName = (a: DesktopObj, b: DesktopObj) => a.label.localeCompare(b.label)
@@ -459,15 +588,121 @@ export function DesktopWorkspace() {
     }
     open({ kind: "new-contact", draft, at, matchKey: "new-contact" })
   }
-  /** A fresh folder lands right where the menu was opened, pushed aside like any placement. */
+  /** A fresh folder lands right where the menu was opened, pushed aside like any placement — and
+   *  arrives already renaming, the way a fresh folder should. */
   const addFolder = (at: Pos) => {
     const id = `folder-new-${folderIdc.current++}`
-    setFolders((list) => [...list, { id, label: "New Folder", items: 0 }])
+    setFolders((list) => [...list, { id, label: "New Folder", contents: [] }])
     setPositions((pos) => {
       if (!pos) return pos
       const p = clampPos(at.x - ICON_W / 2, at.y - ICON_PAD - ICON_SLOT / 2)
       return { ...pos, [id]: nearestFreeSpot(p, pos, id) }
     })
+    setRenamingId(id)
+  }
+
+  const renameFolder = (id: string, name: string) => {
+    setFolders((list) => list.map((f) => (f.id === id ? { ...f, label: name } : f)))
+    setRenamingId(null)
+  }
+
+  /** Deleting a folder never deletes what's in it: the contents spill back onto the desk, cascading
+   *  from where the folder stood. */
+  const deleteFolder = (id: string) => {
+    const folder = folders.find((f) => f.id === id)
+    if (!folder) return
+    setPositions((pos) => {
+      if (!pos) return pos
+      const { [id]: at, ...rest } = pos
+      const base = at ?? { x: window.innerWidth / 2 - ICON_W / 2, y: window.innerHeight / 2 }
+      folder.contents.forEach((cid, i) => {
+        rest[cid] = nearestFreeSpot(clampPos(base.x + 24 + i * 24, base.y + i * 12), rest, cid)
+      })
+      return rest
+    })
+    setFolders((list) => list.filter((f) => f.id !== id))
+    closeFolderWindow(id)
+  }
+
+  // events — folder windows. Open on click, close from the window, focus (re-order to top) on press.
+  const openFolderWindow = (id: string) => setFolderWins((w) => (w.includes(id) ? [...w.filter((x) => x !== id), id] : [...w, id]))
+  const closeFolderWindow = (id: string) => setFolderWins((w) => w.filter((x) => x !== id))
+
+  /** A press on a folder-window tile: the object materialises on the desk under the cursor the moment
+   *  the drag passes the pick-up threshold, and from there it IS the ordinary desktop drag — droppable
+   *  onto the desk, a contact, or back into a folder. A picked set pulls out together as a group
+   *  carry, cascading from the cursor and spreading out wherever it lands. */
+  const pullFromFolder = (folderId: string) => (obj: DesktopObj, group: DesktopObj[]) => (e: React.PointerEvent) => {
+    if (e.button !== 0) return
+
+    if (group.length > 1) {
+      return startCarry(
+        group.map((o) => o.id),
+        {
+          settle: "spread",
+          materialize: (x, y) => {
+            const idSet = new Set(group.map((o) => o.id))
+            setFolders((list) => list.map((f) => (f.id === folderId ? { ...f, contents: f.contents.filter((cid) => !idSet.has(cid)) } : f)))
+            const origins = new Map<string, Pos>()
+            group.forEach((o, i) => origins.set(o.id, clampPos(x - ICON_W / 2 + i * 14, y - ICON_PAD - ICON_SLOT / 2 + i * 10)))
+            setPositions((pos) => (pos ? { ...pos, ...Object.fromEntries(origins) } : pos))
+            return origins
+          }
+        }
+      )(e)
+    }
+
+    onPointerDown(obj, {
+      onStart: (x, y) => {
+        setFolders((list) => list.map((f) => (f.id === folderId ? { ...f, contents: f.contents.filter((cid) => cid !== obj.id) } : f)))
+        setPositions((pos) => (pos ? { ...pos, [obj.id]: clampPos(x - ICON_W / 2, y - ICON_PAD - ICON_SLOT / 2) } : pos))
+      }
+    })(e)
+  }
+
+  /** Folders move like any icon, but through their own little drag: they never enter the drag store
+   *  (nothing 3D flies — the folder art is part of the icon) and they never see drop zones, which is
+   *  the whole one-level-deep rule. A press that never travels is a click, which opens the window. */
+  const folderMovedRef = useRef(false)
+  const startFolderDrag = (id: string) => (e: React.PointerEvent) => {
+    if (e.button !== 0 || !positions) return
+    // part of a selection: the whole handful goes, folders included (they just can't be filed)
+    if (selectedIds.has(id) && selectedIds.size > 1) {
+      folderMovedRef.current = true // the click that follows must not open the window
+      return startCarry([...selectedIds], { settle: "formation" })(e)
+    }
+    if (selectedIds.size) setSelectedIds(new Set())
+    const origin = positions[id]
+    if (!origin) return
+    const sx = e.clientX
+    const sy = e.clientY
+    folderMovedRef.current = false
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - sx
+      const dy = ev.clientY - sy
+      if (!folderMovedRef.current && Math.hypot(dx, dy) < 6) return
+      folderMovedRef.current = true
+      const el = iconNodes.current.get(id)
+      if (el) {
+        el.style.left = `${origin.x + dx}px`
+        el.style.top = `${origin.y + dy}px`
+      }
+    }
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", onUp)
+      if (!folderMovedRef.current) return
+      const p = clampPos(origin.x + ev.clientX - sx, origin.y + ev.clientY - sy)
+      setPositions((pos) => (pos ? { ...pos, [id]: nearestFreeSpot(p, pos, id) } : pos))
+    }
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+  }
+  const onFolderOpen = (id: string) => () => {
+    // that gesture was a move, not an open
+    if (folderMovedRef.current) return
+    openFolderWindow(id)
   }
 
   const createContact = (draft: PersonObj, patch: Pick<PersonObj, "label" | "handle" | "address">, at: Pos) => {
@@ -487,12 +722,21 @@ export function DesktopWorkspace() {
     e.preventDefault()
     e.stopPropagation() // the desk's own menu listens underneath
     setDeskMenu(null)
+    setFolderMenu(null)
     if (obj.class === "asset" && !isSplittable(obj)) return
     setMenu({ x: e.clientX, y: e.clientY, obj })
+  }
+  const onFolderMenu = (id: string) => (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setMenu(null)
+    setDeskMenu(null)
+    setFolderMenu({ x: e.clientX, y: e.clientY, id })
   }
   const onDeskMenu = (e: React.MouseEvent) => {
     e.preventDefault()
     setMenu(null)
+    setFolderMenu(null)
     setDeskMenu({ x: e.clientX, y: e.clientY })
   }
 
@@ -509,6 +753,12 @@ export function DesktopWorkspace() {
           // same confirm as the trash — permanent is permanent, whichever gesture asked
           { label: "Delete", icon: Trash2, danger: true, onSelect: () => open({ kind: "delete-contact", contact: obj, matchKey: `delete-${obj.id}` }) }
         ]
+
+  // no confirm on folder delete: nothing is destroyed — the contents just spill back onto the desk
+  const folderMenuItems = (id: string): DesktopMenuItem[] => [
+    { label: "Rename", icon: Pencil, onSelect: () => setRenamingId(id) },
+    { label: "Delete", icon: Trash2, danger: true, onSelect: () => deleteFolder(id) }
+  ]
   const deskMenuItems = (at: Pos): DesktopMenuItem[] => [
     { label: "New Contact", icon: UserPlus, onSelect: () => addContact(at) },
     { label: "New Folder", icon: FolderPlus, onSelect: () => addFolder(at) },
@@ -543,9 +793,18 @@ export function DesktopWorkspace() {
     return registerCoinViewport(rootRef.current)
   }, [])
 
-  // effects — the starting arrangement needs the viewport's width, which the server doesn't have
+  // effects — the starting arrangement needs the viewport's width, which the server doesn't have.
+  // Foldered objects take no slot: the desk lays out only what it shows.
   useEffect(() => {
-    setPositions(defaultPositions(ASSETS, PEOPLE, window.innerWidth))
+    const filed = new Set(INITIAL_FOLDERS.flatMap((f) => f.contents))
+    setPositions(
+      defaultPositions(
+        [...ASSETS, ...DUST_ASSETS, ...DUST_NFTS].filter((a) => !filed.has(a.id)),
+        PEOPLE,
+        INITIAL_FOLDERS.map((f) => f.id),
+        window.innerWidth
+      )
+    )
   }, [])
 
   // effects — a resize re-runs the last clean-up (the plain one, or whichever "Clean Up By" was used
@@ -559,6 +818,13 @@ export function DesktopWorkspace() {
     const onResize = () => relayoutRef.current()
     window.addEventListener("resize", onResize)
     return () => window.removeEventListener("resize", onResize)
+  }, [])
+
+  // effects — the split-flash timer must not fire into an unmounted tree
+  useEffect(() => {
+    return () => {
+      if (flashTimer.current) clearTimeout(flashTimer.current)
+    }
   }, [])
 
   // effects — the dragged icon is positioned imperatively, and any re-render mid-drag (targets
@@ -599,7 +865,7 @@ export function DesktopWorkspace() {
         {positions &&
           assets.map((a) => {
             const p = positions[a.id]
-            if (!p) return null
+            if (!p || folderedIds.has(a.id)) return null
             return (
               <div
                 key={a.id}
@@ -607,9 +873,9 @@ export function DesktopWorkspace() {
                   if (el) iconNodes.current.set(a.id, el)
                   else iconNodes.current.delete(a.id)
                 }}
-                // in hand: above everything on the desk, and pointer-transparent so the drop
-                // hit-testing sees the zones underneath rather than the icon being carried
-                className={cn("absolute", (dragged?.id === a.id || carriedIds?.has(a.id)) && "pointer-events-none z-[70]")}
+                // in hand: above everything on the desk — folder windows included — and
+                // pointer-transparent so the drop hit-testing sees the zones underneath
+                className={cn("absolute", (dragged?.id === a.id || carriedIds?.has(a.id)) && "pointer-events-none z-[160]")}
                 style={{ left: p.x, top: p.y }}>
                 <DesktopIcon
                   obj={a}
@@ -620,6 +886,7 @@ export function DesktopWorkspace() {
                   target={!!draggedAsset && canCombine(draggedAsset, a)}
                   over={!!draggedAsset && over === assetDropKey(a.id)}
                   selected={menu?.obj.id === a.id || selectedIds.has(a.id)}
+                  flash={flashIds.has(a.id)}
                   anyDragging={anyDragging}
                   onPointerDown={onIconPointerDown(a)}
                   onContextMenu={onIconMenu(a)}
@@ -631,7 +898,7 @@ export function DesktopWorkspace() {
         {positions &&
           contacts.map((c) => {
             const p = positions[c.id]
-            if (!p) return null
+            if (!p || folderedIds.has(c.id)) return null
             return (
               <div
                 key={c.id}
@@ -639,7 +906,7 @@ export function DesktopWorkspace() {
                   if (el) iconNodes.current.set(c.id, el)
                   else iconNodes.current.delete(c.id)
                 }}
-                className={cn("absolute", (dragged?.id === c.id || carriedIds?.has(c.id)) && "pointer-events-none z-[70]")}
+                className={cn("absolute", (dragged?.id === c.id || carriedIds?.has(c.id)) && "pointer-events-none z-[160]")}
                 style={{ left: p.x, top: p.y }}>
                 <DesktopIcon
                   obj={c}
@@ -659,15 +926,35 @@ export function DesktopWorkspace() {
             )
           })}
 
-        {/* the folders — Other Tokens plus any the desk menu created. Fixtures for now; drops and
-            their own windows come later */}
+        {/* the folders — Other Tokens plus any the desk menu created. Click opens the window, drag
+            moves, and anything in hand (except another folder) can be filed onto them */}
         {positions &&
           folders.map((f) => {
             const p = positions[f.id]
             if (!p) return null
             return (
-              <div key={f.id} className="absolute" style={{ left: p.x, top: p.y }}>
-                <DesktopFolder label={f.label} count={f.items} />
+              <div
+                key={f.id}
+                ref={(el) => {
+                  if (el) iconNodes.current.set(f.id, el)
+                  else iconNodes.current.delete(f.id)
+                }}
+                className={cn("absolute", carriedIds?.has(f.id) && "pointer-events-none z-[160]")}
+                style={{ left: p.x, top: p.y }}>
+                <DesktopFolder
+                  label={f.label}
+                  count={f.contents.length}
+                  dropKey={dragged ? folderDropKey(f.id) : undefined}
+                  target={(!!dragged || carriedHasFilable) && !carriedIds?.has(f.id)}
+                  over={over === folderDropKey(f.id)}
+                  selected={selectedIds.has(f.id)}
+                  renaming={renamingId === f.id}
+                  onRename={(name) => renameFolder(f.id, name)}
+                  onRenameCancel={() => setRenamingId(null)}
+                  onPointerDown={startFolderDrag(f.id)}
+                  onDoubleClick={onFolderOpen(f.id)}
+                  onContextMenu={onFolderMenu(f.id)}
+                />
               </div>
             )
           })}
@@ -693,6 +980,32 @@ export function DesktopWorkspace() {
       {/* the 3D objects — draws into the slots the icons above registered */}
       <ObjectScene items={deskItems} nav={NAV_ITEMS} />
 
+      {/* open folders — windows, not modals: the desk stays live around them. Stacking follows the
+          open/focus order; they sit above the resting canvas (z-50) and under the modals (z-200+). */}
+      {folderWins.map((id, i) => {
+        const f = folders.find((x) => x.id === id)
+        if (!f) return null
+        const items = f.contents.map((cid) => allItems.find((o) => o.id === cid)).filter((o): o is DesktopObj => !!o)
+        return (
+          <FolderWindow
+            key={id}
+            label={f.label}
+            items={items}
+            z={100 + i}
+            dropKey={folderDropKey(f.id)}
+            onClose={() => closeFolderWindow(id)}
+            onFocus={() => openFolderWindow(id)}
+            onItemPointerDown={pullFromFolder(f.id)}
+            onItemContextMenu={onIconMenu}
+            flashIds={flashIds}
+            // the same merge-target rule the desk icons use, so split portions recombine in place
+            itemDropKey={(o) => (draggedAsset && o.class === "asset" && canCombine(draggedAsset, o) ? assetDropKey(o.id) : undefined)}
+            itemDimmed={(o) => !!draggedAsset && o.class === "asset" && !isSameToken(draggedAsset, o)}
+            overKey={over}
+          />
+        )
+      })}
+
       {/* modals */}
       {wins.map((w, i) => {
         const z = 200 + i
@@ -713,6 +1026,7 @@ export function DesktopWorkspace() {
       {/* the right-click menus — an icon's own, or the desk's housekeeping */}
       {menu && <DesktopMenu x={menu.x} y={menu.y} items={menuItems(menu.obj)} onClose={() => setMenu(null)} />}
       {deskMenu && <DesktopMenu x={deskMenu.x} y={deskMenu.y} items={deskMenuItems(deskMenu)} onClose={() => setDeskMenu(null)} />}
+      {folderMenu && <DesktopMenu x={folderMenu.x} y={folderMenu.y} items={folderMenuItems(folderMenu.id)} onClose={() => setFolderMenu(null)} />}
 
       <ObjectHoverInfo items={deskItems} />
     </>

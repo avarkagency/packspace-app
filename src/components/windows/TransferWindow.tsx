@@ -1,22 +1,26 @@
 "use client"
 
-import { useState } from "react"
+import { useLayoutEffect, useRef, useState } from "react"
+
+import { GradientAvatar } from "@outpacelabs/avatars"
+import { ArrowRightLeft, ChevronLeft, Send, X } from "lucide-react"
 
 import type { AssetObj, PersonObj, Receipt } from "@/lib/types"
-import { units, usd } from "@/lib/utils"
+import { shortAddr, units, usd } from "@/lib/utils"
 
+import { BaseBtn } from "../base/BaseBtn"
 import { ObjectMark } from "../canvas/ObjectMark"
-import { objectTint } from "../canvas/objectVisual"
 import { HandoffWindow } from "./HandoffWindow"
 import { SendWindow } from "./SendWindow"
-import { Window } from "./Window"
 
 // The modal a wallet drop opens — for one asset or several: a multi-select dropped onto a contact
-// cascades into this single window (the tokens listed together above the choice) rather than a stack
-// of one-asset modals. ONE window for the whole flow: the frame stays mounted while its content moves
-// from the choice the drop left open — Send or Trade — into that action's own body, so choosing never
-// fades one modal out and another in. Send and Trade stay separate components on purpose; this only
-// fronts them, so either can be reworked without touching the other.
+// cascades into this single window rather than a stack of one-asset modals. The desk behind falls out
+// of focus rather than under a shade, and the close button floats at the screen's top-right corner.
+//
+// ONE frame for the whole flow: the glass panel stays mounted and animates its size around whichever
+// step is showing — choosing Send grows the height into the confirm layout (Trade will grow the width
+// too when its design lands) — so choosing never fades one modal out and another in. Send and Trade
+// stay separate components on purpose; this only fronts them.
 
 type Props = {
   assets: AssetObj[]
@@ -27,98 +31,101 @@ type Props = {
   onLog: (m: string) => void
 }
 
-const TITLE = { choose: "Transfer", send: "Send", handoff: "Trade" } as const
+type Step = "choose" | "send" | "handoff"
+
+const VERB: Record<Step, string> = { choose: "Transfer", send: "Send", handoff: "Trade" }
+
+/** The panel's width per step. Trade spreads out when its design lands; the height is measured from
+ *  whatever the step renders, so only width needs declaring. */
+const WIDTH: Record<Step, number> = { choose: 480, send: 480, handoff: 560 }
 
 export function TransferWindow({ assets, to, z, onClose, onSettle, onLog }: Props) {
+  // refs
+  const bodyRef = useRef<HTMLDivElement>(null)
+
   // state
-  const [action, setAction] = useState<"send" | "handoff" | null>(null)
+  const [step, setStep] = useState<Step>("choose")
+  const [height, setHeight] = useState<number | null>(null)
 
   // data
   const lead = assets[0]
-  const many = assets.length > 1
-  const subtitle = many ? `${assets.length} assets → ${to.label}` : `${units(lead.balance)} ${lead.symbol} → ${to.label}`
+  const what = assets.length > 1 ? `${assets.length}x assets` : `${units(lead.balance)} ${lead.symbol}`
+
+  // effects — the frame animates to wrap whichever step is showing; the body is measured, never sized
+  useLayoutEffect(() => {
+    if (bodyRef.current) setHeight(bodyRef.current.offsetHeight)
+  }, [step, assets.length])
 
   return (
-    <Window
-      title={TITLE[action ?? "choose"]}
-      subtitle={subtitle}
-      tint={objectTint(lead)}
-      icon={
-        many ? (
-          // the dropped set, worn as a fanned stack in the header
-          <span className="flex shrink-0 -space-x-10">
-            {assets.slice(0, 3).map((a) => (
-              <ObjectMark key={a.id} obj={a} />
-            ))}
-          </span>
-        ) : (
-          <ObjectMark obj={lead} />
-        )
-      }
-      width={440}
-      z={z}
-      onClose={onClose}>
-      {action === "send" ? (
-        <SendWindow assets={assets} to={to} onClose={onClose} onSettle={onSettle} onLog={onLog} />
-      ) : action === "handoff" ? (
-        <HandoffWindow seeds={assets} to={to} onClose={onClose} onSettle={onSettle} onLog={onLog} />
-      ) : (
-        <>
-          {/* what's on the table — only worth a list when there's more than the subtitle already says */}
-          {many && (
-            <ul className="flex flex-col gap-8 border-b border-border px-20 py-14">
-              {assets.map((a) => (
-                <li key={a.id} className="flex items-center justify-between gap-12">
-                  <span className="flex min-w-0 items-center gap-8">
-                    <ObjectMark obj={a} size={20} />
-                    <span className="tnum truncate text-12 font-medium">
-                      {units(a.balance)} {a.symbol}
-                    </span>
-                  </span>
-                  <span className="tnum text-12 text-muted-foreground">{usd(a.usd, { cents: false })}</span>
-                </li>
-              ))}
-            </ul>
+    <div className="fixed inset-0 grid place-items-center p-24" style={{ zIndex: z }}>
+      {/* the desk falls out of focus */}
+      <div className="animate-in fade-in-0 absolute inset-0 bg-black/20 backdrop-blur-xl duration-200" onClick={onClose} aria-hidden />
+
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="glass absolute top-28 right-28 grid size-40 cursor-pointer place-items-center rounded-12 text-white trans-base hover:bg-white/20 active:scale-97">
+        <X className="size-16" />
+      </button>
+
+      <div
+        className="glass panel-in relative overflow-hidden rounded-16 transition-[width,height] duration-300 ease-in-out-quart"
+        style={{ width: WIDTH[step], height: height ?? undefined }}>
+        {/* keyed so each step's content fades in while the frame stretches around it */}
+        <div ref={bodyRef} key={step} className="animate-in fade-in-0 p-28 duration-300">
+          {step !== "choose" && (
+            <button
+              type="button"
+              onClick={() => setStep("choose")}
+              className="mb-8 flex cursor-pointer items-center gap-4 text-12 leading-120 tracking-tight text-white trans-base hover:text-white/70">
+              <ChevronLeft className="size-16" />
+              Head back
+            </button>
           )}
 
-          <div className="grid grid-cols-2 gap-12 p-20">
-            <TransferChoice
-              label="Send"
-              blurb={`Give ${many ? "them" : "it"} to ${to.label} — one-way, nothing comes back.`}
-              color="var(--action-send)"
-              onClick={() => setAction("send")}
-            />
-            <TransferChoice
-              label="Trade"
-              blurb={`Propose a swap — both sides settle together or not at all.`}
-              color="var(--action-trade)"
-              onClick={() => setAction("handoff")}
-            />
-          </div>
-        </>
-      )}
+          <h2 className="flex items-center gap-6 text-18 leading-120 tracking-tight text-white">
+            {VERB[step]} {what} to
+            <GradientAvatar seed={to.address ?? to.id} size={24} className="shrink-0" />
+            {to.label}
+          </h2>
+          <span className="tnum mt-8 inline-block rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">
+            {to.address ? shortAddr(to.address) : to.handle}
+          </span>
 
-      {action && (
-        <div className="border-t border-border px-20 py-10">
-          <button onClick={() => setAction(null)} className="cursor-pointer text-12 text-muted-foreground trans-base hover:text-foreground">
-            ← Back
-          </button>
+          <div className="-mx-28 mt-24 h-px bg-white/20" aria-hidden />
+
+          {/* what's on the table — every step shows the same list */}
+          <ul className="mt-28 flex flex-col gap-8">
+            {assets.map((a) => (
+              <li key={a.id} className="flex items-center justify-between gap-12">
+                <span className="flex min-w-0 items-center gap-12">
+                  <span className="inline-flex shrink-0 rounded-full ring-1 ring-white">
+                    <ObjectMark obj={a} size={24} />
+                  </span>
+                  <span className="tnum truncate text-14 leading-120 tracking-tight text-white">
+                    {units(a.balance)} {a.symbol}
+                  </span>
+                </span>
+                <span className="tnum text-14 leading-120 tracking-tight text-white">{usd(a.usd, { cents: false })}</span>
+              </li>
+            ))}
+          </ul>
+
+          {step === "choose" && (
+            <div className="mt-28 flex gap-8">
+              <BaseBtn icon={Send} className="flex-1" onClick={() => setStep("send")}>
+                Send assets
+              </BaseBtn>
+              <BaseBtn variant="secondary" icon={ArrowRightLeft} className="flex-1" onClick={() => setStep("handoff")}>
+                Trade assets
+              </BaseBtn>
+            </div>
+          )}
+          {step === "send" && <SendWindow assets={assets} to={to} onClose={onClose} onSettle={onSettle} onLog={onLog} />}
+          {step === "handoff" && <HandoffWindow seeds={assets} to={to} onClose={onClose} onSettle={onSettle} onLog={onLog} />}
         </div>
-      )}
-    </Window>
-  )
-}
-
-function TransferChoice({ label, blurb, color, onClick }: { label: string; blurb: string; color: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{ borderColor: `color-mix(in srgb, ${color} 35%, var(--border))` }}
-      className="flex cursor-pointer flex-col items-start gap-6 rounded-lg border p-14 text-left trans-base hover:bg-muted/60">
-      <span className="text-14 font-semibold" style={{ color }}>
-        {label}
-      </span>
-      <span className="text-12 leading-140 text-muted-foreground">{blurb}</span>
-    </button>
+      </div>
+    </div>
   )
 }

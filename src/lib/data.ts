@@ -225,6 +225,131 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "nav-reset", label: "Reset Demo", icon: "/images/nav-icons/7.png" }
 ]
 
+/** The dust — the long tail of low-value balances. These live inside the Other Tokens folder rather
+ *  than on the desk, but they're real assets: pulled out, they behave like any other coin. None have
+ *  shipped artwork, so their coins draw their own faces from symbol + colour. */
+export const DUST_ASSETS: AssetObj[] = [
+  {
+    id: "a-link",
+    class: "asset",
+    label: "Chainlink",
+    symbol: "LINK",
+    kind: "token",
+    balance: 2.4,
+    usd: 38.0,
+    chain: "Ethereum",
+    color: "#2a5ada",
+    convertible: true,
+    address: "0x514910771AF9Ca656af840dff83E8264EcF986CA"
+  },
+  {
+    id: "a-arb",
+    class: "asset",
+    label: "Arbitrum",
+    symbol: "ARB",
+    kind: "token",
+    balance: 61,
+    usd: 24.0,
+    chain: "Ethereum",
+    color: "#12aaff",
+    convertible: true,
+    address: "0x912CE59144191C1204E64559FE8253a0e49E6548"
+  },
+  {
+    id: "a-op",
+    class: "asset",
+    label: "Optimism",
+    symbol: "OP",
+    kind: "token",
+    balance: 14,
+    usd: 19.0,
+    chain: "Ethereum",
+    color: "#ff0420",
+    convertible: true,
+    address: "0x4200000000000000000000000000000000000042"
+  },
+  {
+    id: "a-pepe",
+    class: "asset",
+    label: "Pepe",
+    symbol: "PEPE",
+    kind: "token",
+    balance: 900000,
+    usd: 9.0,
+    chain: "Ethereum",
+    color: "#3d8130",
+    convertible: true,
+    address: "0x6982508145454Ce325dDbE47a25d4ec3d2311933"
+  },
+  {
+    id: "a-shib",
+    class: "asset",
+    label: "Shiba Inu",
+    symbol: "SHIB",
+    kind: "token",
+    balance: 400000,
+    usd: 5.0,
+    chain: "Ethereum",
+    color: "#ffa409",
+    convertible: true,
+    address: "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE"
+  },
+  {
+    id: "a-doge",
+    class: "asset",
+    label: "Dogecoin",
+    symbol: "DOGE",
+    kind: "token",
+    balance: 21,
+    usd: 3.0,
+    chain: "BNB",
+    color: "#c2a633",
+    convertible: true,
+    address: "0xbA2aE424d960c26247Dd6c32edC70B295c744C43"
+  }
+]
+
+/** NFT dust — low-value one-of-ones that live in the Other NFTs folder. No shipped artwork, so their
+ *  cards draw their own faces (and their folder tiles show tinted squares). */
+export const DUST_NFTS: AssetObj[] = [
+  {
+    id: "a-moonbird",
+    class: "asset",
+    label: "Moonbirds",
+    symbol: "MOONBIRD",
+    kind: "nft",
+    balance: 1,
+    usd: 92.0,
+    chain: "Ethereum",
+    color: "#8a63d2",
+    address: "0x2358…9d21"
+  },
+  {
+    id: "a-pudgy",
+    class: "asset",
+    label: "Pudgy Penguins",
+    symbol: "PUDGY",
+    kind: "nft",
+    balance: 1,
+    usd: 88.0,
+    chain: "Ethereum",
+    color: "#7fc4e8",
+    address: "0xBd35…acB9"
+  },
+  {
+    id: "a-clonex",
+    class: "asset",
+    label: "CloneX",
+    symbol: "CLONEX",
+    kind: "nft",
+    balance: 1,
+    usd: 61.0,
+    chain: "Ethereum",
+    color: "#e84f4f",
+    address: "0x49cF…76e1"
+  }
+]
+
 export const PACKS: PackObj[] = [
   {
     id: "k-chase",
