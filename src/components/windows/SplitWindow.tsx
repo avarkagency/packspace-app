@@ -1,6 +1,6 @@
 "use client"
 
-import { type CSSProperties, useState } from "react"
+import { useState } from "react"
 
 import { Scissors, X } from "lucide-react"
 
@@ -8,6 +8,7 @@ import type { AssetObj } from "@/lib/types"
 import { cn, units, usd } from "@/lib/utils"
 
 import { BaseBtn } from "../base/BaseBtn"
+import { BaseSlider } from "../base/BaseSlider"
 import { ObjectMark } from "../canvas/ObjectMark"
 
 // Asset division — divides one fungible object into two so each can be sent or traded independently.
@@ -81,31 +82,8 @@ export function SplitWindow({ asset, z, onClose, onSplit }: Props) {
             <Portion amount={b} symbol={asset.symbol} value={b * rate} />
           </div>
 
-          <div className="relative mt-8 h-40 overflow-hidden rounded-md">
-            <div className="absolute inset-0 rounded-md bg-white/10" />
-            <div
-              className="absolute inset-y-0 left-0 border-r border-white bg-white/25"
-              style={{ width: `${pct}%` } as CSSProperties}
-              aria-hidden
-            />
-            <span className="pointer-events-none absolute inset-0 flex items-center px-14 text-12 leading-120 font-medium text-white">
-              Split {pct}%
-            </span>
-            <span
-              className="pointer-events-none absolute inset-y-4 w-12 rounded-sm bg-white shadow-sm"
-              style={{ left: `calc(${pct}% - 6px)` }}
-              aria-hidden
-            />
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={step}
-              value={pct}
-              onChange={(e) => setPct(Number(e.target.value))}
-              className="absolute inset-0 size-full cursor-pointer opacity-0"
-              aria-label="Split ratio"
-            />
+          <div className="mt-8">
+            <BaseSlider min={0} max={100} step={step} value={pct} onChange={setPct} label={`Split ${pct}%`} ariaLabel="Split ratio" />
           </div>
 
           <div className="mt-8 flex gap-6">

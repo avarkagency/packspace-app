@@ -1,17 +1,17 @@
 "use client"
 
-import { useLayoutEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { GradientAvatar } from "@outpacelabs/avatars"
-import { ArrowRightLeft, ChevronLeft, Send, X } from "lucide-react"
+import { ArrowRightLeft, ChevronLeft, Send, ShieldX, TriangleAlert, X } from "lucide-react"
 
-import type { AssetObj, PersonObj, Receipt } from "@/lib/types"
-import { shortAddr, units, usd } from "@/lib/utils"
+import type { AssetObj, PersonObj } from "@/lib/types"
+import { cn, shortAddr, units, usd } from "@/lib/utils"
 
 import { BaseBtn } from "../base/BaseBtn"
 import { ObjectMark } from "../canvas/ObjectMark"
-import { HandoffWindow } from "./HandoffWindow"
-import { SendWindow } from "./SendWindow"
+import { HandoffWindow, type GiveSlot, type HandoffReceive } from "./HandoffWindow"
+import { SendWindow, type SendDeal } from "./SendWindow"
 
 // The modal a wallet drop opens — for one asset or several: a multi-select dropped onto a contact
 // cascades into this single window rather than a stack of one-asset modals. The desk behind falls out
@@ -24,22 +24,24 @@ import { SendWindow } from "./SendWindow"
 
 type Props = {
   assets: AssetObj[]
+  /** The live holdings, for the Handoff inventory rail. */
+  inventory: AssetObj[]
   to: PersonObj
   z: number
   onClose: () => void
-  onSettle: (r: Receipt) => void
-  onLog: (m: string) => void
+  onSend: (deals: SendDeal[], to: PersonObj) => void
+  onLaunch: (give: GiveSlot[], receive: HandoffReceive[], to: PersonObj) => void
 }
 
 type Step = "choose" | "send" | "handoff"
 
 const VERB: Record<Step, string> = { choose: "Transfer", send: "Send", handoff: "Trade" }
 
-/** The panel's width per step. Trade spreads out when its design lands; the height is measured from
+/** The panel's width per step. Trade spreads into the two-panel MMO layout; height is measured from
  *  whatever the step renders, so only width needs declaring. */
-const WIDTH: Record<Step, number> = { choose: 480, send: 480, handoff: 560 }
+const WIDTH: Record<Step, number> = { choose: 480, send: 480, handoff: 820 }
 
-export function TransferWindow({ assets, to, z, onClose, onSettle, onLog }: Props) {
+export function TransferWindow({ assets, inventory, to, z, onClose, onSend, onLaunch }: Props) {
   // refs
   const bodyRef = useRef<HTMLDivElement>(null)
 
@@ -47,14 +49,28 @@ export function TransferWindow({ assets, to, z, onClose, onSettle, onLog }: Prop
   const [step, setStep] = useState<Step>("choose")
   const [height, setHeight] = useState<number | null>(null)
 
-  // data
+  // data — a lone fungible token carries an editable amount; the header and confirm panel both read it,
+  // so the "Send 2,500 USDC to Mum" line updates as the amount is changed
   const lead = assets[0]
-  const what = assets.length > 1 ? `${assets.length}x assets` : `${units(lead.balance)} ${lead.symbol}`
+  const single = assets.length === 1 ? assets[0] : null
+  const editable = !!single && single.kind !== "nft"
+  const [amount, setAmount] = useState(editable ? single!.balance : 0)
+  const what = assets.length > 1 ? `${assets.length}x assets` : editable ? `${units(amount)} ${single!.symbol}` : `${units(lead.balance)} ${lead.symbol}`
+  // a compromised recipient blocks the whole flow; retired / unknown warn but let it through
+  const blocked = !!to.compromised
+  const warn = blocked ? "This address is flagged COMPROMISED. Transfers are blocked to protect you — clear the flag first if you're certain." : to.retired ? "This address is marked Retired and may no longer be monitored. Double-check before sending." : to.whitelisted === false ? "This address isn't on your whitelist. You've never transacted with it — verify who owns it first." : null
 
-  // effects — the frame animates to wrap whichever step is showing; the body is measured, never sized
-  useLayoutEffect(() => {
-    if (bodyRef.current) setHeight(bodyRef.current.offsetHeight)
-  }, [step, assets.length])
+  // effects — the frame grows/shrinks to wrap whatever the current step renders, including a body's own
+  // internal stage changes (Send's amount → confirm), so it's a live measurement, not a per-step one
+  useEffect(() => {
+    const el = bodyRef.current
+    if (!el) return
+    const measure = () => setHeight(el.offsetHeight)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [step])
 
   return (
     <div className="fixed inset-0 grid place-items-center p-24" style={{ zIndex: z }}>
@@ -95,35 +111,50 @@ export function TransferWindow({ assets, to, z, onClose, onSettle, onLog }: Prop
 
           <div className="-mx-28 mt-24 h-px bg-white/20" aria-hidden />
 
-          {/* what's on the table — every step shows the same list */}
-          <ul className="mt-28 flex flex-col gap-8">
-            {assets.map((a) => (
-              <li key={a.id} className="flex items-center justify-between gap-12">
-                <span className="flex min-w-0 items-center gap-12">
-                  <span className="inline-flex shrink-0 rounded-full ring-1 ring-white">
-                    <ObjectMark obj={a} size={24} />
+          {/* what's on the table — shown on the choose step (and multi-asset sends); a single-asset Send
+              carries its amount in the header + confirm panel, so the list would only duplicate it */}
+          {step !== "handoff" && !(step === "send" && single) && (
+            <ul className="mt-28 flex flex-col gap-8">
+              {assets.map((a) => (
+                <li key={a.id} className="flex items-center justify-between gap-12">
+                  <span className="flex min-w-0 items-center gap-12">
+                    <span className="inline-flex shrink-0 rounded-full ring-1 ring-white">
+                      <ObjectMark obj={a} size={24} />
+                    </span>
+                    <span className="tnum truncate text-14 leading-120 tracking-tight text-white">
+                      {units(a.balance)} {a.symbol}
+                    </span>
                   </span>
-                  <span className="tnum truncate text-14 leading-120 tracking-tight text-white">
-                    {units(a.balance)} {a.symbol}
-                  </span>
-                </span>
-                <span className="tnum text-14 leading-120 tracking-tight text-white">{usd(a.usd, { cents: false })}</span>
-              </li>
-            ))}
-          </ul>
+                  <span className="tnum text-14 leading-120 tracking-tight text-white">{usd(a.usd, { cents: false })}</span>
+                </li>
+              ))}
+            </ul>
+          )}
 
           {step === "choose" && (
-            <div className="mt-28 flex gap-8">
-              <BaseBtn icon={Send} className="flex-1" onClick={() => setStep("send")}>
-                Send assets
-              </BaseBtn>
-              <BaseBtn variant="secondary" icon={ArrowRightLeft} className="flex-1" onClick={() => setStep("handoff")}>
-                Trade assets
-              </BaseBtn>
-            </div>
+            <>
+              {warn && (
+                <div
+                  className={cn(
+                    "mt-24 flex items-start gap-8 rounded-md border p-12 text-12 leading-140",
+                    blocked ? "border-danger/40 bg-danger/10 text-[#ffcdbf]" : "border-warning/40 bg-warning/10 text-[#f7c86a]"
+                  )}>
+                  {blocked ? <ShieldX className="mt-px size-16 shrink-0" /> : <TriangleAlert className="mt-px size-16 shrink-0" />}
+                  <p>{warn}</p>
+                </div>
+              )}
+              <div className="mt-28 flex gap-8">
+                <BaseBtn icon={Send} className="flex-1" disabled={blocked} onClick={() => setStep("send")}>
+                  Send assets
+                </BaseBtn>
+                <BaseBtn variant="secondary" icon={ArrowRightLeft} className="flex-1" disabled={blocked} onClick={() => setStep("handoff")}>
+                  Trade assets
+                </BaseBtn>
+              </div>
+            </>
           )}
-          {step === "send" && <SendWindow assets={assets} to={to} onClose={onClose} onSettle={onSettle} onLog={onLog} />}
-          {step === "handoff" && <HandoffWindow seeds={assets} to={to} onClose={onClose} onSettle={onSettle} onLog={onLog} />}
+          {step === "send" && <SendWindow assets={assets} to={to} amount={amount} setAmount={setAmount} onClose={onClose} onSend={onSend} />}
+          {step === "handoff" && <HandoffWindow seeds={assets} inventory={inventory} to={to} onClose={onClose} onLaunch={onLaunch} />}
         </div>
       </div>
     </div>

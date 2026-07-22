@@ -47,10 +47,16 @@ function slices(assets: AssetObj[]) {
   return { total, rows: all.map((s) => ({ ...s, pct: Math.round((s.usd / total) * 100) })) }
 }
 
-export function DesktopBar({ assets }: { assets: AssetObj[] }) {
-  // state — display-only until the features land
+type DesktopBarProps = {
+  assets: AssetObj[]
+  /** The chain-tags toggle, lifted so the desktop can render the tags on its objects. */
+  chainsShown: boolean
+  onToggleChains: () => void
+}
+
+export function DesktopBar({ assets, chainsShown, onToggleChains }: DesktopBarProps) {
+  // state — the view segmented control is display-only (split view / MetaMask are out of scope)
   const [active, setActive] = useState("Openfort")
-  const [chainsShown, setChainsShown] = useState(false)
 
   // data
   const { total, rows } = slices(assets)
@@ -91,7 +97,7 @@ export function DesktopBar({ assets }: { assets: AssetObj[] }) {
           ))}
           <button
             type="button"
-            onClick={() => setChainsShown((v) => !v)}
+            onClick={onToggleChains}
             className="rounded-full w-94 py-4 text-12 leading-120 tracking-tight text-white trans-base hover:bg-white/10">
             {chainsShown ? "Hide Chains" : "Show Chains"}
           </button>

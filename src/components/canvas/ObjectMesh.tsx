@@ -10,7 +10,7 @@ import { coinView } from "@/lib/coin-store"
 import { clipPlanes, makeObjectPlanes, noClipPlanes } from "./clip-planes"
 import { COIN_HALF_THICKNESS, type CoinFinish, coinFaceGeometry, coinRimGeometry, makeCoinMaterials } from "./coin-geometry"
 import { NFT_FACE_Z, makeNftMaterials, nftCardGeometry, nftImageGeometry } from "./nft-geometry"
-import { loadObjectArt } from "./object-art"
+import { loadArt, loadObjectArt } from "./object-art"
 
 // One object in the grid. Everything about how it *behaves* — where it sits, how it turns, lifts, flies,
 // clips and fades — is identical whatever it looks like, so the shape only decides which meshes hang off
@@ -37,6 +37,8 @@ type Props = {
   shape: ObjectShape
   tint: string
   symbol: string
+  /** An explicit face image (a contact's avatar) — overrides the symbol-keyed art lookup. */
+  artSrc?: string
   /** Wallets are the black coins for now — dark face, near-black rim. */
   finish: CoinFinish
   dragging: boolean
@@ -51,7 +53,7 @@ type Props = {
   reduced: boolean
 }
 
-export function ObjectMesh({ id, shape, tint, symbol, finish, dragging, carried, anyDragging, dimmed, reduced }: Props) {
+export function ObjectMesh({ id, shape, tint, symbol, artSrc, finish, dragging, carried, anyDragging, dimmed, reduced }: Props) {
   // refs — scale wraps spin so the two compose rather than fight; slide carries the screen position
   const slideRef = useRef<THREE.Group>(null!)
   const scaleRef = useRef<THREE.Group>(null!)
@@ -87,12 +89,13 @@ export function ObjectMesh({ id, shape, tint, symbol, finish, dragging, carried,
   )
 
   // effects — real art replaces whatever the object drew for itself. A symbol with no art (the stack)
-  // simply keeps its drawn face, and a dark coin never takes art — black is the whole point of it.
+  // simply keeps its drawn face; a dark coin never takes art — black is the whole point of it — unless it
+  // was handed an explicit face (a contact's avatar).
   useEffect(() => {
-    if (finish === "dark") return
+    if (finish === "dark" && !artSrc) return
     let live = true
 
-    loadObjectArt(symbol).then((art) => {
+    ;(artSrc ? loadArt(artSrc) : loadObjectArt(symbol)).then((art) => {
       if (!live || !art) return
       // map multiplies colour, so every surface taking the art drops its tint or it would stain it
       if (shape === "nft") {
@@ -117,7 +120,7 @@ export function ObjectMesh({ id, shape, tint, symbol, finish, dragging, carried,
     return () => {
       live = false
     }
-  }, [shape, symbol, materials, finish])
+  }, [shape, symbol, artSrc, materials, finish])
 
   // frame — the DOM grid owns layout, so position comes from the measured card rect, not from 3D state.
   // The ortho camera maps 1 world unit to 1 px with the origin at the viewport centre.

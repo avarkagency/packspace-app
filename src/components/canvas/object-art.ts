@@ -63,11 +63,10 @@ function sampleBase(img: HTMLImageElement) {
   return new THREE.Color().setStyle(`rgb(${Math.round(r / 4)}, ${Math.round(g / 4)}, ${Math.round(b / 4)})`)
 }
 
-export function loadObjectArt(symbol: string): Promise<ObjectArt | null> {
-  const src = ART_IMAGE[symbol]
-  if (!src) return Promise.resolve(null)
-
-  const hit = cache.get(symbol)
+/** Load any image URL as an object face, cached by src so shared art (a token, a repeated avatar) is
+ *  fetched and decoded once. */
+export function loadArt(src: string): Promise<ObjectArt | null> {
+  const hit = cache.get(src)
   if (hit) return hit
 
   const pending = new Promise<ObjectArt | null>((resolve) => {
@@ -84,6 +83,12 @@ export function loadObjectArt(symbol: string): Promise<ObjectArt | null> {
     img.src = src
   })
 
-  cache.set(symbol, pending)
+  cache.set(src, pending)
   return pending
+}
+
+export function loadObjectArt(symbol: string): Promise<ObjectArt | null> {
+  const src = ART_IMAGE[symbol]
+  if (!src) return Promise.resolve(null)
+  return loadArt(src)
 }

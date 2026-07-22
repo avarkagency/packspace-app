@@ -3,13 +3,14 @@
 import Image from "next/image"
 import { memo, useEffect, useRef } from "react"
 
-import { Check, TriangleAlert } from "lucide-react"
+import { Check, History, ShieldX, TriangleAlert } from "lucide-react"
 
+import { chainTag } from "@/lib/chain"
 import { clearCoinHover, registerCoinSlot, setCoinCursor, setCoinHover } from "@/lib/coin-store"
 import type { DesktopObj } from "@/lib/types"
 import { cn, usd } from "@/lib/utils"
 
-import { chainImage } from "../canvas/objectVisual"
+import { chainImage, objectNameColor } from "../canvas/objectVisual"
 
 // One desktop item: the 3D object above, a small label under it — nothing else. The object itself is
 // drawn by the canvas overlay into the slot this registers; the DOM here only lays out, hit-tests and
@@ -47,9 +48,12 @@ type Props = {
   anyDragging?: boolean
   /** The label is being edited in place (wallet rename). */
   renaming?: boolean
+  /** Show the chain-family tag pill (the top bar's "Chains" toggle). */
+  showChain?: boolean
   onRename?: (name: string) => void
   onRenameCancel?: () => void
   onPointerDown?: (e: React.PointerEvent) => void
+  onDoubleClick?: () => void
   onContextMenu?: (e: React.MouseEvent) => void
 }
 
@@ -64,13 +68,32 @@ export const DesktopIcon = memo(function DesktopIcon({
   flash = false,
   anyDragging = false,
   renaming = false,
+  showChain = false,
   onRename,
   onRenameCancel,
   onPointerDown,
+  onDoubleClick,
   onContextMenu
 }: Props) {
   // refs
   const slotRef = useRef<HTMLDivElement>(null)
+
+  // data — address-lifecycle flags, only ever set on a contact
+  const person = obj.class === "person" ? obj : null
+  const retired = !!person?.retired
+  const compromised = !!person?.compromised
+  const tag = showChain ? chainTag(obj) : null
+  // the small line under the name: the holding's value for an asset; standing / lifecycle for a contact
+  const sub: { text: string; color?: string } =
+    obj.class === "asset"
+      ? { text: usd(obj.usd, { cents: false }) }
+      : compromised
+        ? { text: "Compromised", color: "#ff8a6a" }
+        : retired
+          ? { text: "Retired", color: "#f7c86a" }
+          : obj.trust === "unconfirmed"
+            ? { text: obj.whitelisted === false ? "Not in contacts" : "Unconfirmed", color: "#f7c86a" }
+            : { text: obj.address ? `${obj.address.slice(0, 6)}...` : obj.handle }
 
   // events — the cursor is seeded on enter so the hover readout can place itself before its first paint
   const onEnter = (e: React.PointerEvent) => {
@@ -102,11 +125,14 @@ export const DesktopIcon = memo(function DesktopIcon({
     <div
       data-drop={dropKey}
       onPointerDown={onPointerDown}
+      onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
       style={{ width: ICON_W, padding: ICON_PAD }}
       className={cn(
         "group relative flex cursor-grab touch-none flex-col items-center gap-8 rounded-lg trans-base select-none active:scale-97 active:cursor-grabbing",
         dimmed && "opacity-40",
+        retired && "opacity-60 grayscale",
+        compromised && "outline outline-2 outline-[#ef5a44]/70",
         target && "bg-white/10 outline-1 outline-dashed outline-white/40",
         (over || selected) && "bg-white/20 outline-1 outline-dashed outline-white"
       )}>
@@ -134,7 +160,15 @@ export const DesktopIcon = memo(function DesktopIcon({
             than under. */}
         <span className={cn("pointer-events-none absolute -right-px -bottom-px", anyDragging ? "z-[40]" : "z-[60]")}>
           {obj.class === "person" ? (
-            obj.trust === "unconfirmed" ? (
+            compromised ? (
+              <span className="grid size-14 place-items-center rounded-full border border-white bg-[#ef5a44]">
+                <ShieldX className="size-9 text-white" strokeWidth={2.5} />
+              </span>
+            ) : retired ? (
+              <span className="grid size-14 place-items-center rounded-full border border-white bg-[#f7c86a]">
+                <History className="size-9 text-black" strokeWidth={2.5} />
+              </span>
+            ) : obj.trust === "unconfirmed" ? (
               <TriangleAlert className="size-14 text-black" fill="#f1b90c" strokeWidth={1.5} />
             ) : (
               <span className="grid size-12 place-items-center rounded-full border border-white bg-[#13e192]">
@@ -152,6 +186,15 @@ export const DesktopIcon = memo(function DesktopIcon({
             />
           ) : null}
         </span>
+
+        {/* the chain-family tag pill, bottom-left of the object, when Chains is toggled on */}
+        {tag && (
+          <span
+            className="pointer-events-none absolute -bottom-2 -left-4 z-[60] rounded-4 px-3 py-px text-[7.5px] leading-none font-extrabold tracking-wide text-white"
+            style={{ background: tag.color, boxShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
+            {tag.label}
+          </span>
+        )}
       </div>
 
       <div className="flex w-full flex-col items-center gap-4">
@@ -167,21 +210,19 @@ export const DesktopIcon = memo(function DesktopIcon({
             aria-label="Rename wallet"
           />
         ) : (
-          <p className="tnum w-full truncate text-center text-12 font-medium leading-120 tracking-tight text-white trans-base">
+          <p
+            className="tnum w-full truncate text-center text-12 font-medium leading-120 tracking-tight trans-base"
+            style={{ color: over ? "#ffffff" : objectNameColor(obj) }}>
             {over ? (obj.class === "person" ? "Drop" : "Combine") : label}
           </p>
         )}
 
         {/* the second line, worn as a small pill: the holding's dollar value for an asset, the address
             for a wallet — or the warning that the address was never saved. */}
-        <span className="tnum max-w-full truncate rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">
-          {obj.class === "asset"
-            ? usd(obj.usd, { cents: false })
-            : obj.trust === "unconfirmed"
-              ? "Not in contacts"
-              : obj.address
-                ? `${obj.address.slice(0, 6)}...`
-                : obj.handle}
+        <span
+          className="tnum max-w-full truncate rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90"
+          style={sub.color ? { color: sub.color } : undefined}>
+          {sub.text}
         </span>
       </div>
     </div>

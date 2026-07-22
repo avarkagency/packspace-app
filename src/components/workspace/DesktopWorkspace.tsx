@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 
-import { ArrowDownUp, FolderPlus, Image as ImageIcon, LayoutGrid, Pencil, Scissors, Search, SquarePen, Trash2, UserPlus } from "lucide-react"
+import { ArrowDownUp, BadgeCheck, Ban, CreditCard, FolderPlus, History, Image as ImageIcon, LayoutGrid, Pencil, Scissors, Search, ShieldCheck, ShieldX, SquarePen, Trash2, UserPlus } from "lucide-react"
 
 import {
   assetDropId,
@@ -18,24 +18,35 @@ import {
   walletDropId,
   walletDropKey
 } from "@/lib/asset-ops"
+import { isProjectG, routeLine } from "@/lib/chain"
 import { coinView, registerCoinViewport, setCoinHover } from "@/lib/coin-store"
-import { ASSETS, CONNECTED_NETWORK, DUST_ASSETS, DUST_NFTS, NAV_ITEMS, PEOPLE } from "@/lib/data"
+import { APPROVAL_RADAR, ASSETS, CONNECTED_NETWORK, DUST_ASSETS, DUST_NFTS, NAV_ITEMS, PEOPLE } from "@/lib/data"
 import { endDrag, setOver, startGroupDrag, useDrag } from "@/lib/drag-store"
-import type { AssetObj, DesktopObj, PersonObj, Receipt } from "@/lib/types"
-import { cn, desktopLabel } from "@/lib/utils"
+import type { Inspectable } from "@/lib/inspect"
+import type { Approval, AssetObj, DesktopObj, PackObj, PersonObj, Receipt } from "@/lib/types"
+import { cn, desktopLabel, fakeHash, round4, units } from "@/lib/utils"
 
 import { CHROME_KEEPOUT_H, CHROME_KEEPOUT_W, DesktopBar } from "../desktop/DesktopBar"
 import { DOCK_GAP, DOCK_H, DOCK_W, DesktopDock, dropTileAt } from "../desktop/DesktopDock"
 import { DesktopFolder } from "../desktop/DesktopFolder"
 import { DesktopIcon, ICON_PAD, ICON_SLOT, ICON_W } from "../desktop/DesktopIcon"
 import { DesktopMenu, type DesktopMenuItem } from "../desktop/DesktopMenu"
+import { DesktopPack } from "../desktop/DesktopPack"
+import type { GiveSlot, HandoffReceive } from "../windows/HandoffWindow"
+import { PackBuilderWindow, type PackDraft } from "../windows/PackBuilderWindow"
+import type { SendDeal } from "../windows/SendWindow"
+import { UnpackWindow } from "../windows/UnpackWindow"
 import { useDesktopDrag } from "../desktop/useDesktopDrag"
+import { ApprovalRadarPanel } from "../panels/ApprovalRadarPanel"
+import { InspectorPanel } from "../panels/InspectorPanel"
 import { ObjectHoverInfo } from "../shell/ObjectHoverInfo"
+import { CardWindow } from "../windows/CardWindow"
 import { CombineWindow } from "../windows/CombineWindow"
 import { ContactWindow } from "../windows/ContactWindow"
 import { DeleteWindow } from "../windows/DeleteWindow"
 import { FolderWindow } from "../windows/FolderWindow"
 import { ReceiptWindow } from "../windows/ReceiptWindow"
+import { ReceiptsListWindow } from "../windows/ReceiptsListWindow"
 import { SplitWindow } from "../windows/SplitWindow"
 import { TransferWindow } from "../windows/TransferWindow"
 
@@ -172,9 +183,13 @@ export function DesktopWorkspace() {
   const assetIdc = useRef(0)
   const contactIdc = useRef(0)
   const folderIdc = useRef(0)
+  const packIdc = useRef(0)
   /** The icon wrapper nodes, for the drag to move without a render. */
   const iconNodes = useRef(new Map<string, HTMLElement>())
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** A pack press that never travelled is a click — open it rather than treat the gesture as a move. */
+  const packMovedRef = useRef(false)
 
   // state — assets divide and recombine; wallets rename, edit and delete; positions are the desk itself
   const [assets, setAssets] = useState<AssetObj[]>([...ASSETS, ...DUST_ASSETS, ...DUST_NFTS])
@@ -194,6 +209,26 @@ export function DesktopWorkspace() {
   /** The two halves of the freshest split — they flare yellow on the desk until the flash fades. */
   const [flashIds, setFlashIds] = useState<ReadonlySet<string>>(new Set())
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
+  /** Packs built with the Pack Builder — DOM tiles on the desk, like folders. */
+  const [packs, setPacks] = useState<PackObj[]>([])
+  /** The Pack Builder window, optionally seeded with a dropped asset. */
+  const [packBuilder, setPackBuilder] = useState<{ seed?: AssetObj } | null>(null)
+  /** The pack currently being unpacked. */
+  const [unpacking, setUnpacking] = useState<PackObj | null>(null)
+  /** The freshly-created pack — pulses a ring until it clears. */
+  const [pulseId, setPulseId] = useState<string | null>(null)
+  /** Standing approvals for the Approval Radar. */
+  const [approvals, setApprovals] = useState<Approval[]>(APPROVAL_RADAR)
+  /** The right-docked panel, if any — Inspector (on an object) or Approval Radar. One at a time. */
+  const [rightPanel, setRightPanel] = useState<{ kind: "inspect"; id: string } | { kind: "radar" } | null>(null)
+  /** The PackSpace Card modal — your own (contact undefined) or a saved contact's. */
+  const [card, setCard] = useState<{ contact?: PersonObj } | null>(null)
+  /** Settled receipts, newest first — the Receipts list reads these. */
+  const [receipts, setReceipts] = useState<Receipt[]>([])
+  /** The Receipts history list modal. */
+  const [receiptsOpen, setReceiptsOpen] = useState(false)
+  /** Whether the per-object chain tags are shown (the top bar's "Chains" toggle). */
+  const [chainsShown, setChainsShown] = useState(false)
 
   // drag — one object in hand, or a carried multi-selection; the store treats both as "dragging"
   const { obj: dragged, carriedIds, over } = useDrag()
@@ -217,8 +252,247 @@ export function DesktopWorkspace() {
       return [...w, { ...spec, id: `w${idc.current++}` } as WinSpec]
     })
   }, [])
-  const onSettle = useCallback((receipt: Receipt) => open({ kind: "receipt", receipt, matchKey: receipt.id }), [open])
-  const noop = useCallback(() => {}, [])
+  const onSettle = useCallback(
+    (receipt: Receipt) => {
+      setReceipts((r) => [receipt, ...r])
+      open({ kind: "receipt", receipt, matchKey: receipt.id })
+    },
+    [open]
+  )
+
+  // events — spend the given assets: deduct each fungible balance, remove NFTs sent whole, and drop
+  // anything that emptied (from the desk, its position, and any folder holding it). Shared by Send and
+  // Handoff, which differ only in what they file afterwards.
+  const consumeAssets = useCallback((deals: SendDeal[]) => {
+    const nftIds = new Set(deals.filter((d) => d.asset.kind === "nft").map((d) => d.asset.id))
+    const gone = new Set([...nftIds, ...deals.filter((d) => d.asset.kind !== "nft" && d.asset.balance - d.amount <= 0).map((d) => d.asset.id)])
+    setAssets((list) =>
+      list
+        .map((a) => {
+          const deal = deals.find((d) => d.asset.id === a.id && a.kind !== "nft")
+          if (!deal) return a
+          const bal = Math.max(0, round4(a.balance - deal.amount))
+          return { ...a, balance: bal, usd: (a.usd / a.balance) * bal }
+        })
+        .filter((a) => !gone.has(a.id))
+    )
+    if (gone.size) {
+      setPositions((pos) => {
+        if (!pos) return pos
+        const next = { ...pos }
+        for (const id of gone) delete next[id]
+        return next
+      })
+      setFolders((list) => list.map((f) => ({ ...f, contents: f.contents.filter((c) => !gone.has(c)) })))
+    }
+  }, [])
+
+  // events — a settled Send: consume the assets and file a receipt with the chain-aware Route row.
+  // One-way, no counterparty confirmation.
+  const applySend = useCallback(
+    (deals: SendDeal[], to: PersonObj) => {
+      consumeAssets(deals)
+      const give = deals.map((d) => (d.asset.kind === "nft" ? d.asset.label : `${units(d.amount)} ${d.asset.symbol}`)).join(" + ")
+      const lead = deals[0].asset
+      onSettle({
+        id: `rcpt-send-${Date.now()}`,
+        action: "Send",
+        give,
+        counterparty: to.label,
+        chain: lead.chain ?? "Base",
+        hash: fakeHash(`send-${to.id}-${give}`),
+        confirmation: "One-way transfer",
+        route: routeLine(lead, to),
+        status: "Settled",
+        at: new Date().toLocaleTimeString("en-US", { hour12: false })
+      })
+    },
+    [consumeAssets, onSettle]
+  )
+
+  // events — a settled Handoff: consume what you gave, spawn the assets you received (which land on the
+  // desk and pulse briefly like a fresh split), and file a Trade receipt noting both signatures.
+  const applyHandoff = useCallback(
+    (give: GiveSlot[], receive: HandoffReceive[], to: PersonObj) => {
+      consumeAssets(give.map((g) => ({ asset: g.asset, amount: g.amount })))
+
+      const received: AssetObj[] = receive.map((r, i) => ({
+        id: `recv-${Date.now()}-${i}`,
+        class: "asset",
+        label: r.label,
+        symbol: r.symbol,
+        kind: r.symbol === "USDC" || r.symbol === "USDT" ? "stablecoin" : "token",
+        balance: r.amount,
+        usd: r.usd,
+        chain: r.chain,
+        color: r.color,
+        derived: true
+      }))
+      if (received.length) {
+        setAssets((list) => [...list, ...received])
+        setPositions((pos) => {
+          if (!pos) return pos
+          const next = { ...pos }
+          received.forEach((a, i) => {
+            next[a.id] = nearestFreeSpot({ x: window.innerWidth / 2 - ICON_W / 2 + i * 40, y: window.innerHeight / 2 }, next, a.id)
+          })
+          return next
+        })
+        const flash = new Set(received.map((a) => a.id))
+        setFlashIds(flash)
+        if (flashTimer.current) clearTimeout(flashTimer.current)
+        flashTimer.current = setTimeout(() => setFlashIds(new Set()), 2100)
+      }
+
+      const giveText = give.map((g) => (g.asset.kind === "nft" ? g.asset.label : `${units(g.amount)} ${g.asset.symbol}`)).join(" + ") || "Nothing"
+      const receiveText = receive.map((r) => `${units(r.amount)} ${r.symbol}`).join(" + ")
+      const chain = give[0]?.asset.chain ?? "Base"
+      onSettle({
+        id: `rcpt-trade-${Date.now()}`,
+        action: "Trade",
+        give: giveText,
+        receive: receiveText || undefined,
+        counterparty: to.label,
+        chain,
+        hash: fakeHash(`handoff-${to.id}-${giveText}-${receiveText}`),
+        confirmation: "Both parties",
+        route: isProjectG(to) ? "Atomic · multichain (Project G)" : `Atomic on ${chain}`,
+        status: "Settled",
+        at: new Date().toLocaleTimeString("en-US", { hour12: false })
+      })
+    },
+    [consumeAssets, onSettle]
+  )
+
+  // events — Pack Builder. Create consumes the chosen contents and spawns a sealed pack that pulses
+  // where it lands. Unpack releases the contents back onto the desk — fungibles merge into any matching
+  // holding, everything else lands as a fresh object. A pack press that never travels opens it; a
+  // travelling one repositions it.
+  const createPack = (draft: PackDraft) => {
+    const deals = draft.contents
+      .map((c) => {
+        const asset = assets.find((a) => a.id === c.refId)
+        return asset ? { asset, amount: c.amount } : null
+      })
+      .filter((d): d is SendDeal => !!d)
+    consumeAssets(deals)
+
+    const id = `pack-${packIdc.current++}`
+    const count = draft.contents.length
+    const locked = draft.lock !== "None"
+    const pack: PackObj = {
+      id,
+      class: "pack",
+      label: draft.name,
+      packClass: "product",
+      packType: draft.packType,
+      standard: draft.standard,
+      packGlyph: locked ? "🔒" : "★",
+      meta: `${count} item${count === 1 ? "" : "s"}`,
+      contents: `${count} item${count === 1 ? "" : "s"}`,
+      sealed: true,
+      locked,
+      lockKind: draft.lock,
+      password: draft.password,
+      items: draft.contents,
+      usd: draft.contents.reduce((t, c) => t + c.usd, 0),
+      color: draft.color,
+      chain: "Base"
+    }
+    setPacks((list) => [...list, pack])
+    setPositions((pos) => {
+      if (!pos) return pos
+      const p = clampPos(window.innerWidth / 2 - ICON_W / 2, window.innerHeight / 2 - 120)
+      return { ...pos, [id]: nearestFreeSpot(p, pos, id) }
+    })
+    setPulseId(id)
+    if (pulseTimer.current) clearTimeout(pulseTimer.current)
+    pulseTimer.current = setTimeout(() => setPulseId((cur) => (cur === id ? null : cur)), 2400)
+  }
+
+  const unpackPack = (pack: PackObj) => {
+    const items = pack.items ?? []
+    const chosen = pack.packType === "Randomized" && items.length ? [items[Math.floor(Math.random() * items.length)]] : items
+    const base = positions?.[pack.id] ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+
+    const merges = new Map<string, { balance: number; usd: number }>()
+    const fresh: AssetObj[] = []
+    chosen.forEach((c, i) => {
+      if (c.kind === "asset") {
+        const match = assets.find((a) => a.kind !== "nft" && a.symbol === c.symbol && a.chain === c.chain)
+        if (match) {
+          const m = merges.get(match.id) ?? { balance: 0, usd: 0 }
+          merges.set(match.id, { balance: m.balance + c.amount, usd: m.usd + c.usd })
+          return
+        }
+      }
+      fresh.push({
+        id: `unpack-${Date.now()}-${i}`,
+        class: "asset",
+        label: c.label,
+        symbol: c.symbol,
+        kind: c.kind === "nft" ? "nft" : c.symbol === "USDC" || c.symbol === "USDT" ? "stablecoin" : "token",
+        balance: c.amount,
+        usd: c.usd,
+        chain: c.chain,
+        color: c.color,
+        derived: true
+      })
+    })
+
+    setAssets((list) => [
+      ...list.map((a) => {
+        const m = merges.get(a.id)
+        return m ? { ...a, balance: round4(a.balance + m.balance), usd: a.usd + m.usd } : a
+      }),
+      ...fresh
+    ])
+    setPacks((list) => list.filter((p) => p.id !== pack.id))
+    setPositions((pos) => {
+      if (!pos) return pos
+      const { [pack.id]: gone, ...rest } = pos
+      void gone
+      fresh.forEach((a, i) => {
+        rest[a.id] = nearestFreeSpot(clampPos(base.x + 30 + i * 28, base.y + i * 18), rest, a.id)
+      })
+      return rest
+    })
+    if (fresh.length) {
+      setFlashIds(new Set(fresh.map((a) => a.id)))
+      if (flashTimer.current) clearTimeout(flashTimer.current)
+      flashTimer.current = setTimeout(() => setFlashIds(new Set()), 2100)
+    }
+  }
+
+  const startPackDrag = (pack: PackObj) => (e: React.PointerEvent) => {
+    if (e.button !== 0 || !positions) return
+    const origin = positions[pack.id]
+    if (!origin) return
+    const sx = e.clientX
+    const sy = e.clientY
+    packMovedRef.current = false
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - sx
+      const dy = ev.clientY - sy
+      if (!packMovedRef.current && Math.hypot(dx, dy) < 6) return
+      packMovedRef.current = true
+      const el = iconNodes.current.get(pack.id)
+      if (el) {
+        el.style.left = `${origin.x + dx}px`
+        el.style.top = `${origin.y + dy}px`
+      }
+    }
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", onUp)
+      // a press that never travelled is a click, not a move — opening is the double-click's job
+      if (!packMovedRef.current) return
+      const p = clampPos(origin.x + ev.clientX - sx, origin.y + ev.clientY - sy)
+      setPositions((pos) => (pos ? { ...pos, [pack.id]: nearestFreeSpot(p, pos, pack.id) } : pos))
+    }
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+  }
 
   // events — placement. Letting go IS the placement gesture; (x, y) is the cursor, which carried the
   // coin's centre, so the icon lands with its slot centred there (pushed aside if something's already
@@ -346,9 +620,14 @@ export function DesktopWorkspace() {
     }
     // beyond folders, a wallet drag recognises no zones (deleting lives in its menu) — it only lands
     if (obj.class === "person") return
-    // a dock app took the drop. The interaction itself arrives with the dock features; today the drop
-    // lands cleanly and the icon has already stepped back off the shelf (the placement clamp above).
-    if (navDropId(dropKey)) return
+    // a dock app took the drop — the Pack Builder tile opens seeded with the dropped asset; the icon has
+    // already stepped back off the shelf (the placement clamp above)
+    const navId = navDropId(dropKey)
+    if (navId) {
+      if (navId === "nav-builder" && obj.class === "asset") setPackBuilder({ seed: obj })
+      else if (navId === "nav-inspector") openInspector(obj.id)
+      return
+    }
     const walletId = walletDropId(dropKey)
     if (walletId) {
       const to = contacts.find((c) => c.id === walletId)
@@ -715,15 +994,126 @@ export function DesktopWorkspace() {
     })
   }
 
-  // events — right-click. Icons take their own menu; the desk itself takes housekeeping. An NFT has
-  // nothing to split, so it gets nothing (the browser menu is suppressed either way — this is a
-  // desktop, not a document).
+  // events — Inspector & Approval Radar. Verifying / confirming / whitelisting are simple state flips;
+  // revoking removes the approval and its linked scam token from the desk.
+  const inspectableById = (id: string): Inspectable | null =>
+    assets.find((a) => a.id === id) ?? contacts.find((c) => c.id === id) ?? packs.find((p) => p.id === id) ?? null
+
+  const openInspector = (id?: string) => {
+    const target = id ?? assets[0]?.id
+    if (target) setRightPanel({ kind: "inspect", id: target })
+  }
+  const openRadar = () => setRightPanel({ kind: "radar" })
+
+  const removeAssetObject = (id: string) => {
+    setAssets((list) => list.filter((a) => a.id !== id))
+    setPositions((pos) => {
+      if (!pos) return pos
+      const { [id]: gone, ...rest } = pos
+      void gone
+      return rest
+    })
+    setFolders((list) => list.map((f) => ({ ...f, contents: f.contents.filter((c) => c !== id) })))
+  }
+  const revokeApprovalEntry = (apId: string) => {
+    const ap = approvals.find((a) => a.id === apId)
+    setApprovals((list) => list.filter((a) => a.id !== apId))
+    if (ap?.assetId) removeAssetObject(ap.assetId)
+  }
+  const revokeToken = (assetId: string) => {
+    removeAssetObject(assetId)
+    setApprovals((list) => list.filter((a) => a.assetId !== assetId))
+  }
+  const verifyAsset = (id: string) => setAssets((list) => list.map((a) => (a.id === id ? { ...a, verified: true } : a)))
+  const confirmContact = (id: string) => setContacts((list) => list.map((c) => (c.id === id ? { ...c, trust: "confirmed" } : c)))
+  const whitelistAddress = (id: string) => setContacts((list) => list.map((c) => (c.id === id ? { ...c, whitelisted: true } : c)))
+
+  // events — address lifecycle. Retired warns before a send; compromised blocks it. Clearing restores
+  // Active. The two flags are mutually exclusive.
+  const markRetired = (id: string) => setContacts((list) => list.map((c) => (c.id === id ? { ...c, retired: true, compromised: false } : c)))
+  const markCompromised = (id: string) => setContacts((list) => list.map((c) => (c.id === id ? { ...c, compromised: true, retired: false } : c)))
+  const clearFlags = (id: string) => setContacts((list) => list.map((c) => (c.id === id ? { ...c, retired: false, compromised: false } : c)))
+
+  // events — reset the demo to its pristine layout, balances, contacts, packs, approvals and receipts.
+  const resetDemo = () => {
+    const startAssets = [...ASSETS, ...DUST_ASSETS, ...DUST_NFTS]
+    const filed = new Set(INITIAL_FOLDERS.flatMap((f) => f.contents))
+    setAssets(startAssets)
+    setContacts(PEOPLE)
+    setFolders(INITIAL_FOLDERS)
+    setPacks([])
+    setApprovals(APPROVAL_RADAR)
+    setReceipts([])
+    setWins([])
+    setFolderWins([])
+    setRightPanel(null)
+    setCard(null)
+    setPackBuilder(null)
+    setUnpacking(null)
+    setReceiptsOpen(false)
+    setPulseId(null)
+    setSelectedIds(new Set())
+    setPositions(defaultPositions(startAssets.filter((a) => !filed.has(a.id)), PEOPLE, INITIAL_FOLDERS.map((f) => f.id), window.innerWidth))
+  }
+
+  const onInspectAction = (kind: string) => {
+    if (rightPanel?.kind !== "inspect") return
+    const obj = inspectableById(rightPanel.id)
+    if (!obj) return
+    if (kind === "split" && obj.class === "asset") return startSplit(obj)
+    if (kind === "add-to-pack" && obj.class === "asset") {
+      setPackBuilder({ seed: obj })
+      return setRightPanel(null)
+    }
+    if (kind === "revoke") {
+      revokeToken(obj.id)
+      return setRightPanel(null)
+    }
+    if (kind === "verify") return verifyAsset(obj.id)
+    if (kind === "unpack" && obj.class === "pack") {
+      setUnpacking(obj)
+      return setRightPanel(null)
+    }
+    if (kind === "whitelist") return whitelistAddress(obj.id)
+    if (kind === "confirm") return confirmContact(obj.id)
+  }
+
+  // events — PackSpace Card. Open your own or a contact's; importing a pasted link / @handle / 0x
+  // address mints an unconfirmed contact on the desk (a confirmation ping, in fiction).
+  const openCard = (contact?: PersonObj) => setCard({ contact })
+  const importContact = (text: string) => {
+    const t = text.trim()
+    if (!t) return
+    const isAddr = /^0x/i.test(t)
+    const isHandle = t.startsWith("@")
+    const contact: PersonObj = {
+      id: `p-import-${contactIdc.current++}`,
+      class: "person",
+      label: isHandle ? t : isAddr ? "Imported contact" : t,
+      handle: "unconfirmed",
+      trust: "unconfirmed",
+      hue: Math.floor(Math.random() * 360),
+      chain: CONNECTED_NETWORK,
+      platform: "external",
+      whitelisted: true,
+      address: isAddr ? (t.length > 12 ? `${t.slice(0, 6)}…${t.slice(-3)}` : t) : undefined
+    }
+    setContacts((list) => [...list, contact])
+    setPositions((pos) => {
+      if (!pos) return pos
+      const p = clampPos(window.innerWidth / 2 - ICON_W / 2, window.innerHeight / 2)
+      return { ...pos, [contact.id]: nearestFreeSpot(p, pos, contact.id) }
+    })
+  }
+
+  // events — right-click. Icons take their own menu; the desk itself takes housekeeping. Every object
+  // gets a menu now (an NFT can't split but can be inspected); the browser menu is suppressed either
+  // way — this is a desktop, not a document.
   const onIconMenu = (obj: DesktopObj) => (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation() // the desk's own menu listens underneath
     setDeskMenu(null)
     setFolderMenu(null)
-    if (obj.class === "asset" && !isSplittable(obj)) return
     setMenu({ x: e.clientX, y: e.clientY, obj })
   }
   const onFolderMenu = (id: string) => (e: React.MouseEvent) => {
@@ -740,19 +1130,34 @@ export function DesktopWorkspace() {
     setDeskMenu({ x: e.clientX, y: e.clientY })
   }
 
-  const menuItems = (obj: DesktopObj): DesktopMenuItem[] =>
-    obj.class === "asset"
-      ? [
-          { label: "Split asset", icon: Scissors, onSelect: () => startSplit(obj) },
-          // design-only for now — the inspector arrives with the dock features
-          { label: "Inspect asset", icon: Search, onSelect: () => {} }
-        ]
-      : [
-          { label: "Rename", icon: Pencil, onSelect: () => setRenamingId(obj.id) },
-          { label: "Edit", icon: SquarePen, onSelect: () => open({ kind: "contact", contact: obj, matchKey: `contact-${obj.id}` }) },
-          // same confirm as the trash — permanent is permanent, whichever gesture asked
-          { label: "Delete", icon: Trash2, danger: true, onSelect: () => open({ kind: "delete-contact", contact: obj, matchKey: `delete-${obj.id}` }) }
-        ]
+  const menuItems = (obj: DesktopObj): DesktopMenuItem[] => {
+    if (obj.class === "asset") {
+      const items: DesktopMenuItem[] = []
+      // a fresh scam token can't be split, but every asset can be inspected, revoked or verified
+      if (isSplittable(obj) && obj.verified !== false) items.push({ label: "Split asset", icon: Scissors, onSelect: () => startSplit(obj) })
+      items.push({ label: "Inspect with AI", icon: Search, onSelect: () => openInspector(obj.id) })
+      if (obj.approval) items.push({ label: "Revoke approval", icon: Ban, danger: true, onSelect: () => revokeToken(obj.id) })
+      if (obj.verified === false) items.push({ label: "Add to verified list", icon: ShieldCheck, onSelect: () => verifyAsset(obj.id) })
+      return items
+    }
+    const unknown = obj.whitelisted === false
+    const flagged = !!obj.retired || !!obj.compromised
+    const items: DesktopMenuItem[] = []
+    if (unknown) items.push({ label: "Add to address book", icon: UserPlus, onSelect: () => whitelistAddress(obj.id) })
+    items.push({ label: "Inspect with AI", icon: Search, onSelect: () => openInspector(obj.id) })
+    items.push({ label: "View PackSpace Card", icon: CreditCard, onSelect: () => openCard(obj) })
+    if (!unknown) {
+      items.push({ label: "Rename", icon: Pencil, separator: true, onSelect: () => setRenamingId(obj.id) })
+      items.push({ label: "Edit", icon: SquarePen, onSelect: () => open({ kind: "contact", contact: obj, matchKey: `contact-${obj.id}` }) })
+      if (!flagged && obj.trust === "unconfirmed") items.push({ label: "Confirm contact", icon: BadgeCheck, separator: true, onSelect: () => confirmContact(obj.id) })
+      if (flagged) items.push({ label: "Clear flag · set Active", icon: BadgeCheck, separator: true, onSelect: () => clearFlags(obj.id) })
+      if (!obj.retired) items.push({ label: "Mark as Retired", icon: History, onSelect: () => markRetired(obj.id) })
+      if (!obj.compromised) items.push({ label: "Mark as Compromised", icon: ShieldX, danger: true, onSelect: () => markCompromised(obj.id) })
+    }
+    // same confirm as the trash — permanent is permanent, whichever gesture asked
+    items.push({ label: "Delete", icon: Trash2, danger: true, separator: true, onSelect: () => open({ kind: "delete-contact", contact: obj, matchKey: `delete-${obj.id}` }) })
+    return items
+  }
 
   // no confirm on folder delete: nothing is destroyed — the contents just spill back onto the desk
   const folderMenuItems = (id: string): DesktopMenuItem[] => [
@@ -820,10 +1225,11 @@ export function DesktopWorkspace() {
     return () => window.removeEventListener("resize", onResize)
   }, [])
 
-  // effects — the split-flash timer must not fire into an unmounted tree
+  // effects — the split-flash and pack-pulse timers must not fire into an unmounted tree
   useEffect(() => {
     return () => {
       if (flashTimer.current) clearTimeout(flashTimer.current)
+      if (pulseTimer.current) clearTimeout(pulseTimer.current)
     }
   }, [])
 
@@ -855,7 +1261,7 @@ export function DesktopWorkspace() {
           still sitting under every icon, coin and badge */}
       <div aria-hidden className="fixed inset-0" style={{ background: wallpaper.css }} />
 
-      <DesktopBar assets={assets} />
+      <DesktopBar assets={assets} chainsShown={chainsShown} onToggleChains={() => setChainsShown((v) => !v)} />
 
       {/* icon positions are viewport coordinates, so this layer must be the viewport — offsetting it
           (say, below the bar) would land every drop that offset away from the cursor. The clamp is what
@@ -888,7 +1294,9 @@ export function DesktopWorkspace() {
                   selected={menu?.obj.id === a.id || selectedIds.has(a.id)}
                   flash={flashIds.has(a.id)}
                   anyDragging={anyDragging}
+                  showChain={chainsShown}
                   onPointerDown={onIconPointerDown(a)}
+                  onDoubleClick={() => openInspector(a.id)}
                   onContextMenu={onIconMenu(a)}
                 />
               </div>
@@ -916,6 +1324,7 @@ export function DesktopWorkspace() {
                   over={(!!draggedAsset || carriedHasAsset) && over === walletDropKey(c.id)}
                   selected={menu?.obj.id === c.id || selectedIds.has(c.id)}
                   anyDragging={anyDragging}
+                  showChain={chainsShown}
                   renaming={renamingId === c.id}
                   onRename={(name) => renameContact(c.id, name)}
                   onRenameCancel={() => setRenamingId(null)}
@@ -959,6 +1368,32 @@ export function DesktopWorkspace() {
             )
           })}
 
+        {/* the packs — DOM tiles like folders. Click to unpack, drag to move; a fresh one pulses. */}
+        {positions &&
+          packs.map((pack) => {
+            const p = positions[pack.id]
+            if (!p) return null
+            return (
+              <div
+                key={pack.id}
+                ref={(el) => {
+                  if (el) iconNodes.current.set(pack.id, el)
+                  else iconNodes.current.delete(pack.id)
+                }}
+                className="absolute"
+                style={{ left: p.x, top: p.y }}>
+                <DesktopPack
+                  pack={pack}
+                  pulse={pulseId === pack.id}
+                  showChain={chainsShown}
+                  onPointerDown={startPackDrag(pack)}
+                  onDoubleClick={() => setUnpacking(pack)}
+                  onContextMenu={(e) => e.preventDefault()}
+                />
+              </div>
+            )
+          })}
+
         {/* the marquee — drawn while a selection is being dragged out on the desk itself */}
         {marquee && (
           <div
@@ -975,7 +1410,17 @@ export function DesktopWorkspace() {
       </div>
 
       {/* the dock — the DOM shelf; its icons are drawn by the scene below */}
-      <DesktopDock carriedAsset={carriedHasAsset} />
+      <DesktopDock
+        carriedAsset={carriedHasAsset}
+        onOpen={(id) => {
+          if (id === "nav-builder") setPackBuilder({})
+          else if (id === "nav-inspector") openInspector()
+          else if (id === "nav-approvals") openRadar()
+          else if (id === "nav-cards") openCard()
+          else if (id === "nav-receipts") setReceiptsOpen(true)
+          else if (id === "nav-reset") resetDemo()
+        }}
+      />
 
       {/* the 3D objects — draws into the slots the icons above registered */}
       <ObjectScene items={deskItems} nav={NAV_ITEMS} />
@@ -1010,7 +1455,18 @@ export function DesktopWorkspace() {
       {wins.map((w, i) => {
         const z = 200 + i
         if (w.kind === "transfer")
-          return <TransferWindow key={w.id} assets={w.assets} to={w.to} z={z} onClose={() => close(w.id)} onSettle={onSettle} onLog={noop} />
+          return (
+            <TransferWindow
+              key={w.id}
+              assets={w.assets}
+              inventory={assets}
+              to={w.to}
+              z={z}
+              onClose={() => close(w.id)}
+              onSend={applySend}
+              onLaunch={applyHandoff}
+            />
+          )
         if (w.kind === "split") return <SplitWindow key={w.id} asset={w.asset} z={z} onClose={() => close(w.id)} onSplit={(p) => splitAsset(w.asset, p)} />
         if (w.kind === "combine")
           return <CombineWindow key={w.id} a={w.a} b={w.b} z={z} onClose={() => close(w.id)} onCombine={() => combineAssets(w.a, w.b)} />
@@ -1022,6 +1478,26 @@ export function DesktopWorkspace() {
           return <DeleteWindow key={w.id} contact={w.contact} z={z} onClose={() => close(w.id)} onConfirm={() => deleteContact(w.contact.id)} />
         return <ReceiptWindow key={w.id} receipt={w.receipt} z={z} onClose={() => close(w.id)} />
       })}
+
+      {/* Pack Builder + Unpack — full-screen glass modals over the desk */}
+      {packBuilder && (
+        <PackBuilderWindow inventory={assets} seed={packBuilder.seed} onClose={() => setPackBuilder(null)} onCreate={createPack} />
+      )}
+      {unpacking && <UnpackWindow pack={unpacking} onClose={() => setUnpacking(null)} onUnpack={unpackPack} />}
+      {card && <CardWindow contact={card.contact} onImport={importContact} onClose={() => setCard(null)} />}
+      {receiptsOpen && (
+        <ReceiptsListWindow
+          receipts={receipts}
+          onOpen={(r) => open({ kind: "receipt", receipt: r, matchKey: r.id })}
+          onClose={() => setReceiptsOpen(false)}
+        />
+      )}
+
+      {/* right-docked panels — Inspector on an object, or the Approval Radar */}
+      {rightPanel?.kind === "radar" && <ApprovalRadarPanel approvals={approvals} onRevoke={revokeApprovalEntry} onClose={() => setRightPanel(null)} />}
+      {rightPanel?.kind === "inspect" && inspectableById(rightPanel.id) && (
+        <InspectorPanel obj={inspectableById(rightPanel.id)!} onAction={onInspectAction} onClose={() => setRightPanel(null)} />
+      )}
 
       {/* the right-click menus — an icon's own, or the desk's housekeeping */}
       {menu && <DesktopMenu x={menu.x} y={menu.y} items={menuItems(menu.obj)} onClose={() => setMenu(null)} />}

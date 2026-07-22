@@ -31,10 +31,23 @@ const CHAIN_IMAGE: Record<Chain, string> = {
   Base: "/images/chains/base.jpg",
   Ethereum: "/images/chains/ethereum.jpg",
   Solana: "/images/chains/solana.jpg",
-  BNB: "/images/chains/bnb.jpg"
+  BNB: "/images/chains/bnb.jpg",
+  // no Bitcoin assets in the seed set yet — mark carries no art, only satisfies the exhaustive map
+  Bitcoin: "/images/chains/bitcoin.jpg"
 }
 
 export const chainImage = (chain: Chain) => CHAIN_IMAGE[chain]
+
+/** Contact avatar art, keyed by contact id. Anyone without shipped art (the bare 0x… addresses, imported
+ *  contacts) falls back to a default face rather than a broken image. */
+const CONTACT_IMAGE: Record<string, string> = {
+  "p-mum": "/images/contacts/mum.jpg",
+  "p-john": "/images/contacts/john.jpg",
+  "p-binance": "/images/contacts/binance.jpg",
+  "p-uniswap": "/images/contacts/uniswap.jpg"
+}
+
+export const contactImage = (id: string) => CONTACT_IMAGE[id] ?? "/images/contacts/default.jpg"
 
 const APP_ICON: Record<string, LucideIcon> = {
   gacha: Ticket,
@@ -88,6 +101,29 @@ export function objectTint(obj: CanvasObj): string {
   if ("color" in obj && obj.color) return obj.color
   if (obj.class === "person") return `hsl(${obj.hue} 80% 62%)`
   return "#22d3ee"
+}
+
+/** The object's name-text colour, colour-coded by class so a glance separates a token from a contact
+ *  from a pack. Unverified tokens and unknown addresses override to amber — the same signal the coin's
+ *  dashed outline and warning badge carry. Matches the prototype's `nameColor`/`COL` map. */
+const NAME_COLOR: Record<string, string> = {
+  asset: "#ffffff",
+  nft: "#f3c6ec",
+  contact: "#9fd0ff",
+  app: "#d6c3ff",
+  pack: "#ffd7a3",
+  vault: "#cbd6e6",
+  campaign: "#b6efc4"
+}
+const AMBER = "#f7c86a"
+
+export function objectNameColor(obj: CanvasObj): string {
+  if (obj.class === "asset") {
+    if (obj.verified === false) return AMBER
+    return obj.kind === "nft" ? NAME_COLOR.nft : NAME_COLOR.asset
+  }
+  if (obj.class === "person") return obj.whitelisted === false ? AMBER : NAME_COLOR.contact
+  return NAME_COLOR[obj.class] ?? "#ffffff"
 }
 
 /** The class label shown as the object's category tag. */

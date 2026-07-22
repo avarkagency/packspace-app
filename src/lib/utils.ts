@@ -32,6 +32,11 @@ export function compact(n: number) {
   return Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n)
 }
 
+/** Balances carry at most four decimals — enough for the smallest holdings, no floating-point dust. */
+export function round4(n: number) {
+  return Math.round(n * 1e4) / 1e4
+}
+
 /** A token quantity — trims trailing zeros, keeps precision for small balances. */
 export function units(n: number) {
   return n.toLocaleString("en-US", { maximumFractionDigits: 4 })

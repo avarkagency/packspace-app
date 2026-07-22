@@ -40,7 +40,7 @@ export function dropTileAt(x: number, y: number): NavItem | undefined {
   })
 }
 
-export function DesktopDock({ carriedAsset = false }: { carriedAsset?: boolean }) {
+export function DesktopDock({ carriedAsset = false, onOpen }: { carriedAsset?: boolean; onOpen?: (id: string) => void }) {
   // drag — the leading tiles light up as targets while an asset is in hand, alone or in a carried set
   const { obj: dragged, carriedIds, over } = useDrag()
   const draggedAsset = dragged?.class === "asset" ? dragged : null
@@ -58,6 +58,7 @@ export function DesktopDock({ carriedAsset = false }: { carriedAsset?: boolean }
             target={armed}
             over={armed && over === navDropKey(item.id)}
             dragging={!!dragged || !!carriedIds}
+            onOpen={onOpen}
           />
         )
       })}
@@ -75,9 +76,10 @@ type TileProps = {
   over?: boolean
   /** Some object is in hand — the tooltip stands down; the drag label speaks for the cursor. */
   dragging?: boolean
+  onOpen?: (id: string) => void
 }
 
-function DockTile({ item, dropKey, target = false, over = false, dragging = false }: TileProps) {
+function DockTile({ item, dropKey, target = false, over = false, dragging = false, onOpen }: TileProps) {
   // refs
   const slotRef = useRef<HTMLDivElement>(null)
 
@@ -95,6 +97,7 @@ function DockTile({ item, dropKey, target = false, over = false, dragging = fals
       type="button"
       aria-label={item.label}
       data-drop={dropKey}
+      onClick={() => onOpen?.(item.id)}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
       className={cn(

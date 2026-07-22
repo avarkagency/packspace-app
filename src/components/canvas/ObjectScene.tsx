@@ -15,7 +15,7 @@ import type { DesktopObj, NavItem } from "@/lib/types"
 import { NavIconMesh } from "./NavIconMesh"
 import { ObjectMesh, type ObjectShape } from "./ObjectMesh"
 import { clipPlanes } from "./clip-planes"
-import { objectTint } from "./objectVisual"
+import { contactImage, objectTint } from "./objectVisual"
 
 // The 3D layer over the desktop. Deliberately thin: the DOM keeps layout, hit-testing and the labels,
 // and this only draws an object into the box each desktop icon reserves. That keeps the existing
@@ -124,7 +124,9 @@ export function ObjectScene({ items, nav = [] }: { items: DesktopObj[]; nav?: Na
             shape={objectShape(obj)}
             tint={obj.class === "person" ? WALLET_TINT : objectTint(obj)}
             symbol={coinSymbol(obj)}
-            finish={obj.class === "person" ? "dark" : "light"}
+            // contacts wear their avatar on the coin face; everything else keeps its symbol-keyed art
+            artSrc={obj.class === "person" ? contactImage(obj.id) : undefined}
+            finish="light"
             dragging={dragged?.id === obj.id}
             carried={!!carriedIds?.has(obj.id)}
             anyDragging={anyDragging}

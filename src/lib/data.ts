@@ -1,4 +1,4 @@
-import type { AppObj, ApprovalObj, AssetObj, CampaignObj, Chain, NavItem, PackObj, PersonObj, VaultObj } from "./types"
+import type { AppObj, Approval, ApprovalObj, AssetObj, CampaignObj, Chain, NavItem, PackObj, PersonObj, VaultObj } from "./types"
 
 // Dummy data only — no backend, no chain (spec: "full fake product"). Values are illustrative.
 
@@ -24,6 +24,14 @@ export const BALANCE_DELTA = { usd: -2.73, pct: -0.26 }
 /** You. The address is held in full rather than pre-truncated, because it seeds your avatar as well as
  *  being displayed — the same rule every contact follows. */
 export const WALLET = { label: "You", address: "0x7Afd3C81b9E24f05a6D7c8B1e0F9a2D3c4B5e63D" }
+
+/** Your own PackSpace Card identity — a Project G multichain wallet. */
+export const ME = {
+  name: "You",
+  handle: "@you.pack",
+  address: WALLET.address,
+  chains: ["Base", "Ethereum", "Solana", "Bitcoin"] as Chain[]
+}
 
 /** The session's network, shown in the top bar. A fixture — nothing here actually connects. */
 export const CONNECTED_NETWORK: Chain = "Base"
@@ -145,6 +153,22 @@ export const ASSETS: AssetObj[] = [
     chain: "Ethereum",
     color: C.bayc,
     address: "0xBC4C…8817"
+  },
+  // an unsolicited scam airdrop: unverified, holding an unlimited approval to an unverified contract —
+  // it wears the amber treatment, the Inspector warns on it, and the Approval Radar links to it
+  {
+    id: "a-reward",
+    class: "asset",
+    label: "$REWARD",
+    symbol: "REWARD",
+    kind: "token",
+    balance: 5000,
+    usd: 0,
+    chain: "Base",
+    color: "#71717a",
+    verified: false,
+    approval: { spender: "claim-rewards.io", unlimited: true, verified: false },
+    address: "0x00c0ffee…5ca3"
   }
 ]
 
@@ -159,6 +183,9 @@ export const PEOPLE: PersonObj[] = [
     trust: "mutual",
     hue: 152,
     chain: "Base",
+    platform: "g",
+    online: true,
+    whitelisted: true,
     address: "0x43A6f2C81b9E24f05a6D7c8B1e0F9a2D3c4B5e10"
   },
   {
@@ -169,6 +196,8 @@ export const PEOPLE: PersonObj[] = [
     trust: "verified",
     hue: 32,
     chain: "Ethereum",
+    platform: "external",
+    whitelisted: true,
     address: "0xe02C4b1A7c0D5e6F8a3B2c1D0e9F8a7b6C5d4Aa1"
   },
   {
@@ -179,6 +208,8 @@ export const PEOPLE: PersonObj[] = [
     trust: "unconfirmed",
     hue: 210,
     chain: "Base",
+    platform: "external",
+    whitelisted: false,
     address: "0x4F47b2C81b9E24f05a6D7c8B1e0F9a2D3c4B5c77"
   },
   {
@@ -189,6 +220,8 @@ export const PEOPLE: PersonObj[] = [
     trust: "unconfirmed",
     hue: 260,
     chain: "Ethereum",
+    platform: "external",
+    whitelisted: false,
     address: "0x98a3f2C81b9E24f05a6D7c8B1e0F9a2D3c4B5b19"
   },
   {
@@ -199,6 +232,9 @@ export const PEOPLE: PersonObj[] = [
     trust: "confirmed",
     hue: 44,
     chain: "BNB",
+    platform: "external",
+    online: true,
+    whitelisted: true,
     address: "0xfb39a2C81b9E24f05a6D7c8B1e0F9a2D3c4B5d02"
   },
   {
@@ -209,6 +245,8 @@ export const PEOPLE: PersonObj[] = [
     trust: "verified",
     hue: 320,
     chain: "Ethereum",
+    platform: "external",
+    whitelisted: true,
     address: "0x9179a2C81b9E24f05a6D7c8B1e0F9a2D3c4B448d"
   }
 ]
@@ -408,6 +446,15 @@ export const CAMPAIGNS: CampaignObj[] = [
 export const APPROVALS: ApprovalObj[] = [
   { id: "ap-market", class: "approval", label: "PackMarket", app: "PackMarket", scope: "Broad", color: "#f59e0b" },
   { id: "ap-unknown", class: "approval", label: "Unknown Contract", app: "0x00…risk", scope: "Critical", color: "#f43f5e" }
+]
+
+/** The standing approvals the Approval Radar shows. The scam entry links to the $REWARD token on the
+ *  desk — revoking it removes both the approval and the token. */
+export const APPROVAL_RADAR: Approval[] = [
+  { id: "ap-uni", spender: "Uniswap", verified: true, assetName: "USD Coin", symbol: "USDC", glyph: "$", color: "#2775ca", unlimited: true, chain: "Base", wallet: "Openfort", risk: "watch" },
+  { id: "ap-aave", spender: "Aave", verified: true, assetName: "Ethereum", symbol: "ETH", glyph: "Ξ", color: "#627eeb", unlimited: false, allowance: "2.0", chain: "Ethereum", wallet: "Openfort", risk: "ok" },
+  { id: "ap-scam", spender: "claim-rewards.io", verified: false, assetName: "$REWARD", symbol: "REWARD", glyph: "!", color: "#71717a", unlimited: true, chain: "Base", wallet: "Openfort", risk: "danger", assetId: "a-reward" },
+  { id: "ap-aero", spender: "Aerodrome", verified: true, assetName: "USD Coin", symbol: "USDC", glyph: "$", color: "#2775ca", unlimited: false, allowance: "640", chain: "Base", wallet: "Openfort", risk: "ok" }
 ]
 
 // What the fake counterparty is willing to offer back inside a Handoff.
