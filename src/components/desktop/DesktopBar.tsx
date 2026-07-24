@@ -1,65 +1,32 @@
 "use client"
 
-import Image from "next/image"
 import { useState } from "react"
 
-import { Search } from "lucide-react"
+import { Search, Volume2, VolumeX } from "lucide-react"
 
-import { WALLET } from "@/lib/data"
-import type { AssetObj } from "@/lib/types"
-import { cn, shortAddr, usd } from "@/lib/utils"
+import { cue, toggleMuted, useMuted } from "@/lib/sound"
+import { cn } from "@/lib/utils"
 
 // The desktop's top chrome. No longer a solid OS bar: the wallpaper runs to the top edge and the
-// chrome floats on it — identity and greeting on the left, the wallet/view toggles and the balance
-// card on the right. The toggles are design-only for now (they hold their state, drive nothing).
+// chrome floats on it — identity and greeting on the left, the wallet/view toggles on the right. The
+// balance card that used to sit here is now the Balance widget in the top-right WidgetGrid, which owns
+// the desk's top-right keep-out box (see lib/chrome-keepout). The toggles are design-only for now.
 
-/** Legend + distribution colours, by symbol. These are display colours from the design — SOL charts
- *  black (its mark's colour), which is why this isn't the token tint used on the coins. */
-const LEGEND: { symbol: string; color: string }[] = [
-  { symbol: "ETH", color: "#627eeb" },
-  { symbol: "BNB", color: "#f1b90c" },
-  { symbol: "SOL", color: "#000000" },
-  { symbol: "USDC", color: "#2775ca" },
-  { symbol: "USDT", color: "#1ba27a" }
-]
-
-const OTHER_COLOR = "rgba(255,255,255,0.5)"
-
-/** The top-right chrome's keep-out box (search + toggles + balance card), anchored to the viewport's
- *  top-right corner. Exported for the desk's placement clamp — an icon parked under this chrome could
- *  never be picked back up through it. */
-export const CHROME_KEEPOUT_W = 392
-export const CHROME_KEEPOUT_H = 176
-
-/** The view tabs — exactly one is ever active. "Show/Hide Chains" lives beside them but is its own
- *  creature: a stateful action whose label flips, never wearing the active pill. */
+/** The view tabs — exactly one is ever active. */
 const VIEW_TABS = ["Openfort", "MetaMask", "Split View"]
 
-/** The portfolio grouped for the card: one slice per legend symbol, everything else pooled as Other. */
-function slices(assets: AssetObj[]) {
-  const total = assets.reduce((t, a) => t + a.usd, 0)
-  const bySymbol = new Map<string, number>()
-  for (const a of assets) bySymbol.set(a.symbol, (bySymbol.get(a.symbol) ?? 0) + a.usd)
-
-  const known = LEGEND.map(({ symbol, color }) => ({ label: symbol, color, usd: bySymbol.get(symbol) ?? 0 }))
-  const other = total - known.reduce((t, s) => t + s.usd, 0)
-  const all = [...known, { label: "Other", color: OTHER_COLOR, usd: other }].filter((s) => s.usd > 0)
-  return { total, rows: all.map((s) => ({ ...s, pct: Math.round((s.usd / total) * 100) })) }
-}
-
-type DesktopBarProps = {
-  assets: AssetObj[]
-  /** The chain-tags toggle, lifted so the desktop can render the tags on its objects. */
-  chainsShown: boolean
-  onToggleChains: () => void
-}
-
-export function DesktopBar({ assets, chainsShown, onToggleChains }: DesktopBarProps) {
+export function DesktopBar({ onSearch }: { onSearch: () => void }) {
   // state — the view segmented control is display-only (split view / MetaMask are out of scope)
   const [active, setActive] = useState("Openfort")
 
-  // data
-  const { total, rows } = slices(assets)
+  // hooks — the desktop's sound preference (persisted), for the mute toggle beside search
+  const muted = useMuted()
+
+  // events — flip mute; turning sound back on gives itself a click, so the toggle is never silent
+  const onToggleSound = () => {
+    toggleMuted()
+    if (muted) cue("toggle")
+  }
 
   return (
     <>
@@ -77,10 +44,19 @@ export function DesktopBar({ assets, chainsShown, onToggleChains }: DesktopBarPr
         </p>
       </div>
 
-      {/* search + view toggles */}
+      {/* sound + search + view toggles */}
       <div className="fixed top-8 right-8 z-[100] flex items-center gap-8">
-        <button type="button" aria-label="Search" className="glass grid size-32 place-items-center rounded-full trans-base hover:bg-white/20">
+        <button type="button" aria-label="Search" onClick={onSearch} className="glass grid size-32 place-items-center rounded-full trans-base hover:bg-white/20">
           <Search className="size-12 text-white" strokeWidth={2.5} />
+        </button>
+        <button
+          type="button"
+          data-no-cue
+          aria-label={muted ? "Unmute sounds" : "Mute sounds"}
+          aria-pressed={muted}
+          onClick={onToggleSound}
+          className="glass grid size-32 place-items-center rounded-full trans-base hover:bg-white/20">
+          {muted ? <VolumeX className="size-12 text-white/60" strokeWidth={2.5} /> : <Volume2 className="size-12 text-white" strokeWidth={2.5} />}
         </button>
         <div className="glass h-32 flex items-center rounded-full p-4">
           {VIEW_TABS.map((name) => (
@@ -95,47 +71,7 @@ export function DesktopBar({ assets, chainsShown, onToggleChains }: DesktopBarPr
               {name}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={onToggleChains}
-            className="rounded-full w-94 py-4 text-12 leading-120 tracking-tight text-white trans-base hover:bg-white/10">
-            {chainsShown ? "Hide Chains" : "Show Chains"}
-          </button>
         </div>
-      </div>
-
-      {/* balance card */}
-      <div className="glass fixed top-48 right-8 z-100 flex w-332 gap-32 rounded-16 p-16">
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center gap-8">
-            <Image src="/images/openfort.png" alt="Openfort" width={24} height={24} unoptimized className="size-24 shrink-0" />
-            <div className="min-w-0">
-              <p className="truncate text-12 leading-120 tracking-tight text-white mb-2">Openfort balance</p>
-              <p className="tnum truncate text-10 leading-120 text-white/70">{shortAddr(WALLET.address)}</p>
-            </div>
-          </div>
-
-          <p className="tnum mt-auto text-24 font-light leading-120 tracking-tight text-white">{usd(total, { cents: false })}</p>
-
-          {/* the distribution bar — one sliver per slice, hairline gaps between */}
-          <div className="mt-8 mb-4 flex h-4 w-full gap-px overflow-hidden rounded-full">
-            {rows.map((r) => (
-              <span key={r.label} style={{ width: `${r.pct}%`, background: r.color }} />
-            ))}
-          </div>
-        </div>
-
-        <dl className="flex w-140 shrink-0 flex-col gap-6">
-          {rows.map((r) => (
-            <div key={r.label} className="flex items-center justify-between gap-8">
-              <dt className="flex items-center gap-8 text-10 leading-120 text-white">
-                <span className="size-4 shrink-0" style={{ background: r.color }} aria-hidden />
-                {r.label}
-              </dt>
-              <dd className="tnum text-10 font-medium leading-120 text-white">{r.pct}%</dd>
-            </div>
-          ))}
-        </dl>
       </div>
     </>
   )

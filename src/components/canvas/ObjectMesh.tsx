@@ -65,6 +65,10 @@ export function ObjectMesh({ id, shape, tint, symbol, artSrc, finish, dragging, 
   const returningRef = useRef(false)
   /** Whether the returning object has caught its rect and now rides it exactly (see the frame loop). */
   const pinnedRef = useRef(false)
+  /** While focused (Inspector open), whether this coin has finished flying into its art card. */
+  const focusArrivedRef = useRef(false)
+  /** Whether this coin held focus last frame — to catch the moment it gains focus (fly in, or snap). */
+  const wasFocusedRef = useRef(false)
 
   // data — this object's own plane array. The materials hold this reference for life and the frame loop
   // copies either clip source into it, so swapping clip modes can never recompile the shader.
@@ -125,8 +129,17 @@ export function ObjectMesh({ id, shape, tint, symbol, artSrc, finish, dragging, 
   // frame — the DOM grid owns layout, so position comes from the measured card rect, not from 3D state.
   // The ortho camera maps 1 world unit to 1 px with the origin at the viewport centre.
   useFrame((state, dt) => {
-    const rect = coinView.rects.get(id)
     const g = slideRef.current
+
+    // Inspector focus: one coin flies into the art card; every other coin gets out of the takeover's way.
+    const focusId = coinView.focusId
+    if (focusId && focusId !== id) {
+      wasFocusedRef.current = false
+      g.visible = false
+      return
+    }
+
+    const rect = coinView.rects.get(id)
     if (!rect) {
       g.visible = false
       return
@@ -135,6 +148,52 @@ export function ObjectMesh({ id, shape, tint, symbol, artSrc, finish, dragging, 
 
     const { width: w, height: h } = state.size
     const k = Math.min(1, dt * 10)
+
+    if (focusId === id) {
+      // fly from wherever it sat on the desk to the art card, growing and spinning; settle square-on when
+      // it lands. It reads the pushed-out clip set so it isn't sliced at the desktop's edge on the way.
+      const tx = rect.cx - w / 2
+      const ty = h / 2 - rect.cy
+      // an Inspector-navigation swap drops straight into place and inherits the outgoing coin's spin, so it
+      // reads as the card's texture changing rather than one coin flying out and another flying in. The very
+      // first focus (opening the Inspector) still flies in.
+      if (!wasFocusedRef.current) {
+        wasFocusedRef.current = true
+        if (coinView.focusInstant) {
+          g.position.set(tx, ty, 0)
+          sizeRef.current.scale.setScalar(rect.size / 2)
+          spinRef.current.rotation.y = coinView.focusSpin
+          focusArrivedRef.current = true
+        }
+      }
+      const fk = Math.min(1, dt * 5)
+      if (!focusArrivedRef.current) {
+        g.position.x += (tx - g.position.x) * fk
+        g.position.y += (ty - g.position.y) * fk
+        g.position.z += (0 - g.position.z) * fk
+        if (Math.hypot(tx - g.position.x, ty - g.position.y) < 1) focusArrivedRef.current = true
+      } else {
+        g.position.set(tx, ty, 0)
+      }
+      sizeRef.current.scale.setScalar(sizeRef.current.scale.x + (rect.size / 2 - sizeRef.current.scale.x) * fk)
+      for (let i = 0; i < planes.length; i++) planes[i].copy(noClipPlanes[i])
+      // keep turning the whole time it's on display in the card, and publish the angle for the next swap
+      if (!reduced) spinRef.current.rotation.y += dt * SPIN_SPEED
+      coinView.focusSpin = spinRef.current.rotation.y
+      scaleRef.current.scale.setScalar(scaleRef.current.scale.x + (1 - scaleRef.current.scale.x) * k)
+      if (blendedRef.current) {
+        materials.forEach((m) => {
+          m.transparent = false
+          m.needsUpdate = true
+        })
+        blendedRef.current = false
+      }
+      fadeRef.current = 1
+      materials.forEach((m) => (m.opacity = 1))
+      return
+    }
+    focusArrivedRef.current = false
+    wasFocusedRef.current = false
 
     if (dragging) {
       g.position.set(coinView.cursor.x - w / 2, h / 2 - coinView.cursor.y, DRAG_Z)

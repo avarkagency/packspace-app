@@ -21,6 +21,37 @@ const C = {
  *  price history, so it's a fixed fixture rather than anything derived from the holdings. */
 export const BALANCE_DELTA = { usd: -2.73, pct: -0.26 }
 
+/** 24h price change per token, in percent — the green/red tag inside an asset's price pill. Keyed by
+ *  symbol, not holding: the USDC dust pile moves exactly as the main pile does. Invented fixtures,
+ *  like BALANCE_DELTA. */
+const CHANGE_24H: Record<string, number> = {
+  ETH: 2.4,
+  SOL: -1.8,
+  USDT: 0.0,
+  USDC: 0.0,
+  BNB: 0.9,
+  DOODLE: -3.2,
+  AZUKI: 5.1,
+  BAYC: -2.6,
+  LINK: 1.3,
+  ARB: -0.7,
+  OP: 3.8,
+  PEPE: -6.4,
+  SHIB: 1.9,
+  DOGE: -0.5,
+  MOONBIRD: 4.2,
+  PUDGY: -1.1,
+  CLONEX: -4.8,
+  ZARD: 12.6
+}
+
+/** The tag-worthy 24h move for a token. Flat movers (stablecoins) and unknown symbols (the scam
+ *  airdrop) return undefined — they wear no tag rather than a meaningless one. */
+export function dayChange(symbol: string): number | undefined {
+  const pct = CHANGE_24H[symbol]
+  return pct === undefined || Math.abs(pct) < 0.05 ? undefined : pct
+}
+
 /** You. The address is held in full rather than pre-truncated, because it seeds your avatar as well as
  *  being displayed — the same rule every contact follows. */
 export const WALLET = { label: "You", address: "0x7Afd3C81b9E24f05a6D7c8B1e0F9a2D3c4B5e63D" }

@@ -5,11 +5,12 @@ import { memo, useEffect, useRef } from "react"
 
 import { Check, History, ShieldX, TriangleAlert } from "lucide-react"
 
-import { chainTag } from "@/lib/chain"
 import { clearCoinHover, registerCoinSlot, setCoinCursor, setCoinHover } from "@/lib/coin-store"
+import { dayChange } from "@/lib/data"
 import type { DesktopObj } from "@/lib/types"
 import { cn, usd } from "@/lib/utils"
 
+import { BaseChangeTag } from "../base/BaseChangeTag"
 import { chainImage, objectNameColor } from "../canvas/objectVisual"
 
 // One desktop item: the 3D object above, a small label under it — nothing else. The object itself is
@@ -22,7 +23,7 @@ import { chainImage, objectNameColor } from "../canvas/objectVisual"
 // 3D object with it rather than leaving it behind.
 
 /** The icon's fixed footprint — the workspace lays out and clamps with these. */
-export const ICON_W = 96
+export const ICON_W = 104
 export const ICON_SLOT = 48
 export const ICON_PAD = 8
 
@@ -48,8 +49,6 @@ type Props = {
   anyDragging?: boolean
   /** The label is being edited in place (wallet rename). */
   renaming?: boolean
-  /** Show the chain-family tag pill (the top bar's "Chains" toggle). */
-  showChain?: boolean
   onRename?: (name: string) => void
   onRenameCancel?: () => void
   onPointerDown?: (e: React.PointerEvent) => void
@@ -68,7 +67,6 @@ export const DesktopIcon = memo(function DesktopIcon({
   flash = false,
   anyDragging = false,
   renaming = false,
-  showChain = false,
   onRename,
   onRenameCancel,
   onPointerDown,
@@ -82,7 +80,7 @@ export const DesktopIcon = memo(function DesktopIcon({
   const person = obj.class === "person" ? obj : null
   const retired = !!person?.retired
   const compromised = !!person?.compromised
-  const tag = showChain ? chainTag(obj) : null
+  const delta = obj.class === "asset" ? dayChange(obj.symbol) : undefined
   // the small line under the name: the holding's value for an asset; standing / lifecycle for a contact
   const sub: { text: string; color?: string } =
     obj.class === "asset"
@@ -186,15 +184,6 @@ export const DesktopIcon = memo(function DesktopIcon({
             />
           ) : null}
         </span>
-
-        {/* the chain-family tag pill, bottom-left of the object, when Chains is toggled on */}
-        {tag && (
-          <span
-            className="pointer-events-none absolute -bottom-2 -left-4 z-[60] rounded-4 px-3 py-px text-[7.5px] leading-none font-extrabold tracking-wide text-white"
-            style={{ background: tag.color, boxShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
-            {tag.label}
-          </span>
-        )}
       </div>
 
       <div className="flex w-full flex-col items-center gap-4">
@@ -217,12 +206,14 @@ export const DesktopIcon = memo(function DesktopIcon({
           </p>
         )}
 
-        {/* the second line, worn as a small pill: the holding's dollar value for an asset, the address
-            for a wallet — or the warning that the address was never saved. */}
+        {/* the second line, worn as a small pill: the holding's dollar value for an asset (with its
+            24h move as a tag inside), the address for a wallet — or the warning that the address was
+            never saved. */}
         <span
-          className="tnum max-w-full truncate rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90"
+          className={cn("tnum flex max-w-full items-center gap-4 rounded-full bg-white/20 py-2 pl-6 text-10 leading-120 text-white/90", delta !== undefined ? "pr-2" : "pr-6")}
           style={sub.color ? { color: sub.color } : undefined}>
-          {sub.text}
+          <span className="truncate">{sub.text}</span>
+          {delta !== undefined && <BaseChangeTag pct={delta} />}
         </span>
       </div>
     </div>

@@ -3,15 +3,17 @@
 import Image from "next/image"
 import { useLayoutEffect, useRef, useState } from "react"
 
-import { GradientAvatar } from "@outpacelabs/avatars"
 import { Check, TriangleAlert, X } from "lucide-react"
 
+import { dayChange } from "@/lib/data"
 import type { DesktopObj } from "@/lib/types"
 import { cn, desktopLabel, usd } from "@/lib/utils"
 
+import { BaseChangeTag } from "../base/BaseChangeTag"
 import { ObjectMark } from "../canvas/ObjectMark"
 import { artImage } from "../canvas/object-art"
 import { chainImage, objectTint } from "../canvas/objectVisual"
+import { ContactAvatar } from "../shell/ContactAvatar"
 
 // A folder open on the desk. A window, not a modal: no backdrop, no blur — the desktop stays visible
 // and interactive around it. It spawns centred, moves by its header (double-click the header to send
@@ -229,7 +231,7 @@ export function FolderWindow({
       {items.length === 0 ? (
         <p className="flex-1 px-20 py-24 text-center text-12 leading-140 text-white/50">Empty — drop assets or contacts onto the folder to keep them here.</p>
       ) : (
-        <ul className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto p-12" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))" }}>
+        <ul className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto p-12" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(104px, 1fr))" }}>
           {items.map((o) => {
             const key = itemDropKey(o)
             return (
@@ -281,6 +283,8 @@ function FolderGridItem({
   onClick: (e: React.MouseEvent) => void
   onContextMenu: (e: React.MouseEvent) => void
 }) {
+  const delta = obj.class === "asset" ? dayChange(obj.symbol) : undefined
+
   return (
     <li
       data-drop={dropKey}
@@ -327,14 +331,21 @@ function FolderGridItem({
         <p className="tnum w-full truncate text-center text-12 font-medium leading-120 tracking-tight text-white">
           {over ? "Combine" : desktopLabel(obj)}
         </p>
-        <span className="tnum max-w-full truncate rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">
-          {obj.class === "asset"
-            ? usd(obj.usd, { cents: false })
-            : obj.trust === "unconfirmed"
-              ? "Not in contacts"
-              : obj.address
-                ? `${obj.address.slice(0, 6)}...`
-                : obj.handle}
+        <span
+          className={cn(
+            "tnum flex max-w-full items-center gap-4 rounded-full bg-white/20 py-2 pl-6 text-10 leading-120 text-white/90",
+            delta !== undefined ? "pr-2" : "pr-6"
+          )}>
+          <span className="truncate">
+            {obj.class === "asset"
+              ? usd(obj.usd, { cents: false })
+              : obj.trust === "unconfirmed"
+                ? "Not in contacts"
+                : obj.address
+                  ? `${obj.address.slice(0, 6)}...`
+                  : obj.handle}
+          </span>
+          {delta !== undefined && <BaseChangeTag pct={delta} />}
         </span>
       </span>
     </li>
@@ -345,7 +356,7 @@ function FolderGridItem({
  *  (their desk shape), the gradient avatar for contacts. NFTs without shipped art draw a tinted
  *  monogram square, the flat cousin of the face their 3D card draws for itself. */
 function FolderItemArt({ obj }: { obj: DesktopObj }) {
-  if (obj.class === "person") return <GradientAvatar seed={obj.address ?? obj.id} size={48} className="shrink-0" />
+  if (obj.class === "person") return <ContactAvatar id={obj.id} size={48} />
 
   if (obj.kind === "nft") {
     const art = artImage(obj.symbol)

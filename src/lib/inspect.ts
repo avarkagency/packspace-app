@@ -71,14 +71,16 @@ function assetFacts(a: AssetObj): InspectFacts {
     }
 
   const unverified = a.verified === false
+  // order follows the Inspector's Figma: standard, network, balance, value, verification, [approval], held in
   const rows: [string, string][] = [
     ["Token standard", "ERC-20"],
+    ["Network", a.chain ?? "Base"],
     ["Balance", `${units(a.balance)} ${a.symbol}`],
     ["Value", unverified ? "Unknown" : usd(a.usd)],
     ["Verification", unverified ? "Unverified" : "Verified"]
   ]
   if (a.approval) rows.push(["Approval", `${a.approval.unlimited ? "Unlimited" : "Limited"} → ${a.approval.spender}`])
-  rows.push(["Network", a.chain ?? "Base"], ["Held in", WALLET_LABEL])
+  rows.push(["Held in", WALLET_LABEL])
 
   if (unverified)
     return {
@@ -142,7 +144,9 @@ function contactFacts(c: PersonObj): InspectFacts {
     }
 
   const projectG = isProjectG(c)
-  const rows: [string, string][] = projectG
+  const typeLabel = projectG ? "Project G wallet" : "External address"
+  const trust = c.trust === "verified" ? "Verified exchange" : c.trust === "unconfirmed" ? "Unconfirmed" : "Confirmed contact"
+  const detail: [string, string][] = projectG
     ? [
         ["Wallet", "Project G · Openfort"],
         ["Chains", "Multichain — accepts any asset"]
@@ -151,20 +155,23 @@ function contactFacts(c: PersonObj): InspectFacts {
         ["Type", "External wallet"],
         ["Chain", `${c.chain ?? "Base"} only`]
       ]
-  rows.push(["Status", c.compromised ? "Compromised" : c.retired ? "Retired" : "Active"])
-  rows.push(["Trust", c.trust === "verified" ? "Verified exchange" : c.trust === "unconfirmed" ? "Unconfirmed" : "Confirmed contact"])
+  // standing then trust lead the list, so the read-out needs no reassurance banner beside it
+  const rows: [string, string][] = [["Standing", typeLabel], ["Trust", trust], ...detail, ["Status", c.compromised ? "Compromised" : c.retired ? "Retired" : "Active"]]
 
+  // only the warnings keep a banner now; a verified / confirmed contact just reads its trust in the list
   const safety = c.compromised
     ? { color: RED, text: "This address is flagged COMPROMISED. PackSpace blocks sends to it. Only clear the flag if you are certain the key is safe again." }
     : c.retired
       ? { color: AMBER, text: "This address is marked Retired — you've stopped using it. You'll be warned before sending to it." }
       : c.trust === "unconfirmed"
         ? { color: AMBER, text: "This address is saved but not confirmed yet. Double-check it before sending anything." }
-        : c.trust === "verified"
-          ? { color: "#7fd3ff", text: "Verified exchange deposit address — safe to reuse." }
-          : { color: "#8ee6a8", text: "You've transacted with this address before." }
+        : null
 
-  const actions: InspectAction[] = c.trust === "unconfirmed" && !c.compromised && !c.retired ? [{ kind: "confirm", label: "Confirm contact" }] : []
+  const actions: InspectAction[] = [
+    { kind: "view-card", label: "View PackSpace Card" },
+    { kind: "edit", label: "Edit" }
+  ]
+  if (c.trust === "unconfirmed" && !c.compromised && !c.retired) actions.push({ kind: "confirm", label: "Confirm contact" })
 
-  return { typeLabel: projectG ? "Project G wallet" : "External address", typeColor: COL.contact, rows, safety, actions }
+  return { typeLabel, typeColor: COL.contact, rows, safety, actions }
 }

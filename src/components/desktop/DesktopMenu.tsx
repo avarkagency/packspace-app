@@ -55,7 +55,21 @@ export function DesktopMenu({ x, y, items, onClose }: { x: number; y: number; it
   useEffect(() => {
     const onPress = (e: PointerEvent) => {
       const t = e.target as Node
-      if (!ref.current?.contains(t) && !subRef.current?.contains(t)) onClose()
+      if (ref.current?.contains(t) || subRef.current?.contains(t)) return
+      // an outside press dismisses the menu and is otherwise swallowed whole: the pointerdown is stopped
+      // here (so it can't start a drag or marquee), and the click it becomes is eaten below — so the item
+      // underneath isn't actioned. The user clicks once to close, then again to do anything else.
+      e.preventDefault()
+      e.stopPropagation()
+      onClose()
+      const swallow = (ev: MouseEvent) => {
+        ev.preventDefault()
+        ev.stopPropagation()
+      }
+      window.addEventListener("click", swallow, { capture: true, once: true })
+      // if the gesture never resolves to a click (it became a drag, say), drop the guard so it can never
+      // eat an unrelated later click
+      window.setTimeout(() => window.removeEventListener("click", swallow, true), 350)
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose()

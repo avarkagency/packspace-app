@@ -8,7 +8,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
 
 import { isSameToken } from "@/lib/asset-ops"
-import { coinView, measureCoins } from "@/lib/coin-store"
+import { coinView, measureCoins, useCoinFocus } from "@/lib/coin-store"
 import { useDrag } from "@/lib/drag-store"
 import type { DesktopObj, NavItem } from "@/lib/types"
 
@@ -93,11 +93,13 @@ export function ObjectScene({ items, nav = [] }: { items: DesktopObj[]; nav?: Na
 
   // hooks
   const reduced = usePrefersReducedMotion()
+  const focusId = useCoinFocus()
 
   return (
-    // Above the desk at rest; above the folder windows (z 100+) too while something is in hand, so a
-    // coin pulled out of a folder flies over the window instead of vanishing under its glass.
-    <div className={`pointer-events-none fixed inset-0 ${anyDragging ? "z-[150]" : "z-50"}`}>
+    // Above the desk at rest; above the folder windows (z 100+) too while something is in hand, so a coin
+    // pulled out of a folder flies over the window instead of vanishing under its glass; and above the AI
+    // Inspector takeover (z-190) while a coin flies into its art card.
+    <div className={`pointer-events-none fixed inset-0 ${focusId ? "z-[200]" : anyDragging ? "z-[150]" : "z-50"}`}>
       <Canvas
         orthographic
         camera={{ position: [0, 0, 1000], zoom: 1, near: 0.1, far: 5000 }}

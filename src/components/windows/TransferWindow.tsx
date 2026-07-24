@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react"
 
-import { GradientAvatar } from "@outpacelabs/avatars"
 import { ArrowRightLeft, ChevronLeft, Send, ShieldX, TriangleAlert, X } from "lucide-react"
 
 import type { AssetObj, PersonObj } from "@/lib/types"
@@ -10,6 +9,7 @@ import { cn, shortAddr, units, usd } from "@/lib/utils"
 
 import { BaseBtn } from "../base/BaseBtn"
 import { ObjectMark } from "../canvas/ObjectMark"
+import { ContactAvatar } from "../shell/ContactAvatar"
 import { HandoffWindow, type GiveSlot, type HandoffReceive } from "./HandoffWindow"
 import { SendWindow, type SendDeal } from "./SendWindow"
 
@@ -102,7 +102,7 @@ export function TransferWindow({ assets, inventory, to, z, onClose, onSend, onLa
 
           <h2 className="flex items-center gap-6 text-18 leading-120 tracking-tight text-white">
             {VERB[step]} {what} to
-            <GradientAvatar seed={to.address ?? to.id} size={24} className="shrink-0" />
+            <ContactAvatar id={to.id} size={24} />
             {to.label}
           </h2>
           <span className="tnum mt-8 inline-block rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">

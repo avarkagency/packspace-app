@@ -233,6 +233,56 @@ body {
   animation: panel-in 200ms var(--ease-out-quart);
 }
 
+/* The AI Inspector's bento cards fade up on open, staggered by an inline animation-delay per card, so the
+   grid assembles around the coin as it flies into place. `both` holds the pre-delay start state. */
+@keyframes bento-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.bento-in {
+  animation: bento-in 500ms var(--ease-out-quart) both;
+}
+
+/* The takeover's wallpaper fades in as the coin flies into place, rather than snapping on. */
+@keyframes bg-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.bg-fade {
+  animation: bg-fade 700ms var(--ease-out-quart) both;
+}
+
+/* The Inspector's price chart wipes in left-to-right as its card lands. */
+@keyframes chart-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.chart-reveal {
+  animation: chart-reveal 900ms var(--ease-out-quart) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bento-in,
+  .bg-fade,
+  .chart-reveal {
+    animation: none;
+  }
+}
+
 /* The drop-target treatment in the split's yellow, worn briefly by both halves of a fresh split so
    it's clear which icons it produced. Arrives fast, holds, then fades away — opacity only, so it
    composites over the canvas without repaints. */

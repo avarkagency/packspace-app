@@ -21,11 +21,21 @@ export const coinView = {
   /** The box resting coins clip to, in px. */
   clip: { top: 0, right: 0, bottom: 0, left: 0 },
   hoverId: null as string | null,
+  /** While the AI Inspector is open, the id of the coin flying into its art card, and the card element it
+   *  flies to. The frame loop overrides that coin's target box with the card's, and the mesh eases to it. */
+  focusId: null as string | null,
+  focusSlot: null as HTMLElement | null,
+  /** True when focus jumped straight from one coin to another (Inspector navigation): the incoming coin
+   *  drops into place instead of flying, so it reads as the texture changing rather than coins swapping. */
+  focusInstant: false,
+  /** The focused coin's live spin angle, handed to the next coin on an instant swap so the spin is seamless. */
+  focusSpin: 0,
   /** Viewport px, written imperatively by the pointer handlers. */
   cursor: { x: 0, y: 0 }
 }
 
 const hoverListeners = new Set<() => void>()
+const focusListeners = new Set<() => void>()
 
 export const setCoinHover = (id: string | null) => {
   if (coinView.hoverId === id) return
@@ -58,6 +68,41 @@ export function useCoinHover() {
 export const setCoinCursor = (x: number, y: number) => {
   coinView.cursor.x = x
   coinView.cursor.y = y
+}
+
+/** Pull a coin off the desk and into the Inspector's art card `el`. Reactive so the canvas can lift its
+ *  z above the takeover while a coin is in focus. */
+export const setCoinFocus = (id: string, el: HTMLElement, instant = false) => {
+  // drop straight in (no fly) when this is a navigation swap, or when the caller asks (a filed object has
+  // no desk position to fly from, so it just appears in the card)
+  coinView.focusInstant = instant || (coinView.focusId !== null && coinView.focusId !== id)
+  coinView.focusId = id
+  coinView.focusSlot = el
+  focusListeners.forEach((l) => l())
+}
+
+export const clearCoinFocus = () => {
+  if (coinView.focusId === null) return
+  coinView.focusId = null
+  coinView.focusSlot = null
+  coinView.focusInstant = false
+  focusListeners.forEach((l) => l())
+}
+
+function subscribeFocus(onChange: () => void) {
+  focusListeners.add(onChange)
+  return () => {
+    focusListeners.delete(onChange)
+  }
+}
+
+/** Reactive read of the focused coin id, for the canvas that has to raise its z-index over the Inspector. */
+export function useCoinFocus() {
+  return useSyncExternalStore(
+    subscribeFocus,
+    () => coinView.focusId,
+    () => null
+  )
 }
 
 /** Register the box a coin should fill. Returns a cleanup for the effect that called it. */
@@ -93,6 +138,12 @@ export function measureCoins() {
       cy: r.top + r.height / 2,
       size: Math.min(r.width, r.height)
     })
+  }
+
+  // the focused coin targets the Inspector's art card instead of its desk slot — measured last so it wins
+  if (coinView.focusId && coinView.focusSlot) {
+    const r = coinView.focusSlot.getBoundingClientRect()
+    coinView.rects.set(coinView.focusId, { cx: r.left + r.width / 2, cy: r.top + r.height / 2, size: Math.min(r.width, r.height) })
   }
 
   if (!viewport) return

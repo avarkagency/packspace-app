@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 
+import { clearCoinHover, setCoinCursor, setCoinHover } from "@/lib/coin-store"
 import { cn } from "@/lib/utils"
 
 import { ICON_W } from "./DesktopIcon"
@@ -14,6 +15,8 @@ import { ICON_W } from "./DesktopIcon"
 // than a scene-drawn coin — a folder is furniture, not currency.
 
 type Props = {
+  /** The folder's id — hovering it drives the same cursor-trailing readout the coins use, keyed here. */
+  id: string
   label: string
   count: number
   /** Present while this folder can take the drop happening right now. */
@@ -34,6 +37,7 @@ type Props = {
 }
 
 export function DesktopFolder({
+  id,
   label,
   count,
   dropKey,
@@ -47,6 +51,15 @@ export function DesktopFolder({
   onDoubleClick,
   onContextMenu
 }: Props) {
+  // events — the hover readout. The cursor is seeded on enter so the peek can place itself before its
+  // first paint; the workspace gates it away while anything's in hand, so filing never fights the peek.
+  const onEnter = (e: React.PointerEvent) => {
+    setCoinCursor(e.clientX, e.clientY)
+    setCoinHover(id)
+  }
+  const onLeave = () => clearCoinHover(id)
+  const onMove = (e: React.PointerEvent) => setCoinCursor(e.clientX, e.clientY)
+
   // events — rename commits on Enter/blur, abandons on Escape. The input never joins the drag
   // machinery: a pointerdown inside it is text selection, not a pick-up.
   const commit = (el: HTMLInputElement) => {
@@ -71,7 +84,7 @@ export function DesktopFolder({
         target && "bg-white/10 outline-1 outline-dashed outline-white/40",
         (over || selected) && "bg-white/20 outline-1 outline-dashed outline-white"
       )}>
-      <div className="grid h-48 shrink-0 place-items-center">
+      <div className="grid h-48 shrink-0 place-items-center" onPointerEnter={onEnter} onPointerLeave={onLeave} onPointerMove={onMove}>
         {/* draggable={false}: the browser's native image drag would carry a ghost of the artwork
             instead of letting the pointer machinery move the icon. The art rests slightly small and
             grows on hover — the flat cousin of the scale-up the scene gives a hovered coin. */}

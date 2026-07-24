@@ -6,6 +6,7 @@ import type { Receipt } from "@/lib/types"
 import { cn, shortAddr } from "@/lib/utils"
 
 import { BaseBtn } from "../base/BaseBtn"
+import { ConfettiShader } from "../canvas/ConfettiShader"
 
 // Every settled Send/Handoff yields a receipt / proof card (spec §3.5.6, §3.11). Wears the same glass
 // frame as its sibling modals — blurred desk, floating close, one panel — with the action's own signal
@@ -27,6 +28,9 @@ export function ReceiptWindow({ receipt, z, onClose }: { receipt: Receipt; z: nu
     <div className="fixed inset-0 grid place-items-center p-24" style={{ zIndex: z }}>
       {/* the desk falls out of focus */}
       <div className="animate-in fade-in-0 absolute inset-0 bg-black/20 backdrop-blur-xl duration-200" onClick={onClose} aria-hidden />
+
+      {/* the transaction settled — a confetti fountain rises behind the proof card in celebration */}
+      <ConfettiShader className="absolute inset-0" />
 
       <button
         type="button"

@@ -1,6 +1,5 @@
 "use client"
 
-import { FAMILY_TAG, chainFamily } from "@/lib/chain"
 import type { PackObj } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -16,15 +15,13 @@ type Props = {
   /** Just minted by the builder — pulses a ring until the flash clears. */
   pulse?: boolean
   selected?: boolean
-  showChain?: boolean
   onPointerDown?: (e: React.PointerEvent) => void
   onDoubleClick?: () => void
   onContextMenu?: (e: React.MouseEvent) => void
 }
 
-export function DesktopPack({ pack, pulse = false, selected = false, showChain = false, onPointerDown, onDoubleClick, onContextMenu }: Props) {
+export function DesktopPack({ pack, pulse = false, selected = false, onPointerDown, onDoubleClick, onContextMenu }: Props) {
   const glyph = pack.packGlyph ?? (pack.packType === "Randomized" ? "?" : pack.locked ? "🔒" : "★")
-  const tag = showChain ? FAMILY_TAG[chainFamily(pack.chain)] : null
 
   return (
     <div
@@ -45,13 +42,6 @@ export function DesktopPack({ pack, pulse = false, selected = false, showChain =
           {/* centre ribbon */}
           <span className="absolute inset-y-0 left-1/2 w-8 -translate-x-1/2 bg-white/30" aria-hidden />
           <span className="relative text-18 leading-100 font-extrabold text-white">{glyph}</span>
-          {tag && (
-            <span
-              className="pointer-events-none absolute -bottom-2 -left-3 rounded-4 px-3 py-px text-[7.5px] leading-none font-extrabold tracking-wide text-white"
-              style={{ background: tag.color, boxShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
-              {tag.label}
-            </span>
-          )}
         </div>
       </div>
 

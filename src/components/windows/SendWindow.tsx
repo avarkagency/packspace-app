@@ -3,7 +3,6 @@
 import Image from "next/image"
 import { useState } from "react"
 
-import { GradientAvatar } from "@outpacelabs/avatars"
 import { Ban, ChevronLeft, Send, ShieldCheck, TriangleAlert } from "lucide-react"
 
 import { blockSendMessage, canReceive, chainWord } from "@/lib/chain"
@@ -14,6 +13,7 @@ import { BaseAlert } from "../base/BaseAlert"
 import { BaseBtn } from "../base/BaseBtn"
 import { BaseSlider } from "../base/BaseSlider"
 import { chainImage } from "../canvas/objectVisual"
+import { ContactAvatar } from "../shell/ContactAvatar"
 
 // The Send confirm step — renders inside TransferWindow's frame, below the shared header and asset list.
 // A one-way give: an amount stage (fungibles only) then the confirm screen. Confirm deducts the balance
@@ -132,7 +132,7 @@ export function SendWindow({ assets, to, amount, setAmount, onClose, onSend }: P
         <div className="flex items-center justify-between gap-12">
           <dt className="text-14 leading-120 tracking-tight text-white/80">Recipient</dt>
           <dd className="flex min-w-0 items-center gap-6 text-14 leading-120 tracking-tight text-white">
-            <GradientAvatar seed={to.address ?? to.id} size={24} className="shrink-0" />
+            <ContactAvatar id={to.id} size={24} />
             <span className="truncate">{to.label}</span>
           </dd>
         </div>

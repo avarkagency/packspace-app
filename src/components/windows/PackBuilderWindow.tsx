@@ -219,7 +219,7 @@ export function PackBuilderWindow({ inventory, seed, onClose, onCreate }: Props)
         {/* place-amount picker */}
         {place && (
           <div className="absolute inset-0 z-10 grid place-items-center rounded-16 bg-black/40 p-16" onClick={() => setPlace(null)}>
-            <div className="glass w-320 rounded-16 p-20" onClick={(e) => e.stopPropagation()}>
+            <div className="glass w-320 bg-black rounded-16 p-20" onClick={(e) => e.stopPropagation()}>
               <p className="text-14 leading-120 font-medium text-white">Add {place.asset.label}</p>
               <div className="glass mt-16 flex items-baseline gap-8 rounded-md px-12 py-10">
                 <input
@@ -274,7 +274,17 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function Opt({ active = false, disabled = false, onClick, children }: { active?: boolean; disabled?: boolean; onClick?: () => void; children: React.ReactNode }) {
+function Opt({
+  active = false,
+  disabled = false,
+  onClick,
+  children
+}: {
+  active?: boolean
+  disabled?: boolean
+  onClick?: () => void
+  children: React.ReactNode
+}) {
   return (
     <button
       type="button"

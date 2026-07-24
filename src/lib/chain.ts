@@ -47,7 +47,7 @@ export function routeLine(asset: AssetObj, contact: PersonObj): string {
   return isProjectG(contact) ? `${chain} · to their ${chain} account` : `${chain} · same chain`
 }
 
-/** The chain-family tag pill shown on an object when "Chains" is toggled on. Assets tag by their chain;
+/** The chain-family tag pill shown in the hover readout's Network row. Assets tag by their chain;
  *  Project G contacts read MULTI; external contacts tag by their chain; unknown addresses get none. */
 export const FAMILY_TAG: Record<ChainFamily, { label: string; color: string }> = {
   evm: { label: "EVM", color: "#7d9bff" },

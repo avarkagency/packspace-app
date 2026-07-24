@@ -1,9 +1,9 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 
-import { ArrowDownUp, BadgeCheck, Ban, CreditCard, FolderPlus, History, Image as ImageIcon, LayoutGrid, Pencil, Scissors, Search, ShieldCheck, ShieldX, SquarePen, Trash2, UserPlus } from "lucide-react"
+import { ArrowDownUp, BadgeCheck, Ban, CreditCard, FolderPlus, History, Image as ImageIcon, LayoutGrid, Pencil, Plus, Scissors, Search, ShieldCheck, ShieldX, SquarePen, Trash2, UserPlus } from "lucide-react"
 
 import {
   assetDropId,
@@ -19,14 +19,17 @@ import {
   walletDropKey
 } from "@/lib/asset-ops"
 import { isProjectG, routeLine } from "@/lib/chain"
+import { chromeKeepout } from "@/lib/chrome-keepout"
 import { coinView, registerCoinViewport, setCoinHover } from "@/lib/coin-store"
 import { APPROVAL_RADAR, ASSETS, CONNECTED_NETWORK, DUST_ASSETS, DUST_NFTS, NAV_ITEMS, PEOPLE } from "@/lib/data"
 import { endDrag, setOver, startGroupDrag, useDrag } from "@/lib/drag-store"
+import { cue, installPressCues } from "@/lib/sound"
 import type { Inspectable } from "@/lib/inspect"
 import type { Approval, AssetObj, DesktopObj, PackObj, PersonObj, Receipt } from "@/lib/types"
 import { cn, desktopLabel, fakeHash, round4, units } from "@/lib/utils"
+import { WIDGET_TYPES, type WidgetInstance, type WidgetType } from "@/lib/widgets"
 
-import { CHROME_KEEPOUT_H, CHROME_KEEPOUT_W, DesktopBar } from "../desktop/DesktopBar"
+import { DesktopBar } from "../desktop/DesktopBar"
 import { DOCK_GAP, DOCK_H, DOCK_W, DesktopDock, dropTileAt } from "../desktop/DesktopDock"
 import { DesktopFolder } from "../desktop/DesktopFolder"
 import { DesktopIcon, ICON_PAD, ICON_SLOT, ICON_W } from "../desktop/DesktopIcon"
@@ -36,10 +39,12 @@ import type { GiveSlot, HandoffReceive } from "../windows/HandoffWindow"
 import { PackBuilderWindow, type PackDraft } from "../windows/PackBuilderWindow"
 import type { SendDeal } from "../windows/SendWindow"
 import { UnpackWindow } from "../windows/UnpackWindow"
+import { WidgetGrid } from "../widgets/WidgetGrid"
 import { useDesktopDrag } from "../desktop/useDesktopDrag"
 import { ApprovalRadarPanel } from "../panels/ApprovalRadarPanel"
-import { InspectorPanel } from "../panels/InspectorPanel"
+import { FullscreenInspector } from "../panels/FullscreenInspector"
 import { ObjectHoverInfo } from "../shell/ObjectHoverInfo"
+import { SearchPalette, type SearchItem } from "../shell/SearchPalette"
 import { CardWindow } from "../windows/CardWindow"
 import { CombineWindow } from "../windows/CombineWindow"
 import { ContactWindow } from "../windows/ContactWindow"
@@ -74,18 +79,21 @@ type WinBody =
 type WinDraft = WinBody & { matchKey: string }
 type WinSpec = WinDraft & { id: string }
 
-type MenuSpec = { x: number; y: number; obj: DesktopObj }
+// `fromSearch` menus are raised over the palette — picking an action dismisses the palette so the result
+// (a window, the Inspector) isn't left hidden beneath it.
+type MenuSpec = { x: number; y: number; obj: DesktopObj; fromSearch?: boolean }
 
 /** An icon's top-left corner, in viewport px. */
 type Pos = { x: number; y: number }
 
-// The default arrangement, straight from the design: assets in columns of 5 filled top-to-bottom from
-// the left edge (the Other Tokens folder takes the slot after the last asset), contacts in rows of 3
-// anchored top-right under the balance card. Only the starting point; every drag rewrites it.
+// The default arrangement, straight from the design: assets in columns filled top-to-bottom from the left
+// edge (the Other Tokens folder takes the slot after the last asset), contacts in rows of 3 anchored to
+// the bottom-right, clear of the top-right widgets. Only the starting point; every drag rewrites it.
 const EDGE = 32
-const TOP = 192 // clears the greeting block top-left and the balance card top-right
-const ROWS = 5
-const COL_W = 97
+const TOP = 192 // clears the greeting block top-left
+const BOTTOM = 80 // clearance from the bottom edge, under the lowest icon's label pill
+const ROWS = 5 // the design's column height — a cap; a short screen fits fewer (below)
+const COL_W = 105
 const ROW_H = 112
 /** The slot sits centred in the icon's wrapper; layout speaks slot edges, positions speak wrappers. */
 const SLOT_INSET = (ICON_W - ICON_SLOT) / 2
@@ -105,19 +113,33 @@ const INITIAL_FOLDERS: FolderSpec[] = [
   { id: "folder-other-nfts", label: "Other NFTs", contents: DUST_NFTS.map((a) => a.id) }
 ]
 
-function defaultPositions(assets: AssetObj[], contacts: PersonObj[], folderIds: string[], width: number): Record<string, Pos> {
+function defaultPositions(assets: AssetObj[], contacts: PersonObj[], folderIds: string[], width: number, height: number): Record<string, Pos> {
   const pos: Record<string, Pos> = {}
-  const assetSlot = (i: number): Pos => ({ x: EDGE - SLOT_INSET + Math.floor(i / ROWS) * COL_W, y: TOP + (i % ROWS) * ROW_H })
+
+  // assets fill columns from the top-left. How many rows deep is capped at the design's five, but shrinks
+  // on a short screen so the bottom row never runs off the edge — which is what cut the tokens off on a
+  // laptop — spilling into another column instead.
+  const fitRows = Math.floor((height - BOTTOM - ICON_SLOT - ICON_FOOT - TOP) / ROW_H) + 1
+  const assetRows = Math.min(ROWS, Math.max(1, fitRows))
+  const assetSlot = (i: number): Pos => ({ x: EDGE - SLOT_INSET + Math.floor(i / assetRows) * COL_W, y: TOP + (i % assetRows) * ROW_H })
   assets.forEach((a, i) => {
     pos[a.id] = assetSlot(i)
   })
   folderIds.forEach((fid, i) => {
     pos[fid] = assetSlot(assets.length + i)
   })
+
+  // contacts sit along the bottom-right, clear of the top-right widget bento. Rows stack upward from the
+  // bottom edge, so the grid hugs the bottom whatever the screen height.
+  const contactRows = Math.max(1, Math.ceil(contacts.length / CONTACT_COLS))
+  const bottomRowY = height - BOTTOM - ICON_SLOT - ICON_FOOT
   contacts.forEach((c, i) => {
     const row = Math.floor(i / CONTACT_COLS)
     const col = i % CONTACT_COLS
-    pos[c.id] = { x: width - EDGE - ICON_SLOT - SLOT_INSET - (CONTACT_COLS - 1 - col) * COL_W, y: TOP + row * ROW_H }
+    pos[c.id] = {
+      x: width - EDGE - ICON_SLOT - SLOT_INSET - (CONTACT_COLS - 1 - col) * COL_W,
+      y: bottomRowY - (contactRows - 1 - row) * ROW_H
+    }
   })
   return pos
 }
@@ -138,8 +160,8 @@ function clampPos(x: number, y: number): Pos {
   const overlapsDock = cx + ICON_W > dockLeft - 4 && cx < dockLeft + DOCK_W + 4 && cy + ICON_SLOT + ICON_FOOT > dockTop
   if (overlapsDock) cy = dockTop - ICON_SLOT - ICON_FOOT
 
-  const overlapsChrome = cx + ICON_W > window.innerWidth - CHROME_KEEPOUT_W && cy < CHROME_KEEPOUT_H
-  if (overlapsChrome) cy = CHROME_KEEPOUT_H
+  const overlapsChrome = cx + ICON_W > window.innerWidth - chromeKeepout.w && cy < chromeKeepout.h
+  if (overlapsChrome) cy = chromeKeepout.h
 
   return { x: cx, y: cy }
 }
@@ -170,6 +192,39 @@ function nearestFreeSpot(desired: Pos, positions: Record<string, Pos>, ignoreId:
   return d
 }
 
+/** The formation equivalent of nearestFreeSpot: one shared offset that lifts an entire carried handful
+ *  clear of the resting icons, so a dropped multi-selection keeps its shape instead of scattering. The
+ *  carried ids are skipped as obstacles — they're the ones in motion — and each landing is clamped the
+ *  same way it will be when placed, so an edge push-away still reads as clear. Returns null when no offset
+ *  keeps the whole formation clear — in particular when a clamp against a keep-out (the widgets, the dock,
+ *  a screen edge) would collapse members onto each other — so the caller can scatter instead of stacking. */
+function nearestFreeGroupOffset(desired: Pos[], positions: Record<string, Pos>, carriedIds: ReadonlySet<string>): Pos | null {
+  const clear = (ox: number, oy: number) => {
+    const landed: Pos[] = []
+    for (const d of desired) {
+      const p = clampPos(d.x + ox, d.y + oy)
+      for (const [id, q] of Object.entries(positions)) {
+        if (carriedIds.has(id)) continue
+        if (Math.hypot(p.x - q.x, p.y - q.y) < MIN_DIST) return false
+      }
+      // ...and against the handful's own already-placed members, so a clamp that folds two of them onto
+      // the same spot is rejected rather than stacked
+      for (const q of landed) if (Math.hypot(p.x - q.x, p.y - q.y) < MIN_DIST) return false
+      landed.push(p)
+    }
+    return true
+  }
+  if (clear(0, 0)) return { x: 0, y: 0 }
+  for (let r = MIN_DIST; r <= MIN_DIST * 6; r += MIN_DIST / 2) {
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2
+      const off = { x: Math.cos(a) * r, y: Math.sin(a) * r }
+      if (clear(off.x, off.y)) return off
+    }
+  }
+  return null
+}
+
 /** The wallpaper choices behind "Change Wallpaper ▸" — the design's two gradient images. */
 const WALLPAPERS = [
   { label: "Dusk", css: "#000014 url(/images/bg.png) center / cover no-repeat" },
@@ -184,12 +239,16 @@ export function DesktopWorkspace() {
   const contactIdc = useRef(0)
   const folderIdc = useRef(0)
   const packIdc = useRef(0)
+  const widgetIdc = useRef(0)
   /** The icon wrapper nodes, for the drag to move without a render. */
   const iconNodes = useRef(new Map<string, HTMLElement>())
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   /** A pack press that never travelled is a click — open it rather than treat the gesture as a move. */
   const packMovedRef = useRef(false)
+  /** Ids currently in hand having been pulled out of a folder — they whisper only if they land on the
+   *  desk (taken out), not if they're dropped straight back into a folder. */
+  const pulledFromFolder = useRef(new Set<string>())
 
   // state — assets divide and recombine; wallets rename, edit and delete; positions are the desk itself
   const [assets, setAssets] = useState<AssetObj[]>([...ASSETS, ...DUST_ASSETS, ...DUST_NFTS])
@@ -203,6 +262,14 @@ export function DesktopWorkspace() {
   const [deskMenu, setDeskMenu] = useState<{ x: number; y: number } | null>(null)
   const [folderMenu, setFolderMenu] = useState<{ x: number; y: number; id: string } | null>(null)
   const [wallpaper, setWallpaper] = useState<(typeof WALLPAPERS)[number]>(WALLPAPERS[0])
+  /** The top-right widget bento. Starts with the Balance widget (the old fixed balance card) and the NFT
+   *  collection stacked under it. */
+  const [widgets, setWidgets] = useState<WidgetInstance[]>([
+    { id: "widget-balance", type: "balance", span: 2 },
+    { id: "widget-nft", type: "nft", span: 2 }
+  ])
+  /** The widget grid's live keep-out box, mirrored from the module value so a change can re-clamp icons. */
+  const [keepout, setKeepout] = useState({ ...chromeKeepout })
   const [renamingId, setRenamingId] = useState<string | null>(null)
   /** Multi-select: the ids swept up by the marquee. Dragging any of them moves the whole set. */
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set())
@@ -227,8 +294,8 @@ export function DesktopWorkspace() {
   const [receipts, setReceipts] = useState<Receipt[]>([])
   /** The Receipts history list modal. */
   const [receiptsOpen, setReceiptsOpen] = useState(false)
-  /** Whether the per-object chain tags are shown (the top bar's "Chains" toggle). */
-  const [chainsShown, setChainsShown] = useState(false)
+  /** The ⌘K command palette — searches every inspectable object and opens the one you pick in the Inspector. */
+  const [searchOpen, setSearchOpen] = useState(false)
 
   // drag — one object in hand, or a carried multi-selection; the store treats both as "dragging"
   const { obj: dragged, carriedIds, over } = useDrag()
@@ -237,21 +304,75 @@ export function DesktopWorkspace() {
   const folderedIds = new Set(folders.flatMap((f) => f.contents))
   const allItems: DesktopObj[] = [...assets, ...contacts]
   const deskItems: DesktopObj[] = allItems.filter((o) => !folderedIds.has(o.id))
+  // while inspecting a filed object, add it to the 3D scene so its coin can appear in the art card — it's
+  // the same object as any other, just in a folder
+  const inspectFolderedId = rightPanel?.kind === "inspect" && folderedIds.has(rightPanel.id) ? rightPanel.id : null
+  const sceneItems: DesktopObj[] = inspectFolderedId ? [...deskItems, ...allItems.filter((o) => o.id === inspectFolderedId)] : deskItems
   const draggedAsset = dragged?.class === "asset" ? dragged : null
   const carriedHasAsset = !!carriedIds && assets.some((a) => carriedIds.has(a.id))
   /** Whether the carry holds anything a folder could take — folders themselves never file. */
   const carriedHasFilable = !!carriedIds && [...carriedIds].some((id) => !folders.some((f) => f.id === id))
   const anyDragging = !!dragged || !!carriedIds
+  // each folder's peek — its resolved contents, for the hover readout to glance inside without opening it
+  const folderPeeks = folders.map((f) => ({
+    id: f.id,
+    label: f.label,
+    items: f.contents.map((cid) => allItems.find((o) => o.id === cid)).filter((o): o is DesktopObj => !!o)
+  }))
 
-  // events — window manager (centered modals)
-  const close = (id: string) => setWins((w) => w.filter((x) => x.id !== id))
+  // events — window manager (centered modals). Every modal blooms as it opens and errors as it closes;
+  // the global press cue (installed on mount) covers every other button click.
+  const close = (id: string) => {
+    cue("error")
+    setWins((w) => w.filter((x) => x.id !== id))
+  }
   const open = useCallback((spec: WinDraft) => {
+    cue("bloom")
     setWins((w) => {
       const ex = w.find((x) => x.matchKey === spec.matchKey)
       if (ex) return [...w.filter((x) => x !== ex), ex]
       return [...w, { ...spec, id: `w${idc.current++}` } as WinSpec]
     })
   }, [])
+
+  // events — surface cues for the panels and full-screen modals that live outside the window manager.
+  // Opens funnel through these, so a drop, a menu pick and a dock press all sound alike.
+  const openReceipts = () => {
+    cue("bloom")
+    setReceiptsOpen(true)
+  }
+  const closeReceipts = () => {
+    cue("error")
+    setReceiptsOpen(false)
+  }
+  const openPackBuilder = (seed?: AssetObj) => {
+    cue("bloom")
+    setPackBuilder({ seed })
+  }
+  const closePackBuilder = () => {
+    cue("error")
+    setPackBuilder(null)
+  }
+  const openUnpack = (pack: PackObj) => {
+    cue("bloom")
+    setUnpacking(pack)
+  }
+  const closeUnpack = () => {
+    cue("error")
+    setUnpacking(null)
+  }
+  const closePanel = () => {
+    cue("error")
+    setRightPanel(null)
+  }
+  const openSearch = () => {
+    cue("bloom")
+    setSearchOpen(true)
+  }
+  const closeSearch = () => {
+    cue("error")
+    setSearchOpen(false)
+  }
   const onSettle = useCallback(
     (receipt: Receipt) => {
       setReceipts((r) => [receipt, ...r])
@@ -291,6 +412,7 @@ export function DesktopWorkspace() {
   // One-way, no counterparty confirmation.
   const applySend = useCallback(
     (deals: SendDeal[], to: PersonObj) => {
+      cue("sparkle") // a settled transaction
       consumeAssets(deals)
       const give = deals.map((d) => (d.asset.kind === "nft" ? d.asset.label : `${units(d.amount)} ${d.asset.symbol}`)).join(" + ")
       const lead = deals[0].asset
@@ -314,6 +436,7 @@ export function DesktopWorkspace() {
   // desk and pulse briefly like a fresh split), and file a Trade receipt noting both signatures.
   const applyHandoff = useCallback(
     (give: GiveSlot[], receive: HandoffReceive[], to: PersonObj) => {
+      cue("sparkle") // a settled transaction
       consumeAssets(give.map((g) => ({ asset: g.asset, amount: g.amount })))
 
       const received: AssetObj[] = receive.map((r, i) => ({
@@ -369,6 +492,7 @@ export function DesktopWorkspace() {
   // holding, everything else lands as a fresh object. A pack press that never travels opens it; a
   // travelling one repositions it.
   const createPack = (draft: PackDraft) => {
+    cue("sparkle") // a settled transaction
     const deals = draft.contents
       .map((c) => {
         const asset = assets.find((a) => a.id === c.refId)
@@ -411,6 +535,7 @@ export function DesktopWorkspace() {
   }
 
   const unpackPack = (pack: PackObj) => {
+    cue("sparkle") // a settled transaction
     const items = pack.items ?? []
     const chosen = pack.packType === "Randomized" && items.length ? [items[Math.floor(Math.random() * items.length)]] : items
     const base = positions?.[pack.id] ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 }
@@ -498,6 +623,7 @@ export function DesktopWorkspace() {
   // coin's centre, so the icon lands with its slot centred there (pushed aside if something's already
   // sitting there).
   const moveObject = (obj: DesktopObj, x: number, y: number) => {
+    if (pulledFromFolder.current.delete(obj.id)) cue("whisper") // pulled out of a folder and set down on the desk
     const p = clampPos(x - ICON_W / 2, y - ICON_PAD - ICON_SLOT / 2)
     setPositions((pos) => (pos ? { ...pos, [obj.id]: nearestFreeSpot(p, pos, obj.id) } : pos))
   }
@@ -513,6 +639,7 @@ export function DesktopWorkspace() {
    *  a folder stays inside it: the clone files itself next to the original rather than taking a desk
    *  slot (it gets one the day it's pulled out, like anything else filed). */
   const splitAsset = (asset: AssetObj, portion: number) => {
+    cue("sparkle") // a settled transaction
     const cloneId = `${asset.id}-s${assetIdc.current++}`
     const rate = asset.usd / asset.balance
     const kept = asset.balance - portion
@@ -552,6 +679,7 @@ export function DesktopWorkspace() {
    *  A combine inside a folder stays inside it: the merged coin takes the target's slot in the
    *  contents and holds no desk position until it's pulled out. */
   const combineAssets = (a: AssetObj, b: AssetObj) => {
+    cue("sparkle") // a settled transaction
     const mergedId = `${a.id}-c${assetIdc.current++}`
     const filed = folders.some((f) => f.contents.includes(a.id) || f.contents.includes(b.id))
     setAssets((list) => {
@@ -607,6 +735,9 @@ export function DesktopWorkspace() {
   // details; an asset on a matching portion recombines; a wallet on the trash asks before deleting —
   // the gesture is too close to an ordinary move to be allowed to destroy anything on its own.
   const onDrop = (obj: DesktopObj, dropKey: string) => {
+    // this drop landed on a zone (a folder, a wallet, a dock app), not the bare desk — so it isn't
+    // "taken out of the folder"; drop the pulled-out flag without the remove whisper
+    pulledFromFolder.current.delete(obj.id)
     // the icon was carried to the drop point and can't stay ON its target — settle it beside, with the
     // same push-away any overlapping placement gets
     const p = clampPos(coinView.cursor.x - ICON_W / 2, coinView.cursor.y - ICON_PAD - ICON_SLOT / 2)
@@ -615,6 +746,7 @@ export function DesktopWorkspace() {
     // a folder takes anything except another folder — filed away, off the desk
     const intoFolder = folderDropId(dropKey)
     if (intoFolder) {
+      if (!folders.find((f) => f.id === intoFolder)?.contents.includes(obj.id)) cue("whisper") // an item filed into a folder
       setFolders((list) => list.map((f) => (f.id === intoFolder && !f.contents.includes(obj.id) ? { ...f, contents: [...f.contents, obj.id] } : f)))
       return
     }
@@ -624,7 +756,7 @@ export function DesktopWorkspace() {
     // already stepped back off the shelf (the placement clamp above)
     const navId = navDropId(dropKey)
     if (navId) {
-      if (navId === "nav-builder" && obj.class === "asset") setPackBuilder({ seed: obj })
+      if (navId === "nav-builder" && obj.class === "asset") openPackBuilder(obj)
       else if (navId === "nav-inspector") openInspector(obj.id)
       return
     }
@@ -778,6 +910,7 @@ export function DesktopWorkspace() {
         // never be filed and settle beside the target instead
         if (hitFolder) {
           const fileIds = [...org.keys()].filter((id) => !folderIdSet.has(id))
+          if (fileIds.length) cue("whisper") // a handful filed into a folder
           setFolders((list) => list.map((f) => (f.id === hitFolder ? { ...f, contents: [...new Set([...f.contents, ...fileIds])] } : f)))
           const carriedFolders = [...org].filter(([id]) => folderIdSet.has(id))
           if (carriedFolders.length) {
@@ -791,13 +924,29 @@ export function DesktopWorkspace() {
           return
         }
 
+        // a folder pull (materialize provided) that ends anywhere but a folder or a contact has been
+        // taken out onto the desk — that's the remove whisper; a plain desk multi-select drag is silent
+        if (opts.materialize && !hitContact) cue("whisper")
+
         setPositions((pos) => {
           if (!pos) return pos
           const next = { ...pos }
-          for (const [id, o] of org) {
-            const at = clampPos(o.x + dx, o.y + dy)
-            // a drop can't stay ON its target, and a pulled stack spreads out — otherwise formation holds
-            next[id] = hitContact || opts.settle === "spread" ? nearestFreeSpot(at, next, id) : at
+          // a drop can't stay ON its target, and a pulled stack spreads out — both scatter to clear spots
+          if (hitContact || opts.settle === "spread") {
+            for (const [id, o] of org) next[id] = nearestFreeSpot(clampPos(o.x + dx, o.y + dy), next, id)
+            return next
+          }
+          // formation holds: nudge the whole handful by one shared offset so it lands clear of resting
+          // icons without losing its shape (single drags get the same push-away via nearestFreeSpot)
+          const carried = new Set(org.keys())
+          const desired = [...org.values()].map((o) => ({ x: o.x + dx, y: o.y + dy }))
+          const off = nearestFreeGroupOffset(desired, pos, carried)
+          if (off) {
+            for (const [id, o] of org) next[id] = clampPos(o.x + dx + off.x, o.y + dy + off.y)
+          } else {
+            // no offset keeps the formation clear (dropped against the widgets / dock / an edge) — scatter
+            // each to its own free spot rather than collapsing the handful into a stack
+            for (const [id, o] of org) next[id] = nearestFreeSpot(clampPos(o.x + dx, o.y + dy), next, id)
           }
           return next
         })
@@ -840,7 +989,8 @@ export function DesktopWorkspace() {
         assetOrder.filter((a) => !folderedIds.has(a.id)),
         contactOrder.filter((c) => !folderedIds.has(c.id)),
         folders.map((f) => f.id),
-        window.innerWidth
+        window.innerWidth,
+        window.innerHeight
       )
     }))
   const cleanUpBy = (key: "name" | "kind" | "value") => {
@@ -904,8 +1054,14 @@ export function DesktopWorkspace() {
   }
 
   // events — folder windows. Open on click, close from the window, focus (re-order to top) on press.
-  const openFolderWindow = (id: string) => setFolderWins((w) => (w.includes(id) ? [...w.filter((x) => x !== id), id] : [...w, id]))
-  const closeFolderWindow = (id: string) => setFolderWins((w) => w.filter((x) => x !== id))
+  const openFolderWindow = (id: string) => {
+    if (!folderWins.includes(id)) cue("bloom") // an already-open folder is only being focused, not opened
+    setFolderWins((w) => (w.includes(id) ? [...w.filter((x) => x !== id), id] : [...w, id]))
+  }
+  const closeFolderWindow = (id: string) => {
+    if (folderWins.includes(id)) cue("error")
+    setFolderWins((w) => w.filter((x) => x !== id))
+  }
 
   /** A press on a folder-window tile: the object materialises on the desk under the cursor the moment
    *  the drag passes the pick-up threshold, and from there it IS the ordinary desktop drag — droppable
@@ -933,6 +1089,7 @@ export function DesktopWorkspace() {
 
     onPointerDown(obj, {
       onStart: (x, y) => {
+        pulledFromFolder.current.add(obj.id) // whispers on release, but only if it lands on the desk
         setFolders((list) => list.map((f) => (f.id === folderId ? { ...f, contents: f.contents.filter((cid) => cid !== obj.id) } : f)))
         setPositions((pos) => (pos ? { ...pos, [obj.id]: clampPos(x - ICON_W / 2, y - ICON_PAD - ICON_SLOT / 2) } : pos))
       }
@@ -1001,9 +1158,20 @@ export function DesktopWorkspace() {
 
   const openInspector = (id?: string) => {
     const target = id ?? assets[0]?.id
-    if (target) setRightPanel({ kind: "inspect", id: target })
+    if (target) {
+      cue("bloom")
+      setRightPanel({ kind: "inspect", id: target })
+    }
   }
-  const openRadar = () => setRightPanel({ kind: "radar" })
+
+  // the ordered set of inspectable objects the Inspector can move between (arrow keys, or a future list),
+  // and the lighter "jump to this one" — no open-bloom, just swap which object is shown
+  const inspectList = useMemo(() => [...assets, ...contacts, ...packs], [assets, contacts, packs])
+  const selectInspect = useCallback((id: string) => setRightPanel({ kind: "inspect", id }), [])
+  const openRadar = () => {
+    cue("bloom")
+    setRightPanel({ kind: "radar" })
+  }
 
   const removeAssetObject = (id: string) => {
     setAssets((list) => list.filter((a) => a.id !== id))
@@ -1053,7 +1221,7 @@ export function DesktopWorkspace() {
     setReceiptsOpen(false)
     setPulseId(null)
     setSelectedIds(new Set())
-    setPositions(defaultPositions(startAssets.filter((a) => !filed.has(a.id)), PEOPLE, INITIAL_FOLDERS.map((f) => f.id), window.innerWidth))
+    setPositions(defaultPositions(startAssets.filter((a) => !filed.has(a.id)), PEOPLE, INITIAL_FOLDERS.map((f) => f.id), window.innerWidth, window.innerHeight))
   }
 
   const onInspectAction = (kind: string) => {
@@ -1061,26 +1229,34 @@ export function DesktopWorkspace() {
     const obj = inspectableById(rightPanel.id)
     if (!obj) return
     if (kind === "split" && obj.class === "asset") return startSplit(obj)
-    if (kind === "add-to-pack" && obj.class === "asset") {
-      setPackBuilder({ seed: obj })
-      return setRightPanel(null)
-    }
+    // like Split, the pack builder opens ON TOP of the bento takeover — the inspector stays open beneath it
+    if (kind === "add-to-pack" && obj.class === "asset") return openPackBuilder(obj)
     if (kind === "revoke") {
       revokeToken(obj.id)
       return setRightPanel(null)
     }
     if (kind === "verify") return verifyAsset(obj.id)
     if (kind === "unpack" && obj.class === "pack") {
-      setUnpacking(obj)
+      openUnpack(obj)
       return setRightPanel(null)
     }
     if (kind === "whitelist") return whitelistAddress(obj.id)
     if (kind === "confirm") return confirmContact(obj.id)
+    // contact actions — open on top of the bento, like Split (the inspector stays open beneath)
+    if (kind === "view-card" && obj.class === "person") return openCard(obj)
+    if (kind === "edit" && obj.class === "person") return open({ kind: "contact", contact: obj, matchKey: `contact-${obj.id}` })
   }
 
   // events — PackSpace Card. Open your own or a contact's; importing a pasted link / @handle / 0x
   // address mints an unconfirmed contact on the desk (a confirmation ping, in fiction).
-  const openCard = (contact?: PersonObj) => setCard({ contact })
+  const openCard = (contact?: PersonObj) => {
+    cue("bloom")
+    setCard({ contact })
+  }
+  const closeCard = () => {
+    cue("error")
+    setCard(null)
+  }
   const importContact = (text: string) => {
     const t = text.trim()
     if (!t) return
@@ -1112,6 +1288,7 @@ export function DesktopWorkspace() {
   const onIconMenu = (obj: DesktopObj) => (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation() // the desk's own menu listens underneath
+    cue("tick") // a context menu opening — a crisp menu tick, not the modal bloom
     setDeskMenu(null)
     setFolderMenu(null)
     setMenu({ x: e.clientX, y: e.clientY, obj })
@@ -1119,12 +1296,14 @@ export function DesktopWorkspace() {
   const onFolderMenu = (id: string) => (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    cue("tick")
     setMenu(null)
     setDeskMenu(null)
     setFolderMenu({ x: e.clientX, y: e.clientY, id })
   }
   const onDeskMenu = (e: React.MouseEvent) => {
     e.preventDefault()
+    cue("tick")
     setMenu(null)
     setFolderMenu(null)
     setDeskMenu({ x: e.clientX, y: e.clientY })
@@ -1132,19 +1311,18 @@ export function DesktopWorkspace() {
 
   const menuItems = (obj: DesktopObj): DesktopMenuItem[] => {
     if (obj.class === "asset") {
-      const items: DesktopMenuItem[] = []
+      // Inspect with AI leads every object menu, for consistency; then the object-specific actions
+      const items: DesktopMenuItem[] = [{ label: "Inspect with AI", icon: Search, onSelect: () => openInspector(obj.id) }]
       // a fresh scam token can't be split, but every asset can be inspected, revoked or verified
       if (isSplittable(obj) && obj.verified !== false) items.push({ label: "Split asset", icon: Scissors, onSelect: () => startSplit(obj) })
-      items.push({ label: "Inspect with AI", icon: Search, onSelect: () => openInspector(obj.id) })
       if (obj.approval) items.push({ label: "Revoke approval", icon: Ban, danger: true, onSelect: () => revokeToken(obj.id) })
       if (obj.verified === false) items.push({ label: "Add to verified list", icon: ShieldCheck, onSelect: () => verifyAsset(obj.id) })
       return items
     }
     const unknown = obj.whitelisted === false
     const flagged = !!obj.retired || !!obj.compromised
-    const items: DesktopMenuItem[] = []
+    const items: DesktopMenuItem[] = [{ label: "Inspect with AI", icon: Search, onSelect: () => openInspector(obj.id) }]
     if (unknown) items.push({ label: "Add to address book", icon: UserPlus, onSelect: () => whitelistAddress(obj.id) })
-    items.push({ label: "Inspect with AI", icon: Search, onSelect: () => openInspector(obj.id) })
     items.push({ label: "View PackSpace Card", icon: CreditCard, onSelect: () => openCard(obj) })
     if (!unknown) {
       items.push({ label: "Rename", icon: Pencil, separator: true, onSelect: () => setRenamingId(obj.id) })
@@ -1159,14 +1337,63 @@ export function DesktopWorkspace() {
     return items
   }
 
+  // events — right-clicking a search result opens that object's ordinary desktop menu at the cursor,
+  // raised over the palette (the menu's z-940 sits above the palette's z-210). Packs carry no desk menu,
+  // so a right-click on one does nothing here either — same as on the desk.
+  const onSearchItemMenu = (obj: SearchItem, e: React.MouseEvent) => {
+    e.preventDefault()
+    if (obj.class === "pack") return
+    e.stopPropagation()
+    cue("tick")
+    setDeskMenu(null)
+    setFolderMenu(null)
+    setMenu({ x: e.clientX, y: e.clientY, obj, fromSearch: true })
+  }
+  // a search menu's actions dismiss the palette first, so a window or the Inspector they open isn't left
+  // hidden behind it (the palette sits above those layers). Cancelling the menu just leaves the palette up.
+  const searchMenuItems = (obj: DesktopObj): DesktopMenuItem[] =>
+    menuItems(obj).map((it) => {
+      const sel = it.onSelect
+      if (!sel) return it
+      return {
+        ...it,
+        onSelect: () => {
+          setSearchOpen(false)
+          sel()
+        }
+      }
+    })
+
   // no confirm on folder delete: nothing is destroyed — the contents just spill back onto the desk
   const folderMenuItems = (id: string): DesktopMenuItem[] => [
     { label: "Rename", icon: Pencil, onSelect: () => setRenamingId(id) },
     { label: "Delete", icon: Trash2, danger: true, onSelect: () => deleteFolder(id) }
   ]
-  const deskMenuItems = (at: Pos): DesktopMenuItem[] => [
+  // widgets — a fresh one takes its type's default span and lands at the end of the bento. One of each
+  // type only, so a type already on the grid is a no-op.
+  const addWidget = (type: WidgetType) => {
+    const span = WIDGET_TYPES.find((w) => w.type === type)?.defaultSpan ?? 1
+    setWidgets((ws) => (ws.some((w) => w.type === type) ? ws : [...ws, { id: `widget-${widgetIdc.current++}-${type}`, type, span }]))
+  }
+
+  // widgets — the grid reports its footprint; mirror it into the module value the clamp reads (hot path)
+  // and into state, so a change re-runs the icon-reclamp effect below
+  const onKeepoutChange = useCallback((w: number, h: number) => {
+    chromeKeepout.w = w
+    chromeKeepout.h = h
+    setKeepout((prev) => (prev.w === w && prev.h === h ? prev : { w, h }))
+  }, [])
+
+  const deskMenuItems = (at: Pos): DesktopMenuItem[] => {
+    // one of each widget type only — offer just the ones not already on the grid, and drop the item entirely
+    // once every type is placed
+    const addable = WIDGET_TYPES.filter((t) => !widgets.some((w) => w.type === t.type))
+    return [
     { label: "New Contact", icon: UserPlus, onSelect: () => addContact(at) },
     { label: "New Folder", icon: FolderPlus, onSelect: () => addFolder(at) },
+    ...(addable.length
+      ? [{ label: "Add Widget", icon: Plus, children: addable.map((t) => ({ label: t.label, onSelect: () => addWidget(t.type) })) } as DesktopMenuItem]
+      : []),
     {
       label: "Change Wallpaper",
       icon: ImageIcon,
@@ -1190,13 +1417,18 @@ export function DesktopWorkspace() {
         { label: "Value", onSelect: () => cleanUpBy("value") }
       ]
     }
-  ]
+    ]
+  }
 
   // effects — the desktop is the surface the resting objects clip to
   useEffect(() => {
     if (!rootRef.current) return
     return registerCoinViewport(rootRef.current)
   }, [])
+
+  // effects — one document-wide listener that knocks (press) on every button click, except the
+  // opens/closes that already sound their own bloom/error
+  useEffect(() => installPressCues(), [])
 
   // effects — the starting arrangement needs the viewport's width, which the server doesn't have.
   // Foldered objects take no slot: the desk lays out only what it shows.
@@ -1207,10 +1439,25 @@ export function DesktopWorkspace() {
         [...ASSETS, ...DUST_ASSETS, ...DUST_NFTS].filter((a) => !filed.has(a.id)),
         PEOPLE,
         INITIAL_FOLDERS.map((f) => f.id),
-        window.innerWidth
+        window.innerWidth,
+        window.innerHeight
       )
     )
   }, [])
+
+  // effects — when the widget grid's keep-out changes (a widget added, resized, or removed), re-tidy the
+  // desk so the contact grid drops below (or reclaims space above) the new footprint as one uniform block
+  // rather than scattering. Skips the first run — the seeding effect above owns the initial layout, and it
+  // already reads the freshly-measured keep-out. Depends only on the box (not positions), so the relayout
+  // it triggers doesn't feed back into it.
+  const seededKeepoutRef = useRef(false)
+  useEffect(() => {
+    if (!seededKeepoutRef.current) {
+      seededKeepoutRef.current = true
+      return
+    }
+    relayoutRef.current()
+  }, [keepout])
 
   // effects — a resize re-runs the last clean-up (the plain one, or whichever "Clean Up By" was used
   // last). The listener reads through a ref so it always sees the current assets and contacts without
@@ -1223,6 +1470,51 @@ export function DesktopWorkspace() {
     const onResize = () => relayoutRef.current()
     window.addEventListener("resize", onResize)
     return () => window.removeEventListener("resize", onResize)
+  }, [])
+
+  // effects — ⌘K / Ctrl+K opens the search palette from anywhere on the desk
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        setSearchOpen((open) => !open)
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
+  // effects — Escape closes only the TOPMOST overlay, so a modal stacked over the Inspector (Split, Add
+  // to Pack, a contact's Card…) closes on its own without taking the Inspector down with it. The checks
+  // run highest-z first; the first open layer consumes the key and nothing beneath it is touched. The
+  // right-click menus own their own Escape (DesktopMenu) but are still guarded here so the key can't fall
+  // through them to a layer below. Read through a ref so the one listener always sees current state.
+  const escapeRef = useRef(() => {})
+  useEffect(() => {
+    escapeRef.current = () => {
+      if (menu || deskMenu || folderMenu) {
+        setMenu(null)
+        setDeskMenu(null)
+        setFolderMenu(null)
+        return
+      }
+      if (packBuilder) return closePackBuilder() // z-220 full-screen modals
+      if (unpacking) return closeUnpack()
+      if (card) return closeCard()
+      if (receiptsOpen) return closeReceipts()
+      if (rightPanel?.kind === "radar") return closePanel()
+      if (searchOpen) return closeSearch() // z-210
+      if (wins.length) return close(wins[wins.length - 1].id) // z-200+, last opened sits on top
+      if (rightPanel?.kind === "inspect") return closePanel() // z-190 Inspect with AI
+      if (folderWins.length) return closeFolderWindow(folderWins[folderWins.length - 1]) // z-100+ desk windows
+    }
+  })
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") escapeRef.current()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
   }, [])
 
   // effects — the split-flash and pack-pulse timers must not fire into an unmounted tree
@@ -1261,7 +1553,8 @@ export function DesktopWorkspace() {
           still sitting under every icon, coin and badge */}
       <div aria-hidden className="fixed inset-0" style={{ background: wallpaper.css }} />
 
-      <DesktopBar assets={assets} chainsShown={chainsShown} onToggleChains={() => setChainsShown((v) => !v)} />
+      <DesktopBar onSearch={openSearch} />
+      <WidgetGrid widgets={widgets} setWidgets={setWidgets} assets={assets} onAdd={addWidget} onKeepoutChange={onKeepoutChange} />
 
       {/* icon positions are viewport coordinates, so this layer must be the viewport — offsetting it
           (say, below the bar) would land every drop that offset away from the cursor. The clamp is what
@@ -1281,6 +1574,7 @@ export function DesktopWorkspace() {
                 }}
                 // in hand: above everything on the desk — folder windows included — and
                 // pointer-transparent so the drop hit-testing sees the zones underneath
+                data-cue-press
                 className={cn("absolute", (dragged?.id === a.id || carriedIds?.has(a.id)) && "pointer-events-none z-[160]")}
                 style={{ left: p.x, top: p.y }}>
                 <DesktopIcon
@@ -1294,7 +1588,6 @@ export function DesktopWorkspace() {
                   selected={menu?.obj.id === a.id || selectedIds.has(a.id)}
                   flash={flashIds.has(a.id)}
                   anyDragging={anyDragging}
-                  showChain={chainsShown}
                   onPointerDown={onIconPointerDown(a)}
                   onDoubleClick={() => openInspector(a.id)}
                   onContextMenu={onIconMenu(a)}
@@ -1314,6 +1607,7 @@ export function DesktopWorkspace() {
                   if (el) iconNodes.current.set(c.id, el)
                   else iconNodes.current.delete(c.id)
                 }}
+                data-cue-press
                 className={cn("absolute", (dragged?.id === c.id || carriedIds?.has(c.id)) && "pointer-events-none z-[160]")}
                 style={{ left: p.x, top: p.y }}>
                 <DesktopIcon
@@ -1324,11 +1618,11 @@ export function DesktopWorkspace() {
                   over={(!!draggedAsset || carriedHasAsset) && over === walletDropKey(c.id)}
                   selected={menu?.obj.id === c.id || selectedIds.has(c.id)}
                   anyDragging={anyDragging}
-                  showChain={chainsShown}
                   renaming={renamingId === c.id}
                   onRename={(name) => renameContact(c.id, name)}
                   onRenameCancel={() => setRenamingId(null)}
                   onPointerDown={onIconPointerDown(c)}
+                  onDoubleClick={() => openInspector(c.id)}
                   onContextMenu={onIconMenu(c)}
                 />
               </div>
@@ -1348,9 +1642,11 @@ export function DesktopWorkspace() {
                   if (el) iconNodes.current.set(f.id, el)
                   else iconNodes.current.delete(f.id)
                 }}
+                data-cue-press
                 className={cn("absolute", carriedIds?.has(f.id) && "pointer-events-none z-[160]")}
                 style={{ left: p.x, top: p.y }}>
                 <DesktopFolder
+                  id={f.id}
                   label={f.label}
                   count={f.contents.length}
                   dropKey={dragged ? folderDropKey(f.id) : undefined}
@@ -1380,14 +1676,14 @@ export function DesktopWorkspace() {
                   if (el) iconNodes.current.set(pack.id, el)
                   else iconNodes.current.delete(pack.id)
                 }}
+                data-cue-press
                 className="absolute"
                 style={{ left: p.x, top: p.y }}>
                 <DesktopPack
                   pack={pack}
                   pulse={pulseId === pack.id}
-                  showChain={chainsShown}
                   onPointerDown={startPackDrag(pack)}
-                  onDoubleClick={() => setUnpacking(pack)}
+                  onDoubleClick={() => openUnpack(pack)}
                   onContextMenu={(e) => e.preventDefault()}
                 />
               </div>
@@ -1413,17 +1709,17 @@ export function DesktopWorkspace() {
       <DesktopDock
         carriedAsset={carriedHasAsset}
         onOpen={(id) => {
-          if (id === "nav-builder") setPackBuilder({})
+          if (id === "nav-builder") openPackBuilder()
           else if (id === "nav-inspector") openInspector()
           else if (id === "nav-approvals") openRadar()
           else if (id === "nav-cards") openCard()
-          else if (id === "nav-receipts") setReceiptsOpen(true)
+          else if (id === "nav-receipts") openReceipts()
           else if (id === "nav-reset") resetDemo()
         }}
       />
 
-      {/* the 3D objects — draws into the slots the icons above registered */}
-      <ObjectScene items={deskItems} nav={NAV_ITEMS} />
+      {/* the 3D objects — draws into the slots the icons above registered (plus a filed object being inspected) */}
+      <ObjectScene items={sceneItems} nav={NAV_ITEMS} />
 
       {/* open folders — windows, not modals: the desk stays live around them. Stacking follows the
           open/focus order; they sit above the resting canvas (z-50) and under the modals (z-200+). */}
@@ -1480,31 +1776,45 @@ export function DesktopWorkspace() {
       })}
 
       {/* Pack Builder + Unpack — full-screen glass modals over the desk */}
-      {packBuilder && (
-        <PackBuilderWindow inventory={assets} seed={packBuilder.seed} onClose={() => setPackBuilder(null)} onCreate={createPack} />
-      )}
-      {unpacking && <UnpackWindow pack={unpacking} onClose={() => setUnpacking(null)} onUnpack={unpackPack} />}
-      {card && <CardWindow contact={card.contact} onImport={importContact} onClose={() => setCard(null)} />}
+      {packBuilder && <PackBuilderWindow inventory={assets} seed={packBuilder.seed} onClose={closePackBuilder} onCreate={createPack} />}
+      {unpacking && <UnpackWindow pack={unpacking} onClose={closeUnpack} onUnpack={unpackPack} />}
+      {card && <CardWindow contact={card.contact} onImport={importContact} onClose={closeCard} />}
       {receiptsOpen && (
-        <ReceiptsListWindow
-          receipts={receipts}
-          onOpen={(r) => open({ kind: "receipt", receipt: r, matchKey: r.id })}
-          onClose={() => setReceiptsOpen(false)}
+        <ReceiptsListWindow receipts={receipts} onOpen={(r) => open({ kind: "receipt", receipt: r, matchKey: r.id })} onClose={closeReceipts} />
+      )}
+
+      {/* the Approval Radar stays a right-docked panel; the AI Inspector is a full-screen bento takeover */}
+      {rightPanel?.kind === "radar" && <ApprovalRadarPanel approvals={approvals} onRevoke={revokeApprovalEntry} onClose={closePanel} />}
+      {rightPanel?.kind === "inspect" && inspectableById(rightPanel.id) && (
+        <FullscreenInspector
+          obj={inspectableById(rightPanel.id)!}
+          objects={inspectList}
+          coinPresent={inspectableById(rightPanel.id)!.class !== "pack"}
+          foldered={folderedIds.has(rightPanel.id)}
+          wallpaper={wallpaper.css}
+          onAction={onInspectAction}
+          onSelect={selectInspect}
+          onClose={closePanel}
         />
       )}
 
-      {/* right-docked panels — Inspector on an object, or the Approval Radar */}
-      {rightPanel?.kind === "radar" && <ApprovalRadarPanel approvals={approvals} onRevoke={revokeApprovalEntry} onClose={() => setRightPanel(null)} />}
-      {rightPanel?.kind === "inspect" && inspectableById(rightPanel.id) && (
-        <InspectorPanel obj={inspectableById(rightPanel.id)!} onAction={onInspectAction} onClose={() => setRightPanel(null)} />
-      )}
-
       {/* the right-click menus — an icon's own, or the desk's housekeeping */}
-      {menu && <DesktopMenu x={menu.x} y={menu.y} items={menuItems(menu.obj)} onClose={() => setMenu(null)} />}
+      {menu && <DesktopMenu x={menu.x} y={menu.y} items={menu.fromSearch ? searchMenuItems(menu.obj) : menuItems(menu.obj)} onClose={() => setMenu(null)} />}
       {deskMenu && <DesktopMenu x={deskMenu.x} y={deskMenu.y} items={deskMenuItems(deskMenu)} onClose={() => setDeskMenu(null)} />}
       {folderMenu && <DesktopMenu x={folderMenu.x} y={folderMenu.y} items={folderMenuItems(folderMenu.id)} onClose={() => setFolderMenu(null)} />}
 
-      <ObjectHoverInfo items={deskItems} />
+      <ObjectHoverInfo items={deskItems} folders={folderPeeks} />
+
+      {/* ⌘K search — reaches every inspectable object (even dust filed in a folder), then hands the pick
+          to the AI Inspector */}
+      {searchOpen && (
+        <SearchPalette
+          items={[...assets, ...packs, ...contacts]}
+          onClose={closeSearch}
+          onSelect={(id) => openInspector(id)}
+          onItemContextMenu={onSearchItemMenu}
+        />
+      )}
     </>
   )
 }

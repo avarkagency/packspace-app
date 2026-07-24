@@ -30,7 +30,9 @@ export function NavIconMesh({ id, src }: { id: string; src: string }) {
   useFrame((state) => {
     const rect = coinView.rects.get(id)
     const m = meshRef.current
-    if (!rect) {
+    // while the Inspector has a coin in focus the canvas lifts over the takeover — the dock tiles must not
+    // ride up with it
+    if (!rect || coinView.focusId) {
       m.visible = false
       return
     }
