@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRightLeft, ArrowUpRight, BadgeCheck, X } from "lucide-react"
+import { ArrowRightLeft, ArrowUpRight, BadgeCheck, WalletCards, X } from "lucide-react"
 
 import type { Receipt } from "@/lib/types"
 import { cn, shortAddr } from "@/lib/utils"
@@ -8,20 +8,27 @@ import { cn, shortAddr } from "@/lib/utils"
 import { BaseBtn } from "../base/BaseBtn"
 import { ConfettiShader } from "../canvas/ConfettiShader"
 
-// Every settled Send/Handoff yields a receipt / proof card (spec §3.5.6, §3.11). Wears the same glass
-// frame as its sibling modals — blurred desk, floating close, one panel — with the action's own signal
-// colour on the header tile (Send green, Trade purple).
+// Every settled Send/Handoff/Move yields a receipt / proof card (spec §3.5.6, §3.11). Wears the same
+// glass frame as its sibling modals — blurred desk, floating close, one panel — with the action's own
+// signal colour on the header tile (Send green, Trade purple, Move blue).
+
+/** Per-action signal colour, mark, and what its route row is called. A Move never leaves your custody,
+ *  so its counterparty is the other wallet and its route row reads "Route" like a Send's. */
+export const RECEIPT_STYLE = {
+  Send: { color: "#3ddc84", Icon: ArrowUpRight, routeLabel: "Route" },
+  Trade: { color: "#c4b6ff", Icon: ArrowRightLeft, routeLabel: "Settlement" },
+  Move: { color: "#7fd3ff", Icon: WalletCards, routeLabel: "Route" }
+} as const
 
 export function ReceiptWindow({ receipt, z, onClose }: { receipt: Receipt; z: number; onClose: () => void }) {
   // data
-  const isSend = receipt.action === "Send"
-  const color = isSend ? "#3ddc84" : "#c4b6ff"
-  const Icon = isSend ? ArrowUpRight : ArrowRightLeft
+  const { color, Icon, routeLabel } = RECEIPT_STYLE[receipt.action]
+  const isMove = receipt.action === "Move"
 
-  const rows: [string, string][] = [["You gave", receipt.give]]
+  const rows: [string, string][] = [[isMove ? "Moved" : "You gave", receipt.give]]
   if (receipt.receive) rows.push(["You received", receipt.receive])
-  rows.push(["Counterparty", receipt.counterparty], ["Chain", receipt.chain])
-  if (receipt.route) rows.push([isSend ? "Route" : "Settlement", receipt.route])
+  rows.push([isMove ? "To wallet" : "Counterparty", receipt.counterparty], ["Chain", receipt.chain])
+  if (receipt.route) rows.push([routeLabel, receipt.route])
   rows.push(["Confirmation", receipt.confirmation], ["Tx hash", shortAddr(receipt.hash, 10, 6)], ["Time", receipt.at])
 
   return (

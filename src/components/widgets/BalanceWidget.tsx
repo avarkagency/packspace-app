@@ -4,13 +4,14 @@ import Image from "next/image"
 import { useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
-import { WALLET } from "@/lib/data"
 import type { AssetObj } from "@/lib/types"
 import { cn, shortAddr, usd } from "@/lib/utils"
+import { WALLETS, type Wallet } from "@/lib/wallets"
 
-// The Openfort balance widget. Two-column form carries the legend list on the right; one-column form
-// drops the list and instead reads a slice out on hover over the distribution bar — the same numbers,
-// folded into the bar to fit the narrower footprint.
+// The balance widget, for whichever wallet's desk it's sitting on — its name, its address, and the
+// holdings that wallet actually has. Two-column form carries the legend list on the right; one-column
+// form drops the list and instead reads a slice out on hover over the distribution bar — the same
+// numbers, folded into the bar to fit the narrower footprint.
 //
 // The hover tooltip is PORTALED to <body>, not nested in the widget. The widget is a `.glass` surface —
 // its own backdrop-filter makes it a backdrop root, and Chrome silently drops a backdrop-filter nested
@@ -18,31 +19,44 @@ import { cn, shortAddr, usd } from "@/lib/utils"
 
 type Slice = { label: string; color: string; usd: number; pct: number }
 
-/** Legend + distribution colours, by symbol. Display colours from the design — SOL charts black (its
- *  mark's colour), which is why this isn't the token tint used on the coins. */
-const LEGEND: { symbol: string; color: string }[] = [
-  { symbol: "ETH", color: "#627eeb" },
-  { symbol: "BNB", color: "#f1b90c" },
-  { symbol: "SOL", color: "#000000" },
-  { symbol: "USDC", color: "#2775ca" },
-  { symbol: "USDT", color: "#1ba27a" }
-]
+/** Designed chart colours for the tokens that have one. Display colours from the design — SOL charts
+ *  black (its mark's colour), which is why this isn't the token tint used on the coins. Anything not
+ *  listed charts in its own tint instead. */
+const LEGEND_COLOR: Record<string, string> = {
+  ETH: "#627eeb",
+  BNB: "#f1b90c",
+  SOL: "#000000",
+  USDC: "#2775ca",
+  USDT: "#1ba27a"
+}
 
 const OTHER_COLOR = "rgba(255,255,255,0.5)"
 
-/** The portfolio grouped for the card: one slice per legend symbol, everything else pooled as Other. */
+/** How many named slices the chart carries before the tail pools into Other. */
+const MAX_SLICES = 5
+
+/** The portfolio grouped for the card: a slice per holding, biggest first, with the tail pooled as
+ *  Other. Derived from the wallet's own holdings rather than a fixed symbol list — the widget belongs to
+ *  whichever desk it's sitting on, and a fixed list would chart a wallet holding none of those tokens as
+ *  one undifferentiated grey bar. */
 function slices(assets: AssetObj[]) {
   const total = assets.reduce((t, a) => t + a.usd, 0)
-  const bySymbol = new Map<string, number>()
-  for (const a of assets) bySymbol.set(a.symbol, (bySymbol.get(a.symbol) ?? 0) + a.usd)
+  if (total <= 0) return { total: 0, rows: [] }
 
-  const known = LEGEND.map(({ symbol, color }) => ({ label: symbol, color, usd: bySymbol.get(symbol) ?? 0 }))
-  const other = total - known.reduce((t, s) => t + s.usd, 0)
-  const all = [...known, { label: "Other", color: OTHER_COLOR, usd: other }].filter((s) => s.usd > 0)
+  const bySymbol = new Map<string, { usd: number; color: string }>()
+  for (const a of assets) {
+    const cur = bySymbol.get(a.symbol)
+    bySymbol.set(a.symbol, { usd: (cur?.usd ?? 0) + a.usd, color: LEGEND_COLOR[a.symbol] ?? cur?.color ?? a.color })
+  }
+
+  const ranked = [...bySymbol].map(([label, s]) => ({ label, ...s })).sort((a, b) => b.usd - a.usd)
+  const named = ranked.slice(0, MAX_SLICES)
+  const tail = ranked.slice(MAX_SLICES).reduce((t, s) => t + s.usd, 0)
+  const all = [...named, { label: "Other", color: OTHER_COLOR, usd: tail }].filter((s) => s.usd > 0)
   return { total, rows: all.map((s) => ({ ...s, pct: Math.round((s.usd / total) * 100) })) }
 }
 
-export function BalanceWidget({ assets, span }: { assets: AssetObj[]; span: 1 | 2 }) {
+export function BalanceWidget({ assets, span, wallet }: { assets: AssetObj[]; span: 1 | 2; wallet: Wallet }) {
   // state — the hovered slice and its on-screen box, for the one-column bar tooltip
   const [hovered, setHovered] = useState<{ row: Slice; rect: DOMRect } | null>(null)
 
@@ -56,10 +70,10 @@ export function BalanceWidget({ assets, span }: { assets: AssetObj[]; span: 1 | 
     <div className={cn("glass flex h-full rounded-16 p-16", span === 2 && "gap-32")}>
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-8">
-          <Image src="/images/openfort.png" alt="Openfort" width={24} height={24} unoptimized className="size-24 shrink-0" />
+          <Image src={WALLETS[wallet].image} alt="" width={24} height={24} unoptimized className="size-24 shrink-0" />
           <div className="min-w-0">
-            <p className="truncate text-12 leading-120 tracking-tight text-white mb-2">Openfort balance</p>
-            <p className="tnum truncate text-10 leading-120 text-white/70">{shortAddr(WALLET.address)}</p>
+            <p className="truncate text-12 leading-120 tracking-tight text-white mb-2">{WALLETS[wallet].label} balance</p>
+            <p className="tnum truncate text-10 leading-120 text-white/70">{shortAddr(WALLETS[wallet].address)}</p>
           </div>
         </div>
 

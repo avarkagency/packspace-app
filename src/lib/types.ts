@@ -1,6 +1,7 @@
 // PackSpace object system (spec §3.3). Everything important is an object; each class must be
 // instantly distinguishable. This prototype models the classes needed for the dashboard +
 // Send + Handoff; the rest are present on the canvas as launcher / display objects.
+import type { Wallet } from "./wallets"
 
 export type Chain = "Base" | "Ethereum" | "Solana" | "BNB" | "Bitcoin"
 
@@ -13,6 +14,8 @@ type ObjBase = {
   /** Raw on-chain reference — always reachable on demand (DEV5), never the default view. */
   address?: string
   chain?: Chain
+  /** Which of the two self-custody wallets holds this object. Absent reads as Openfort — see lib/wallets. */
+  wallet?: Wallet
 }
 
 export type AssetKind = "stablecoin" | "token" | "nft" | "stack"
@@ -46,6 +49,10 @@ export type PersonObj = ObjBase & {
   handle: string
   trust: TrustState
   hue: number
+  /** Which shipped avatar this address wears, when it isn't the object's own id. The same person can sit
+   *  in both wallets' address books as two objects with two ids — they share one face, so the copy
+   *  carries the original's key rather than falling back to the default. */
+  avatarKey?: string
   /** Address-lifecycle signals (spec §3.8.4) — the Safety Engine reacts to these. */
   retired?: boolean
   compromised?: boolean
@@ -169,7 +176,8 @@ export type DealItem = {
 
 export type Receipt = {
   id: string
-  action: "Send" | "Trade"
+  /** Move is the internal one — an object crossing between your own two wallets, not a transfer out. */
+  action: "Send" | "Trade" | "Move"
   give: string
   receive?: string
   counterparty: string

@@ -47,7 +47,11 @@ const CONTACT_IMAGE: Record<string, string> = {
   "p-uniswap": "/images/contacts/uniswap.jpg"
 }
 
-export const contactImage = (id: string) => CONTACT_IMAGE[id] ?? "/images/contacts/default.jpg"
+/** The face an address wears. Takes the contact rather than a bare id so a copy of it — the same person
+ *  in the other wallet's address book, which needs its own object id — keeps the original's avatar
+ *  through `avatarKey` instead of dropping to the default. */
+export const contactImage = (contact: { id: string; avatarKey?: string }) =>
+  CONTACT_IMAGE[contact.avatarKey ?? contact.id] ?? "/images/contacts/default.jpg"
 
 const APP_ICON: Record<string, LucideIcon> = {
   gacha: Ticket,

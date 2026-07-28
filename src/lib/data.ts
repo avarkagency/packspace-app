@@ -419,6 +419,125 @@ export const DUST_NFTS: AssetObj[] = [
   }
 ]
 
+// ── The MetaMask (EOA) desk ──────────────────────────────────────────────────
+// The second self-custody wallet, ported from the design prototype's EOA set. MetaMask is an EOA on EVM
+// only, so everything here is Base or Ethereum — nothing on Solana or Bitcoin can be held in it, which
+// is the rule the split view's divider enforces when you drag something across.
+//
+// USDC deliberately appears in BOTH wallets: moving one onto the other is what raises the merge prompt.
+
+export const EOA_ASSETS: AssetObj[] = [
+  {
+    id: "e-cbeth",
+    class: "asset",
+    label: "Coinbase Wrapped Staked ETH",
+    symbol: "cbETH",
+    kind: "token",
+    balance: 1.1,
+    usd: 3200.0,
+    chain: "Base",
+    color: "#3b82f6",
+    wallet: "eoa",
+    address: "0x2Ae3…F1b7"
+  },
+  {
+    id: "e-usdc",
+    class: "asset",
+    label: "USD Coin",
+    symbol: "USDC",
+    kind: "stablecoin",
+    balance: 640,
+    usd: 640.0,
+    chain: "Base",
+    color: C.usdc,
+    wallet: "eoa",
+    approval: { spender: "Aerodrome", unlimited: false, verified: true },
+    address: "0x8335…2913"
+  },
+  {
+    id: "e-degen",
+    class: "asset",
+    label: "Degen",
+    symbol: "DEGEN",
+    kind: "token",
+    balance: 4200,
+    usd: 185.0,
+    chain: "Base",
+    color: "#a855f7",
+    wallet: "eoa",
+    address: "0x4ed4…9Ed"
+  },
+  {
+    id: "e-aero",
+    class: "asset",
+    label: "Aerodrome",
+    symbol: "AERO",
+    kind: "token",
+    balance: 310,
+    usd: 520.0,
+    chain: "Base",
+    color: "#38bdf8",
+    wallet: "eoa",
+    address: "0x9401…f631"
+  },
+  {
+    id: "e-bayc",
+    class: "asset",
+    label: "Bored Ape Yacht Club",
+    symbol: "BAYC",
+    kind: "nft",
+    balance: 1,
+    usd: 148.0,
+    chain: "Ethereum",
+    color: C.bayc,
+    wallet: "eoa",
+    address: "0xBC4C…2044"
+  },
+  {
+    id: "e-pudgy",
+    class: "asset",
+    label: "Pudgy Penguins",
+    symbol: "PUDGY",
+    kind: "nft",
+    balance: 1,
+    usd: 96.0,
+    chain: "Ethereum",
+    color: "#7fc4e8",
+    wallet: "eoa",
+    address: "0xBd35…7c19"
+  }
+]
+
+export const EOA_PEOPLE: PersonObj[] = [
+  {
+    id: "e-jane",
+    class: "person",
+    label: "Jane",
+    handle: "@jane.pack",
+    trust: "unconfirmed",
+    hue: 288,
+    chain: "Base",
+    platform: "g",
+    online: true,
+    whitelisted: true,
+    wallet: "eoa",
+    address: "0x5D1a7c81b9E24f05a6D7c8B1e0F9a2D3c4B57c40"
+  },
+  {
+    id: "e-0x91fa",
+    class: "person",
+    label: "0x91Fa…",
+    handle: "unconfirmed",
+    trust: "unconfirmed",
+    hue: 18,
+    chain: "Base",
+    platform: "external",
+    whitelisted: false,
+    wallet: "eoa",
+    address: "0x91Fa6b3C0d8E5a2F7b1C4d9E0a6B3c8D5e2F1c72"
+  }
+]
+
 export const PACKS: PackObj[] = [
   {
     id: "k-chase",
@@ -485,7 +604,7 @@ export const APPROVAL_RADAR: Approval[] = [
   { id: "ap-uni", spender: "Uniswap", verified: true, assetName: "USD Coin", symbol: "USDC", glyph: "$", color: "#2775ca", unlimited: true, chain: "Base", wallet: "Openfort", risk: "watch" },
   { id: "ap-aave", spender: "Aave", verified: true, assetName: "Ethereum", symbol: "ETH", glyph: "Ξ", color: "#627eeb", unlimited: false, allowance: "2.0", chain: "Ethereum", wallet: "Openfort", risk: "ok" },
   { id: "ap-scam", spender: "claim-rewards.io", verified: false, assetName: "$REWARD", symbol: "REWARD", glyph: "!", color: "#71717a", unlimited: true, chain: "Base", wallet: "Openfort", risk: "danger", assetId: "a-reward" },
-  { id: "ap-aero", spender: "Aerodrome", verified: true, assetName: "USD Coin", symbol: "USDC", glyph: "$", color: "#2775ca", unlimited: false, allowance: "640", chain: "Base", wallet: "Openfort", risk: "ok" }
+  { id: "ap-aero", spender: "Aerodrome", verified: true, assetName: "USD Coin", symbol: "USDC", glyph: "$", color: "#2775ca", unlimited: false, allowance: "640", chain: "Base", wallet: "MetaMask", risk: "ok" }
 ]
 
 // What the fake counterparty is willing to offer back inside a Handoff.

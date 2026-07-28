@@ -228,7 +228,7 @@ function FolderPeek({ folder }: { folder: FolderPreview }) {
  *  (round for a coin, a rounded square for an NFT), a tinted monogram where it doesn't, and the gradient
  *  avatar for a contact. */
 function FolderItemArt({ obj }: { obj: DesktopObj }) {
-  if (obj.class === "person") return <ContactAvatar id={obj.id} size={18} />
+  if (obj.class === "person") return <ContactAvatar contact={obj} size={18} />
 
   const art = artImage(obj.symbol)
   if (art)

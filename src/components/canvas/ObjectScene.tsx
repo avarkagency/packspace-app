@@ -127,7 +127,7 @@ export function ObjectScene({ items, nav = [] }: { items: DesktopObj[]; nav?: Na
             tint={obj.class === "person" ? WALLET_TINT : objectTint(obj)}
             symbol={coinSymbol(obj)}
             // contacts wear their avatar on the coin face; everything else keeps its symbol-keyed art
-            artSrc={obj.class === "person" ? contactImage(obj.id) : undefined}
+            artSrc={obj.class === "person" ? contactImage(obj) : undefined}
             finish="light"
             dragging={dragged?.id === obj.id}
             carried={!!carriedIds?.has(obj.id)}

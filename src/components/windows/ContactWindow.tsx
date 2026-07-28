@@ -59,7 +59,7 @@ export function ContactWindow({ contact, create = false, z, onClose, onSave }: P
         <div className="p-28">
           <h2 className="flex items-center gap-8 text-18 leading-120 tracking-tight text-white">
             <span className="inline-flex shrink-0 rounded-full ring-1 ring-white">
-              <ContactAvatar id={contact.id} size={24} />
+              <ContactAvatar contact={contact} size={24} />
             </span>
             {create ? "New Contact" : "Edit Wallet"}
           </h2>

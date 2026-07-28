@@ -7,6 +7,7 @@ import { Columns2, Maximize2, Minimize2, Plus, Trash2 } from "lucide-react"
 import { cue } from "@/lib/sound"
 import type { AssetObj } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import type { Wallet } from "@/lib/wallets"
 import { WIDGET_TYPES, type WidgetInstance, type WidgetType, packWidgets } from "@/lib/widgets"
 
 import { DesktopMenu, type DesktopMenuItem } from "../desktop/DesktopMenu"
@@ -30,20 +31,22 @@ type Props = {
   widgets: WidgetInstance[]
   setWidgets: (updater: (ws: WidgetInstance[]) => WidgetInstance[]) => void
   assets: AssetObj[]
+  /** Whose desk this grid belongs to. Each wallet keeps its own arrangement — see DesktopWorkspace. */
+  wallet: Wallet
   onAdd: (type: WidgetType) => void
   /** Report the grid's live keep-out box (px in from the top-right corner) so the desk clamps icons off it. */
   onKeepoutChange?: (w: number, h: number) => void
 }
 
-function renderWidget(w: WidgetInstance, assets: AssetObj[]) {
-  if (w.type === "balance") return <BalanceWidget assets={assets} span={w.span} />
+function renderWidget(w: WidgetInstance, assets: AssetObj[], wallet: Wallet) {
+  if (w.type === "balance") return <BalanceWidget assets={assets} span={w.span} wallet={wallet} />
   return <NftWidget assets={assets} span={w.span} />
 }
 
 /** A drag's landing spot: onto another widget (swap slots), or into an empty cell (move there). */
 type Drop = { kind: "swap"; overId: string } | { kind: "cell"; row: number; col: 1 | 2 }
 
-export function WidgetGrid({ widgets, setWidgets, assets, onAdd, onKeepoutChange }: Props) {
+export function WidgetGrid({ widgets, setWidgets, assets, wallet, onAdd, onKeepoutChange }: Props) {
   // refs — the grid box (for the column midline) and each rendered cell (for drop hit-testing)
   const gridRef = useRef<HTMLDivElement>(null)
   const cellRefs = useRef(new Map<string, HTMLElement>())
@@ -254,7 +257,7 @@ export function WidgetGrid({ widgets, setWidgets, assets, onAdd, onKeepoutChange
               dragId === p.id && "opacity-40",
               drop?.kind === "swap" && drop.overId === p.id && "outline-1 outline-dashed outline-white"
             )}>
-            {renderWidget(p, assets)}
+            {renderWidget(p, assets, wallet)}
           </div>
         ))}
       </div>

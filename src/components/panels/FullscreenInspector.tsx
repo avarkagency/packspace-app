@@ -314,7 +314,7 @@ function SummaryLoading() {
 /** The object's mark, sized for the art card — used for packs (no scene coin) and as the assets/contacts
  *  fallback if their coin isn't in the scene. */
 function ArtMark({ obj }: { obj: Inspectable }) {
-  if (obj.class === "person") return <ContactAvatar id={obj.id} size={168} className="relative" />
+  if (obj.class === "person") return <ContactAvatar contact={obj} size={168} className="relative" />
   if (obj.class === "pack")
     return (
       <span className="relative grid size-168 place-items-center rounded-24 text-56 font-extrabold text-white" style={{ background: obj.color }}>

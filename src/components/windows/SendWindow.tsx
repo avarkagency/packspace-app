@@ -132,7 +132,7 @@ export function SendWindow({ assets, to, amount, setAmount, onClose, onSend }: P
         <div className="flex items-center justify-between gap-12">
           <dt className="text-14 leading-120 tracking-tight text-white/80">Recipient</dt>
           <dd className="flex min-w-0 items-center gap-6 text-14 leading-120 tracking-tight text-white">
-            <ContactAvatar id={to.id} size={24} />
+            <ContactAvatar contact={to} size={24} />
             <span className="truncate">{to.label}</span>
           </dd>
         </div>

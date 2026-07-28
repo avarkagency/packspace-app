@@ -35,7 +35,7 @@ export function DeleteWindow({ contact, z, onClose, onConfirm }: Props) {
         <div className="p-28">
           <h2 className="flex items-center gap-8 text-18 leading-120 tracking-tight text-white">
             <span className="inline-flex shrink-0 rounded-full ring-1 ring-white">
-              <ContactAvatar id={contact.id} size={24} />
+              <ContactAvatar contact={contact} size={24} />
             </span>
             Delete {contact.label}
           </h2>

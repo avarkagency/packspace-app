@@ -102,7 +102,7 @@ export function TransferWindow({ assets, inventory, to, z, onClose, onSend, onLa
 
           <h2 className="flex items-center gap-6 text-18 leading-120 tracking-tight text-white">
             {VERB[step]} {what} to
-            <ContactAvatar id={to.id} size={24} />
+            <ContactAvatar contact={to} size={24} />
             {to.label}
           </h2>
           <span className="tnum mt-8 inline-block rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">

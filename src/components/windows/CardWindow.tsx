@@ -140,7 +140,7 @@ export function CardWindow({ contact, onImport, onClose }: Props) {
                 style={{ background: "linear-gradient(150deg, rgba(120,90,255,0.22), rgba(59,130,246,0.14))" }}>
                 <div className="flex gap-14">
                   <div className="flex min-w-0 flex-1 flex-col gap-11">
-                    {contact ? <ContactAvatar id={contact.id} size={52} /> : <GradientAvatar seed={address || name} size={52} className="shrink-0" />}
+                    {contact ? <ContactAvatar contact={contact} size={52} /> : <GradientAvatar seed={address || name} size={52} className="shrink-0" />}
                     <div className="min-w-0">
                       <p className="truncate text-17 leading-120 font-extrabold text-white">{name}</p>
                       <p className="truncate font-mono text-12 leading-120 text-[#c7d2fe]">{handle}</p>

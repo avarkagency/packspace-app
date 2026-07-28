@@ -1,14 +1,15 @@
 "use client"
 
-import { ArrowRightLeft, ArrowUpRight, ReceiptText, X } from "lucide-react"
+import { ReceiptText, X } from "lucide-react"
 
 import type { Receipt } from "@/lib/types"
 import { shortAddr } from "@/lib/utils"
 
 import { BaseBtn } from "../base/BaseBtn"
+import { RECEIPT_STYLE } from "./ReceiptWindow"
 
-// The Receipts history — every settled Send / Handoff, newest first. Click one to open its proof card.
-// Wears the shared glass frame.
+// The Receipts history — every settled Send / Handoff / Move, newest first. Click one to open its proof
+// card. Wears the shared glass frame, and takes each action's signal colour from the proof card itself.
 
 type Props = {
   receipts: Receipt[]
@@ -42,9 +43,7 @@ export function ReceiptsListWindow({ receipts, onOpen, onClose }: Props) {
           ) : (
             <ul className="no-scrollbar mt-16 flex max-h-[60vh] flex-col gap-8 overflow-auto">
               {receipts.map((r) => {
-                const isSend = r.action === "Send"
-                const color = isSend ? "#3ddc84" : "#c4b6ff"
-                const Icon = isSend ? ArrowUpRight : ArrowRightLeft
+                const { color, Icon } = RECEIPT_STYLE[r.action]
                 return (
                   <li key={r.id}>
                     <button

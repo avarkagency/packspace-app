@@ -17,7 +17,7 @@ import { ContactAvatar } from "./ContactAvatar"
 // (which stacks above the flying canvas while it's in hand, so a real coin would end up behind its glass).
 
 export function ObjectArt({ obj, size = 48 }: { obj: DesktopObj; size?: number }) {
-  if (obj.class === "person") return <ContactAvatar id={obj.id} size={size} />
+  if (obj.class === "person") return <ContactAvatar contact={obj} size={size} />
 
   if (obj.kind === "nft") {
     const art = artImage(obj.symbol)

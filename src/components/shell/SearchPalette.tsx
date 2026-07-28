@@ -260,7 +260,7 @@ const ResultRow = ({
 /** The 40px identity mark, drawn from the same source as the desk coin so a result looks like its object:
  *  a coin/art mark for assets, a photo for contacts, the coloured glyph tile for packs. */
 function ResultMark({ obj }: { obj: SearchItem }) {
-  if (obj.class === "person") return <ContactAvatar id={obj.id} size={40} />
+  if (obj.class === "person") return <ContactAvatar contact={obj} size={40} />
   if (obj.class === "pack")
     return (
       <span className="grid size-40 shrink-0 place-items-center rounded-12 text-18 font-extrabold text-white" style={{ background: obj.color }}>
