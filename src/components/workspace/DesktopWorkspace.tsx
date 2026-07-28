@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 
-import { ArrowDownUp, BadgeCheck, Ban, CreditCard, FolderPlus, History, Image as ImageIcon, LayoutGrid, Pencil, Plus, Scissors, Search, ShieldCheck, ShieldX, SquarePen, Trash2, UserPlus } from "lucide-react"
+import { ArrowDownUp, BadgeCheck, Ban, CreditCard, FolderPlus, History, Image as ImageIcon, LayoutGrid, Maximize2, Minimize2, Pencil, Plus, Scissors, Search, ShieldCheck, ShieldX, SquarePen, Trash2, UserPlus } from "lucide-react"
 
 import {
   assetDropId,
@@ -30,6 +30,7 @@ import { cn, desktopLabel, fakeHash, round4, units } from "@/lib/utils"
 import { WIDGET_TYPES, type WidgetInstance, type WidgetType } from "@/lib/widgets"
 
 import { DesktopBar } from "../desktop/DesktopBar"
+import { CARD_H, CARD_W, DesktopDetailCard } from "../desktop/DesktopDetailCard"
 import { DOCK_GAP, DOCK_H, DOCK_W, DesktopDock, dropTileAt } from "../desktop/DesktopDock"
 import { DesktopFolder } from "../desktop/DesktopFolder"
 import { DesktopIcon, ICON_PAD, ICON_SLOT, ICON_W } from "../desktop/DesktopIcon"
@@ -147,20 +148,35 @@ function defaultPositions(assets: AssetObj[], contacts: PersonObj[], folderIds: 
 /** Room under the slot for the label and the value pill, so the bottom clamp keeps both on screen. */
 const ICON_FOOT = 64
 
-/** Keep an icon on the desk — fully visible edge to edge (the chrome floats; nothing owns a strip),
+/** What an object occupies on the desk. */
+type Box = { w: number; h: number }
+const ICON_BOX: Box = { w: ICON_W, h: ICON_SLOT + ICON_FOOT }
+const CARD_BOX: Box = { w: CARD_W, h: CARD_H }
+
+/** The holdings currently shown as detail cards rather than icons, mirrored out of React state (see
+ *  `applyCardIds`). The layout maths below is module-level and runs on the drag's hot path, so it reads
+ *  the footprint from here rather than having a lookup threaded through all twenty-odd call sites —
+ *  the same trick `chromeKeepout` uses for the widget grid's box. */
+const detailCardIds = new Set<string>()
+
+const boxOf = (id?: string): Box => (id && detailCardIds.has(id) ? CARD_BOX : ICON_BOX)
+
+/** Keep an object on the desk — fully visible edge to edge (the chrome floats; nothing owns a strip),
  *  and never under the pieces of chrome that sit above the icon layer (the dock shelf, the top-right
  *  toggles + balance card): an icon parked beneath those could never be picked back up through them.
- *  Anything landing there steps clear. */
-function clampPos(x: number, y: number): Pos {
-  const cx = Math.min(Math.max(x, 4), window.innerWidth - ICON_W - 4)
-  let cy = Math.min(Math.max(y, 4), window.innerHeight - ICON_SLOT - ICON_FOOT)
+ *  Anything landing there steps clear. Pass the object's id so a detail card is clamped by its own
+ *  (much wider) footprint rather than an icon's. */
+function clampPos(x: number, y: number, id?: string): Pos {
+  const box = boxOf(id)
+  const cx = Math.min(Math.max(x, 4), window.innerWidth - box.w - 4)
+  let cy = Math.min(Math.max(y, 4), window.innerHeight - box.h)
 
   const dockTop = window.innerHeight - DOCK_GAP - DOCK_H
   const dockLeft = (window.innerWidth - DOCK_W) / 2
-  const overlapsDock = cx + ICON_W > dockLeft - 4 && cx < dockLeft + DOCK_W + 4 && cy + ICON_SLOT + ICON_FOOT > dockTop
-  if (overlapsDock) cy = dockTop - ICON_SLOT - ICON_FOOT
+  const overlapsDock = cx + box.w > dockLeft - 4 && cx < dockLeft + DOCK_W + 4 && cy + box.h > dockTop
+  if (overlapsDock) cy = dockTop - box.h
 
-  const overlapsChrome = cx + ICON_W > window.innerWidth - chromeKeepout.w && cy < chromeKeepout.h
+  const overlapsChrome = cx + box.w > window.innerWidth - chromeKeepout.w && cy < chromeKeepout.h
   if (overlapsChrome) cy = chromeKeepout.h
 
   return { x: cx, y: cy }
@@ -169,24 +185,38 @@ function clampPos(x: number, y: number): Pos {
 /** Two icons closer than this read as overlapping. Roughly the icon's own footprint. */
 const MIN_DIST = 100
 
+/** Do these two resting objects clash? Icon against icon keeps the radial test the desk's spacing was
+ *  tuned around, so nothing about the existing arrangement shifts; a detail card is far too wide for a
+ *  single radius to describe, so any pair involving one falls back to a plain box intersection. */
+function clashes(aId: string, a: Pos, bId: string, b: Pos) {
+  if (!detailCardIds.has(aId) && !detailCardIds.has(bId)) return Math.hypot(a.x - b.x, a.y - b.y) < MIN_DIST
+  const ba = boxOf(aId)
+  const bb = boxOf(bId)
+  return a.x < b.x + bb.w && a.x + ba.w > b.x && a.y < b.y + bb.h && a.y + ba.h > b.y
+}
+
 function isFree(p: Pos, positions: Record<string, Pos>, ignoreId: string) {
   for (const [id, q] of Object.entries(positions)) {
-    if (id !== ignoreId && Math.hypot(p.x - q.x, p.y - q.y) < MIN_DIST) return false
+    if (id !== ignoreId && clashes(ignoreId, p, id, q)) return false
   }
   return true
 }
 
 /** The nearest clear spot to where the object wants to land: try the spot itself, then walk rings
  *  outward around it until a candidate has breathing room. Searching by growing radius means the first
- *  hit is (near enough) the closest. A desk too packed to have one just takes the overlap. */
-function nearestFreeSpot(desired: Pos, positions: Record<string, Pos>, ignoreId: string): Pos {
-  const d = clampPos(desired.x, desired.y)
+ *  hit is (near enough) the closest. A desk too packed to have one just takes the overlap.
+ *
+ *  `minY` is a floor the search may not climb above. Dropping something is always the user's placement
+ *  and takes no floor; an automatic tidy does, or a card pushed off a grid slot finds its room by
+ *  reversing up into the greeting rather than stepping sideways. */
+function nearestFreeSpot(desired: Pos, positions: Record<string, Pos>, ignoreId: string, minY = 0): Pos {
+  const d = clampPos(desired.x, Math.max(desired.y, minY), ignoreId)
   if (isFree(d, positions, ignoreId)) return d
   for (let r = MIN_DIST; r <= MIN_DIST * 6; r += MIN_DIST / 2) {
     for (let i = 0; i < 16; i++) {
       const a = (i / 16) * Math.PI * 2
-      const c = clampPos(d.x + Math.cos(a) * r, d.y + Math.sin(a) * r)
-      if (isFree(c, positions, ignoreId)) return c
+      const c = clampPos(d.x + Math.cos(a) * r, d.y + Math.sin(a) * r, ignoreId)
+      if (c.y >= minY && isFree(c, positions, ignoreId)) return c
     }
   }
   return d
@@ -198,19 +228,19 @@ function nearestFreeSpot(desired: Pos, positions: Record<string, Pos>, ignoreId:
  *  same way it will be when placed, so an edge push-away still reads as clear. Returns null when no offset
  *  keeps the whole formation clear — in particular when a clamp against a keep-out (the widgets, the dock,
  *  a screen edge) would collapse members onto each other — so the caller can scatter instead of stacking. */
-function nearestFreeGroupOffset(desired: Pos[], positions: Record<string, Pos>, carriedIds: ReadonlySet<string>): Pos | null {
+function nearestFreeGroupOffset(desired: { id: string; p: Pos }[], positions: Record<string, Pos>, carriedIds: ReadonlySet<string>): Pos | null {
   const clear = (ox: number, oy: number) => {
-    const landed: Pos[] = []
+    const landed: { id: string; p: Pos }[] = []
     for (const d of desired) {
-      const p = clampPos(d.x + ox, d.y + oy)
+      const p = clampPos(d.p.x + ox, d.p.y + oy, d.id)
       for (const [id, q] of Object.entries(positions)) {
         if (carriedIds.has(id)) continue
-        if (Math.hypot(p.x - q.x, p.y - q.y) < MIN_DIST) return false
+        if (clashes(d.id, p, id, q)) return false
       }
       // ...and against the handful's own already-placed members, so a clamp that folds two of them onto
       // the same spot is rejected rather than stacked
-      for (const q of landed) if (Math.hypot(p.x - q.x, p.y - q.y) < MIN_DIST) return false
-      landed.push(p)
+      for (const l of landed) if (clashes(d.id, p, l.id, l.p)) return false
+      landed.push({ id: d.id, p })
     }
     return true
   }
@@ -273,6 +303,8 @@ export function DesktopWorkspace() {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   /** Multi-select: the ids swept up by the marquee. Dragging any of them moves the whole set. */
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set())
+  /** Holdings currently wearing the detail card instead of their icon. Desktop only — see setDetailCard. */
+  const [cardIds, setCardIds] = useState<ReadonlySet<string>>(new Set())
   /** The two halves of the freshest split — they flare yellow on the desk until the flash fades. */
   const [flashIds, setFlashIds] = useState<ReadonlySet<string>>(new Set())
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
@@ -304,10 +336,14 @@ export function DesktopWorkspace() {
   const folderedIds = new Set(folders.flatMap((f) => f.contents))
   const allItems: DesktopObj[] = [...assets, ...contacts]
   const deskItems: DesktopObj[] = allItems.filter((o) => !folderedIds.has(o.id))
-  // while inspecting a filed object, add it to the 3D scene so its coin can appear in the art card — it's
-  // the same object as any other, just in a folder
-  const inspectFolderedId = rightPanel?.kind === "inspect" && folderedIds.has(rightPanel.id) ? rightPanel.id : null
-  const sceneItems: DesktopObj[] = inspectFolderedId ? [...deskItems, ...allItems.filter((o) => o.id === inspectFolderedId)] : deskItems
+  // what the 3D scene draws. A detail card carries its own flat art (a folder tile's treatment), so a
+  // carded holding leaves the scene — otherwise its coin would have to sit either in front of the card's
+  // glass or behind it, and neither reads right while the card is being dragged around.
+  const drawn3d: DesktopObj[] = deskItems.filter((o) => !cardIds.has(o.id))
+  // while inspecting an object the desk isn't drawing — filed in a folder, or wearing a card — put it back
+  // in the scene so its coin can appear in the art card. It's the same object as any other, just elsewhere.
+  const inspectHiddenId = rightPanel?.kind === "inspect" && !drawn3d.some((o) => o.id === rightPanel.id) ? rightPanel.id : null
+  const sceneItems: DesktopObj[] = inspectHiddenId ? [...drawn3d, ...allItems.filter((o) => o.id === inspectHiddenId)] : drawn3d
   const draggedAsset = dragged?.class === "asset" ? dragged : null
   const carriedHasAsset = !!carriedIds && assets.some((a) => carriedIds.has(a.id))
   /** Whether the carry holds anything a folder could take — folders themselves never file. */
@@ -624,8 +660,36 @@ export function DesktopWorkspace() {
   // sitting there).
   const moveObject = (obj: DesktopObj, x: number, y: number) => {
     if (pulledFromFolder.current.delete(obj.id)) cue("whisper") // pulled out of a folder and set down on the desk
-    const p = clampPos(x - ICON_W / 2, y - ICON_PAD - ICON_SLOT / 2)
+    const p = clampPos(x - ICON_W / 2, y - ICON_PAD - ICON_SLOT / 2, obj.id)
     setPositions((pos) => (pos ? { ...pos, [obj.id]: nearestFreeSpot(p, pos, obj.id) } : pos))
+  }
+
+  // events — the detail card. Writing the module mirror and the state together is what keeps the layout
+  // maths honest: `clampPos` and friends run on the drag's hot path and read `detailCardIds` directly, so
+  // every change to the set has to go through here.
+  const applyCardIds = useCallback((next: ReadonlySet<string>) => {
+    detailCardIds.clear()
+    for (const id of next) detailCardIds.add(id)
+    setCardIds(next)
+  }, [])
+
+  /** Swap a holding between its icon and its detail card. The object keeps its centre — the card grows
+   *  out around where the icon stood rather than jumping — and then steps aside if that much wider
+   *  footprint has landed on a neighbour. */
+  const setDetailCard = (id: string, on: boolean) => {
+    const next = new Set(cardIds)
+    if (on) next.add(id)
+    else next.delete(id)
+    applyCardIds(next)
+    // the mirror is already updated, so clampPos/nearestFreeSpot below size this object as its NEW form
+    setPositions((pos) => {
+      const at = pos?.[id]
+      if (!pos || !at) return pos
+      const from = on ? ICON_BOX : CARD_BOX
+      const to = on ? CARD_BOX : ICON_BOX
+      const p = clampPos(at.x + (from.w - to.w) / 2, at.y + (from.h - to.h) / 2, id)
+      return { ...pos, [id]: nearestFreeSpot(p, pos, id) }
+    })
   }
 
   // events — asset actions
@@ -740,7 +804,7 @@ export function DesktopWorkspace() {
     pulledFromFolder.current.delete(obj.id)
     // the icon was carried to the drop point and can't stay ON its target — settle it beside, with the
     // same push-away any overlapping placement gets
-    const p = clampPos(coinView.cursor.x - ICON_W / 2, coinView.cursor.y - ICON_PAD - ICON_SLOT / 2)
+    const p = clampPos(coinView.cursor.x - ICON_W / 2, coinView.cursor.y - ICON_PAD - ICON_SLOT / 2, obj.id)
     setPositions((pos) => (pos ? { ...pos, [obj.id]: nearestFreeSpot(p, pos, obj.id) } : pos))
 
     // a folder takes anything except another folder — filed away, off the desk
@@ -807,7 +871,16 @@ export function DesktopWorkspace() {
       const x1 = Math.max(sx, ev.clientX)
       const y1 = Math.max(sy, ev.clientY)
       setMarquee({ x0: sx, y0: sy, x1: ev.clientX, y1: ev.clientY })
-      setSelectedIds(new Set(boxes.filter(({ p }) => p.x < x1 && p.x + ICON_W > x0 && p.y < y1 && p.y + ICON_SLOT + ICON_FOOT > y0).map(({ id }) => id)))
+      setSelectedIds(
+        new Set(
+          boxes
+            .filter(({ id, p }) => {
+              const b = boxOf(id)
+              return p.x < x1 && p.x + b.w > x0 && p.y < y1 && p.y + b.h > y0
+            })
+            .map(({ id }) => id)
+        )
+      )
     }
     const onLift = () => {
       window.removeEventListener("pointermove", onSweep)
@@ -917,7 +990,7 @@ export function DesktopWorkspace() {
             setPositions((pos) => {
               if (!pos) return pos
               const next = { ...pos }
-              for (const [id, o] of carriedFolders) next[id] = nearestFreeSpot(clampPos(o.x + dx, o.y + dy), next, id)
+              for (const [id, o] of carriedFolders) next[id] = nearestFreeSpot(clampPos(o.x + dx, o.y + dy, id), next, id)
               return next
             })
           }
@@ -933,20 +1006,20 @@ export function DesktopWorkspace() {
           const next = { ...pos }
           // a drop can't stay ON its target, and a pulled stack spreads out — both scatter to clear spots
           if (hitContact || opts.settle === "spread") {
-            for (const [id, o] of org) next[id] = nearestFreeSpot(clampPos(o.x + dx, o.y + dy), next, id)
+            for (const [id, o] of org) next[id] = nearestFreeSpot(clampPos(o.x + dx, o.y + dy, id), next, id)
             return next
           }
           // formation holds: nudge the whole handful by one shared offset so it lands clear of resting
           // icons without losing its shape (single drags get the same push-away via nearestFreeSpot)
           const carried = new Set(org.keys())
-          const desired = [...org.values()].map((o) => ({ x: o.x + dx, y: o.y + dy }))
+          const desired = [...org].map(([id, o]) => ({ id, p: { x: o.x + dx, y: o.y + dy } }))
           const off = nearestFreeGroupOffset(desired, pos, carried)
           if (off) {
-            for (const [id, o] of org) next[id] = clampPos(o.x + dx + off.x, o.y + dy + off.y)
+            for (const [id, o] of org) next[id] = clampPos(o.x + dx + off.x, o.y + dy + off.y, id)
           } else {
             // no offset keeps the formation clear (dropped against the widgets / dock / an edge) — scatter
             // each to its own free spot rather than collapsing the handful into a stack
-            for (const [id, o] of org) next[id] = nearestFreeSpot(clampPos(o.x + dx, o.y + dy), next, id)
+            for (const [id, o] of org) next[id] = nearestFreeSpot(clampPos(o.x + dx, o.y + dy, id), next, id)
           }
           return next
         })
@@ -973,6 +1046,10 @@ export function DesktopWorkspace() {
     if (e.button !== 0) return
     if (selectedIds.has(obj.id) && selectedIds.size > 1) return startCarry([...selectedIds], { settle: "formation" })(e)
     if (selectedIds.size) setSelectedIds(new Set())
+    // a detail card is carried, not picked up by its coin: the icon drag re-centres the object on the
+    // cursor, which would snap a 280px-wide card sideways the instant it started moving. The carry moves
+    // by delta instead, so the card stays under the point you grabbed — and still sees every drop zone.
+    if (cardIds.has(obj.id)) return startCarry([obj.id], { settle: "formation" })(e)
     onPointerDown(obj)(e)
   }
 
@@ -983,16 +1060,26 @@ export function DesktopWorkspace() {
   // wholesale replace would strand any user-made folders without a position. Foldered objects are
   // skipped — they hold no desk slot while filed.
   const cleanUp = (assetOrder = assets, contactOrder = contacts) =>
-    setPositions((pos) => ({
-      ...pos,
-      ...defaultPositions(
-        assetOrder.filter((a) => !folderedIds.has(a.id)),
-        contactOrder.filter((c) => !folderedIds.has(c.id)),
-        folders.map((f) => f.id),
-        window.innerWidth,
-        window.innerHeight
-      )
-    }))
+    setPositions((pos) => {
+      const next = {
+        ...pos,
+        ...defaultPositions(
+          assetOrder.filter((a) => !folderedIds.has(a.id)),
+          contactOrder.filter((c) => !folderedIds.has(c.id)),
+          folders.map((f) => f.id),
+          window.innerWidth,
+          window.innerHeight
+        )
+      }
+      // a detail card is far wider and taller than a grid slot, so the tidy would sit it on top of the two
+      // or three icons around it. Lay the grid out first, then walk each card out to the nearest spot that
+      // clears them — never upward past TOP, or it reverses out of the grid and parks over the greeting.
+      for (const id of cardIds) {
+        const at = next[id]
+        if (at) next[id] = nearestFreeSpot(at, next, id, TOP)
+      }
+      return next
+    })
   const cleanUpBy = (key: "name" | "kind" | "value") => {
     cleanupKeyRef.current = key
     const byName = (a: DesktopObj, b: DesktopObj) => a.label.localeCompare(b.label)
@@ -1221,6 +1308,7 @@ export function DesktopWorkspace() {
     setReceiptsOpen(false)
     setPulseId(null)
     setSelectedIds(new Set())
+    applyCardIds(new Set())
     setPositions(defaultPositions(startAssets.filter((a) => !filed.has(a.id)), PEOPLE, INITIAL_FOLDERS.map((f) => f.id), window.innerWidth, window.innerHeight))
   }
 
@@ -1313,6 +1401,16 @@ export function DesktopWorkspace() {
     if (obj.class === "asset") {
       // Inspect with AI leads every object menu, for consistency; then the object-specific actions
       const items: DesktopMenuItem[] = [{ label: "Inspect with AI", icon: Search, onSelect: () => openInspector(obj.id) }]
+      // the detail card is a desktop view — a folder tile has no room for one, so a filed holding isn't
+      // offered it (and filing one already drops it back to an icon)
+      if (!folderedIds.has(obj.id)) {
+        const card = cardIds.has(obj.id)
+        items.push({
+          label: card ? "Show as icon" : "Show detail card",
+          icon: card ? Minimize2 : Maximize2,
+          onSelect: () => setDetailCard(obj.id, !card)
+        })
+      }
       // a fresh scam token can't be split, but every asset can be inspected, revoked or verified
       if (isSplittable(obj) && obj.verified !== false) items.push({ label: "Split asset", icon: Scissors, onSelect: () => startSplit(obj) })
       if (obj.approval) items.push({ label: "Revoke approval", icon: Ban, danger: true, onSelect: () => revokeToken(obj.id) })
@@ -1459,6 +1557,18 @@ export function DesktopWorkspace() {
     relayoutRef.current()
   }, [keepout])
 
+  // effects — the detail card is a desktop-only view, so the set is pruned to what's actually on the desk:
+  // filing a card into a folder drops it back to an icon, and an object that leaves entirely (spent,
+  // revoked, combined away) takes its card with it. Every path that files or removes goes through here
+  // rather than each remembering to clear the flag itself.
+  useEffect(() => {
+    if (!cardIds.size) return
+    const live = new Set([...cardIds].filter((id) => !folderedIds.has(id) && assets.some((a) => a.id === id)))
+    if (live.size !== cardIds.size) applyCardIds(live)
+    // folderedIds is rebuilt every render from `folders`, which is the dependency that matters
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardIds, folders, assets, applyCardIds])
+
   // effects — a resize re-runs the last clean-up (the plain one, or whichever "Clean Up By" was used
   // last). The listener reads through a ref so it always sees the current assets and contacts without
   // re-registering on every change.
@@ -1577,21 +1687,38 @@ export function DesktopWorkspace() {
                 data-cue-press
                 className={cn("absolute", (dragged?.id === a.id || carriedIds?.has(a.id)) && "pointer-events-none z-[160]")}
                 style={{ left: p.x, top: p.y }}>
-                <DesktopIcon
-                  obj={a}
-                  label={desktopLabel(a)}
-                  // only a valid merge target carries a drop key, so a drop can never land where it can't resolve
-                  dropKey={draggedAsset && canCombine(draggedAsset, a) ? assetDropKey(a.id) : undefined}
-                  dimmed={!!draggedAsset && !isSameToken(draggedAsset, a)}
-                  target={!!draggedAsset && canCombine(draggedAsset, a)}
-                  over={!!draggedAsset && over === assetDropKey(a.id)}
-                  selected={menu?.obj.id === a.id || selectedIds.has(a.id)}
-                  flash={flashIds.has(a.id)}
-                  anyDragging={anyDragging}
-                  onPointerDown={onIconPointerDown(a)}
-                  onDoubleClick={() => openInspector(a.id)}
-                  onContextMenu={onIconMenu(a)}
-                />
+                {cardIds.has(a.id) ? (
+                  <DesktopDetailCard
+                    obj={a}
+                    // the same merge-target rule the icon follows, so a card still takes a matching portion
+                    dropKey={draggedAsset && canCombine(draggedAsset, a) ? assetDropKey(a.id) : undefined}
+                    dimmed={!!draggedAsset && !isSameToken(draggedAsset, a)}
+                    target={!!draggedAsset && canCombine(draggedAsset, a)}
+                    over={!!draggedAsset && over === assetDropKey(a.id)}
+                    selected={menu?.obj.id === a.id || selectedIds.has(a.id)}
+                    flash={flashIds.has(a.id)}
+                    onPointerDown={onIconPointerDown(a)}
+                    onDoubleClick={() => openInspector(a.id)}
+                    onContextMenu={onIconMenu(a)}
+                    onCollapse={() => setDetailCard(a.id, false)}
+                  />
+                ) : (
+                  <DesktopIcon
+                    obj={a}
+                    label={desktopLabel(a)}
+                    // only a valid merge target carries a drop key, so a drop can never land where it can't resolve
+                    dropKey={draggedAsset && canCombine(draggedAsset, a) ? assetDropKey(a.id) : undefined}
+                    dimmed={!!draggedAsset && !isSameToken(draggedAsset, a)}
+                    target={!!draggedAsset && canCombine(draggedAsset, a)}
+                    over={!!draggedAsset && over === assetDropKey(a.id)}
+                    selected={menu?.obj.id === a.id || selectedIds.has(a.id)}
+                    flash={flashIds.has(a.id)}
+                    anyDragging={anyDragging}
+                    onPointerDown={onIconPointerDown(a)}
+                    onDoubleClick={() => openInspector(a.id)}
+                    onContextMenu={onIconMenu(a)}
+                  />
+                )}
               </div>
             )
           })}
@@ -1790,7 +1917,8 @@ export function DesktopWorkspace() {
           obj={inspectableById(rightPanel.id)!}
           objects={inspectList}
           coinPresent={inspectableById(rightPanel.id)!.class !== "pack"}
-          foldered={folderedIds.has(rightPanel.id)}
+          // no coin on the desk to fly from — filed away, or wearing a detail card — so it drops straight in
+          foldered={folderedIds.has(rightPanel.id) || cardIds.has(rightPanel.id)}
           wallpaper={wallpaper.css}
           onAction={onInspectAction}
           onSelect={selectInspect}

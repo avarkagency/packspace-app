@@ -10,10 +10,8 @@ import type { DesktopObj } from "@/lib/types"
 import { cn, desktopLabel, usd } from "@/lib/utils"
 
 import { BaseChangeTag } from "../base/BaseChangeTag"
-import { ObjectMark } from "../canvas/ObjectMark"
-import { artImage } from "../canvas/object-art"
-import { chainImage, objectTint } from "../canvas/objectVisual"
-import { ContactAvatar } from "../shell/ContactAvatar"
+import { chainImage } from "../canvas/objectVisual"
+import { ObjectArt } from "../shell/ObjectArt"
 
 // A folder open on the desk. A window, not a modal: no backdrop, no blur — the desktop stays visible
 // and interactive around it. It spawns centred, moves by its header (double-click the header to send
@@ -302,7 +300,7 @@ function FolderGridItem({
         <span aria-hidden className="split-flash pointer-events-none absolute inset-0 rounded-lg bg-action-split/20 outline-1 outline-action-split/50" />
       )}
       <span className="relative grid size-48 shrink-0 place-items-center">
-        <FolderItemArt obj={obj} />
+        <ObjectArt obj={obj} />
         {/* the shoulder badge — the same marks the desk icons wear */}
         <span className="pointer-events-none absolute -right-px -bottom-px">
           {obj.class === "person" ? (
@@ -350,28 +348,4 @@ function FolderGridItem({
       </span>
     </li>
   )
-}
-
-/** The art itself: borderless round coin art for tokens, a 2px-bordered rounded square for NFTs
- *  (their desk shape), the gradient avatar for contacts. NFTs without shipped art draw a tinted
- *  monogram square, the flat cousin of the face their 3D card draws for itself. */
-function FolderItemArt({ obj }: { obj: DesktopObj }) {
-  if (obj.class === "person") return <ContactAvatar id={obj.id} size={48} />
-
-  if (obj.kind === "nft") {
-    const art = artImage(obj.symbol)
-    if (art)
-      return (
-        <Image src={art} alt="" width={48} height={48} unoptimized draggable={false} className="size-48 rounded-4 border-2 border-white object-cover" />
-      )
-    return (
-      <span
-        className="grid size-48 place-items-center rounded-4 border-2 border-white/40"
-        style={{ background: `${objectTint(obj)}33`, color: objectTint(obj) }}>
-        <span className="text-12 font-semibold tracking-tight">{obj.symbol.slice(0, 3)}</span>
-      </span>
-    )
-  }
-
-  return <ObjectMark obj={obj} size={48} />
 }
