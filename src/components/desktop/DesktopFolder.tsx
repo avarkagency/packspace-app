@@ -2,11 +2,10 @@
 
 import Image from "next/image"
 
+import { ICON_W } from "@/const/desktop-layout"
 import { clearCoinHover, setCoinCursor, setCoinHover } from "@/stores/coin"
 
 import { cn } from "@/lib/utils"
-
-import { ICON_W } from "./DesktopIcon"
 
 // A desk folder — Other Tokens holds the long tail of dust balances, and the desk menu can mint empty
 // ones to organise into. Double-click to open its window; drag to move it; right-click to rename or

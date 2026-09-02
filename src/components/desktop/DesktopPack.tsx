@@ -1,10 +1,9 @@
 "use client"
 
+import { ICON_W } from "@/const/desktop-layout"
 import type { PackObj } from "@/types/objects"
 
 import { cn } from "@/lib/utils"
-
-import { ICON_W } from "./DesktopIcon"
 
 // A Pack on the desk — a bundle of assets wrapped into one object. Like a folder it's DOM furniture,
 // not a scene-drawn coin: a small sealed box with a lid band and a centre ribbon, its face carrying the

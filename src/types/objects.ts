@@ -157,6 +157,11 @@ export type Approval = {
 /** What sits on the desktop: your holdings on the left, your wallets (contacts) on the right. */
 export type DesktopObj = AssetObj | PersonObj
 
+/** A desk folder: a name, the wallet whose desk it sits on, and the ids it holds. Objects in a folder
+ *  stay in the flat asset/contact lists — the desk simply doesn't show them, so pulling one out is just
+ *  removing its id here. */
+export type FolderSpec = { id: string; label: string; wallet: Wallet; contents: string[] }
+
 /** One item in the bottom dock — a flat app tile drawn by the 3D scene (a textured plane, not a coin),
  *  so desktop objects can later be dragged onto it like any other scene object. */
 export type NavItem = {

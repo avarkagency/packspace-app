@@ -3,6 +3,7 @@
 import Image from "next/image"
 import { memo, useMemo } from "react"
 
+import { CARD_H, CARD_W } from "@/const/desktop-layout"
 import type { AssetObj } from "@/types/objects"
 import { Minimize2 } from "lucide-react"
 
@@ -27,10 +28,6 @@ import { dayChange } from "@/data/assets"
 // glass panel rather than an icon's empty slot, so a real coin would have to be layered either in front of
 // the card (blurred behind its own glass) or behind it (with every other object's coin sliding over the top
 // as it's dragged past). The workspace keeps carded objects out of the 3D scene entirely.
-
-/** The card's fixed footprint — the workspace lays out and clamps with these, exactly as it does ICON_W. */
-export const CARD_W = 260
-export const CARD_H = 140
 
 /** The art's box in the header. */
 const MARK = 28

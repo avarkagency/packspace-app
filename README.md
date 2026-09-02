@@ -230,9 +230,15 @@ success never sounds like a cancel. Mute persists across reloads.
   (`asset:` `wallet:` `folder:` `nav:`).
 - `src/lib/wallets.ts` — the two wallets and the EVM-only rule. `src/lib/chain.ts` — the multichain (not
   cross-chain) compatibility model. `src/lib/inspect.ts` — the Inspector's local explanations and facts.
-- `src/stores/{drag,coin,chrome-keepout,clip-planes}.ts` — the out-of-React singletons (drag state; coin
-  screen geometry; the top-right chrome's keep-out box; the shared clip planes).
-- `src/const/pane.ts` — the pane maths behind split view. `src/const/app-config.ts` — session fixtures.
+- `src/stores/{desk,drag,coin,chrome-keepout,clip-planes}.ts` — the out-of-React singletons: the layout
+  maths' mirrors of React state (which objects wear a card, which wallet holds what, where each pane
+  is), drag state, coin screen geometry, the top-right chrome's keep-out box, the shared clip planes.
+- `src/const/pane.ts` — the pane maths behind split view. `src/const/desktop-layout.ts` — the desk's
+  footprints, its stock arrangement and the placement/collision maths. `src/const/desktop-config.ts` —
+  wallpapers, the stock widget bento, the split keep-out. `src/const/app-config.ts` — session fixtures.
+- `src/hooks/useDesktop*.ts` — the desk's own hooks: `Drag`, `Marquee`, `Surfaces` (everything that can
+  be open, and the sound it makes), `Settlement` (what a Send or Trade actually does), and the three
+  transient cues `Toast`, `Flash`, `Pulse`.
 - `src/lib/{coin,nft}-geometry.ts` — geometry, textures and materials per shape. `src/lib/object-art.ts`
   — the artwork registry + base-colour sampling.
 

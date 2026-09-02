@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 
+import { LABEL_TOP } from "@/const/desktop-layout"
 import { DIVIDER_W, type Pane, SPLIT_MAX, SPLIT_MIN } from "@/const/pane"
 import { GripVertical } from "lucide-react"
 
@@ -17,14 +18,6 @@ import { WALLETS, type Wallet } from "@/lib/wallets"
 //
 // Each wallet brings its own wallpaper, so the two halves are told apart by the desk itself rather than
 // by a tint laid over it.
-
-/** How far down the pane labels sit. The floating search / mute / view-switcher cluster owns the
- *  top-right corner down to 40px, and the right pane's label starts underneath it — level with that
- *  cluster the label simply disappears behind it. Exported so the split layout starts below them. */
-export const LABEL_TOP = 48
-
-/** The label pill's own height — a 16px mark and 12px text in a py-6 pill. */
-export const LABEL_H = 28
 
 type Props = {
   panes: Record<Wallet, Pane>

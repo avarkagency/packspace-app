@@ -17,12 +17,6 @@ import { NAV_ITEMS } from "@/data/apps"
 // still to come — today the drop just lands and the icon steps back off the shelf); a scene-drawn icon
 // means the flying coin and the tile live in the same visual world.
 
-/** The shelf's footprint, exported so the desk can keep parked icons clear of it — an icon left under
- *  the shelf could never be picked back up through it. Width = 7 tiles of 48, 4px gaps, 4px side pads. */
-export const DOCK_W = 368
-export const DOCK_H = 56
-export const DOCK_GAP = 8
-
 /** How many tiles, from the left, take single-asset drops. */
 const DROP_TILES = 2
 /** A carried multi-selection is narrower: only Pack Builder takes a whole handful. */

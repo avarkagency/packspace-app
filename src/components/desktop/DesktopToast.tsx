@@ -1,8 +1,7 @@
 "use client"
 
+import { DOCK_GAP, DOCK_H, DOCK_W } from "@/const/desktop-layout"
 import { CircleAlert, CircleCheck, TriangleAlert } from "lucide-react"
-
-import { DOCK_GAP, DOCK_H, DOCK_W } from "./DesktopDock"
 
 // The desk's transient notice — the one place the workspace speaks in words. Sits just above the dock,
 // says what happened (or why something didn't), and takes itself away.

@@ -3,6 +3,7 @@
 import Image from "next/image"
 import { memo, useEffect, useRef } from "react"
 
+import { ICON_PAD, ICON_SLOT, ICON_W } from "@/const/desktop-layout"
 import { clearCoinHover, registerCoinSlot, setCoinCursor, setCoinHover } from "@/stores/coin"
 import type { DesktopObj } from "@/types/objects"
 import { Check, History, ShieldX, TriangleAlert } from "lucide-react"
@@ -22,11 +23,6 @@ import { dayChange } from "@/data/assets"
 // and the object would drift off it. The object's own spin/scale is the hover feedback. A press is
 // different: the slot rects are re-measured every frame, so the subtle press-down scale carries the
 // 3D object with it rather than leaving it behind.
-
-/** The icon's fixed footprint — the workspace lays out and clamps with these. */
-export const ICON_W = 104
-export const ICON_SLOT = 48
-export const ICON_PAD = 8
 
 type Props = {
   obj: DesktopObj

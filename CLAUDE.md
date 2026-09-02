@@ -39,12 +39,12 @@ ortho canvas, not a scene.
 ```
 src/app/        route + globals.css
 src/components/ base/ (the Base* primitives) + desktop/ (all feature code)
-src/const/      pure constants + layout maths (app-config, pane)
-src/data/       the fixture sets (assets, people, packs, apps, approvals, colors, objects)
-src/hooks/      useDesktopDrag, usePrefersReducedMotion
+src/const/      constants + layout maths (desktop-layout, desktop-config, pane, app-config)
+src/data/       the fixture sets (assets, people, packs, apps, approvals, folders, colors, objects)
+src/hooks/      the desk's own hooks (useDesktop*) + usePrefersReducedMotion
 src/lib/        rules + helpers (asset-ops, chain, wallets, widgets, inspect, market, sound,
                 utils, object-art, coin-geometry, nft-geometry)
-src/stores/     mutable module singletons (coin, drag, chrome-keepout, clip-planes)
+src/stores/     mutable module singletons (desk, coin, drag, chrome-keepout, clip-planes)
 src/types/      objects.ts — the whole domain model
 ```
 
@@ -57,7 +57,8 @@ constants to `const/`.
 All feature code is `src/components/desktop/`, one folder per cluster:
 
 - **`Desktop.tsx`** — the entry point and the only stateful component of size. It owns every object's
-  position, the window stack, the menus, selection, and the split view. Every other `Desktop*.tsx` at
+  position, the drag/drop engine, the context menus and the split view; the surfaces, the marquee, the
+  settlement and the transient cues are its hooks (below). Every other `Desktop*.tsx` at
   that level is a piece of its chrome: `DesktopBar`, `DesktopDock`, `DesktopIcon`, `DesktopFolder`,
   `DesktopPack`, `DesktopDetailCard` (an icon expanded in place), `DesktopMenu` (the context menu),
   `DesktopSearch` (the ⌘K palette), `DesktopHover` (the cursor readout), `DesktopToast`, and
@@ -76,6 +77,33 @@ All feature code is `src/components/desktop/`, one folder per cluster:
 - **`widget/`** — `Widget` is the top-right bento itself; `WidgetBalance` and `WidgetNft` are its tiles.
 - **`fx/`** — the shader effects, reusable across the desk: `FxConfetti`, `FxRainbowBorder`.
 
+## Where the desk's state lives
+
+`Desktop.tsx` is deliberately the one stateful component: every action on the desk touches several
+slices of the same state (an object's balance, its position, the folder holding it, the windows about
+it), so splitting it by feature would mean a context and a lot of prop-drilling for no gain. What HAS
+been lifted out is everything that stands on its own:
+
+- **`const/desktop-layout.ts`** — the footprints (`ICON_*`, `CARD_*`, `DOCK_*`, `LABEL_*`), the stock
+  arrangement (`defaultPositions`) and the placement maths (`clampPos`, `clashes`, `isFree`,
+  `nearestFreeSpot`, `nearestFreeGroupOffset`). Plain module functions with no React, so they are safe
+  to call from a pointer handler. The components that draw an icon, a card, the dock and the pane labels
+  READ their footprints from here rather than exporting them — the layout maths is the primary reader.
+- **`stores/desk.ts`** — the module mirrors that maths needs: `detailCardIds` (whose footprint is a card,
+  not an icon), `objectWallet` and `panesMirror`. Written by ONE layout effect in `Desktop.tsx` through
+  `setDetailCards` / `setObjectWallets` / `setPanes`, so they land before paint and long before any
+  pointer handler could consult them.
+- **`hooks/useDesktopSurfaces`** — everything the desk can have OPEN: the modal stack, the panels, the
+  palette, the receipts. Collected because of the sound — every surface blooms open and errors closed,
+  a rule that only holds while there is no second way to set the state.
+- **`hooks/useDesktopSettlement`** — what happens when a transfer settles: `consumeAssets` (shared) plus
+  Send's and Handoff's own receipts.
+- **`hooks/useDesktopMarquee`** — the sweep-select and the ids it holds.
+- **`hooks/useDesktopToast` / `useDesktopFlash` / `useDesktopPulse`** — the three transient cues. Each
+  owns its own timer and clears it on unmount, so no caller has to remember to.
+- **`const/desktop-config.ts`** (wallpapers, the stock bento, the split keep-out) and
+  **`data/folders.ts`** (the folders the desk starts with) hold the seeds.
+
 ## Key systems
 
 - **Positions are PANE-RELATIVE, not viewport** (`const/pane.ts`). In a single-wallet view the pane IS
@@ -91,8 +119,8 @@ All feature code is `src/components/desktop/`, one folder per cluster:
   Phase 2) — `moveBlockMessage` is the single place that rule lives. An absent `wallet` on an object
   reads as Openfort, so the stock fixtures need no migration.
 - **Placement** (`clampPos` / `isFree` / `nearestFreeSpot` / `nearestFreeGroupOffset` in
-  `Desktop.tsx`). A drop lands where it was released, then walks outward in rings to the nearest
-  clear spot. Only objects on the **same wallet's desk** can clash. A carried multi-selection resolves
+  `const/desktop-layout.ts`). A drop lands where it was released, then walks outward in rings to the
+  nearest clear spot. Only objects on the **same wallet's desk** can clash. A carried multi-selection resolves
   as one shared offset, so a formation keeps its shape rather than exploding.
 - **The chrome keep-out** (`stores/chrome-keepout.ts`). The top-right widget bento reports its live box;
   `clampPos` reads it so an icon can never park underneath the search bar or the bento and become
