@@ -1,11 +1,8 @@
 import * as THREE from "three"
 
-// Real artwork for the objects that have it, keyed by symbol — token marks for coins, collection art for
-// the polaroids. Anything without an entry (the stack, the packs) keeps the face the coin drew for
-// itself, so the fallback is a live path rather than dead code.
-//
-// Keyed explicitly rather than derived from the symbol: the filenames happen to lowercase cleanly today,
-// but deriving would turn a missing image into a 404 instead of a clean fall back to the drawn face.
+// Anything without an entry keeps the face the coin drew for itself, so the fallback is a live path.
+// Keyed explicitly rather than derived from the symbol: deriving would turn a missing image into a 404
+// instead of a clean fall back to that drawn face.
 const ART_IMAGE: Record<string, string> = {
   USDC: "/images/tokens/usdc.jpg",
   ETH: "/images/tokens/eth.jpg",
@@ -26,8 +23,7 @@ const ART_IMAGE: Record<string, string> = {
   CLONEX: "/images/nfts/clonex.jpg"
 }
 
-/** The same mark, for the DOM to show. Null where a symbol has no art — the callers that need one have
- *  to say what stands in, rather than getting a broken image. */
+/** Null where a symbol has no art, so the caller has to say what stands in. */
 export const artImage = (symbol: string): string | null => ART_IMAGE[symbol] ?? null
 
 export type ObjectArt = {
@@ -36,12 +32,11 @@ export type ObjectArt = {
   base: THREE.Color
 }
 
-// One load per symbol, shared across every object holding it — split portions of the same token must
-// not each fetch and decode their own copy.
+// one load per symbol — split portions of the same token must not each decode their own copy
 const cache = new Map<string, Promise<ObjectArt | null>>()
 
-/** The rim has to match the face or the coin reads as two objects stuck together. A token mark sits on a
- *  flat field, so the image's top-left corner is that field — sample it rather than guessing a tint. */
+/** The rim must match the face or the coin reads as two objects stuck together. A token mark sits on a
+ *  flat field, so its top-left corner IS that field — sample it rather than guessing a tint. */
 function sampleBase(img: HTMLImageElement) {
   const c = document.createElement("canvas")
   c.width = 2
@@ -63,8 +58,7 @@ function sampleBase(img: HTMLImageElement) {
   return new THREE.Color().setStyle(`rgb(${Math.round(r / 4)}, ${Math.round(g / 4)}, ${Math.round(b / 4)})`)
 }
 
-/** Load any image URL as an object face, cached by src so shared art (a token, a repeated avatar) is
- *  fetched and decoded once. */
+/** Cached by src, so shared art is fetched and decoded once. */
 export function loadArt(src: string): Promise<ObjectArt | null> {
   const hit = cache.get(src)
   if (hit) return hit

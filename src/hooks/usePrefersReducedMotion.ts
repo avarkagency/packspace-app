@@ -2,9 +2,7 @@
 
 import { useSyncExternalStore } from "react"
 
-// The CSS side of reduced-motion is handled globally in globals.css, but canvas animation runs in a
-// frame loop that no media query can reach — the coins have to ask directly. matchMedia is an external
-// store, so it subscribes as one rather than mirroring into state via an effect.
+// globals.css handles the CSS side; a frame loop no media query can reach has to ask directly.
 
 const QUERY = "(prefers-reduced-motion: reduce)"
 

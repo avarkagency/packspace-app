@@ -2,10 +2,8 @@ import type { AssetObj } from "@/types/objects"
 
 import { dayChange } from "@/data/assets"
 
-/** Deterministic mock market data for an asset — the app models no price history, so this is a fixture
- *  seeded off the symbol (stable across renders): a unit price, its 24h move, a sparkline, high/low, vol.
- *  Shared by the AI Inspector's price card and the desktop detail card, so both draw the same line for
- *  the same token rather than two unrelated inventions. */
+/** Nothing here models price history — a fixture seeded off the symbol, so it's stable across renders
+ *  and the Inspector's chart and the detail card's draw the same line for the same token. */
 export function assetMarket(a: AssetObj) {
   let s = 2166136261
   for (let i = 0; i < a.symbol.length; i++) s = ((s ^ a.symbol.charCodeAt(i)) * 16777619) >>> 0
@@ -31,7 +29,6 @@ export function assetMarket(a: AssetObj) {
   const spread = 0.04 + rnd() * 0.06
   const high = unit * (1 + spread)
   const low = unit * (1 - spread * 0.85)
-  // the per-point price the chart draws and the hover tooltip reads, within the day's range
   const prices = series.map((v) => low + v * (high - low))
   const volB = rnd() * 9 + 0.6 // billions
   return { unit, change, prices, high, low, volB }

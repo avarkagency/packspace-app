@@ -1,10 +1,8 @@
 import type { Chain, PersonObj } from "@/types/objects"
 
-/** You. The address is held in full rather than pre-truncated, because it seeds your avatar as well as
- *  being displayed — the same rule every contact follows. */
+/** Held in full, not pre-truncated: the address seeds the avatar as well as being displayed. */
 const WALLET = { label: "You", address: "0x7Afd3C81b9E24f05a6D7c8B1e0F9a2D3c4B5e63D" }
 
-/** Your own PackSpace Card identity — a Project G multichain wallet. */
 export const ME = {
   name: "You",
   handle: "@you.pack",
@@ -12,8 +10,7 @@ export const ME = {
   chains: ["Base", "Ethereum", "Solana", "Bitcoin"] as Chain[]
 }
 
-// Laid out three across, two rows, anchored under the balance card. The two bare addresses are
-// counterparties you've transacted with but never saved — their icons wear the warning treatment.
+// The two bare addresses are counterparties transacted with but never saved — they wear the warning.
 export const PEOPLE: PersonObj[] = [
   {
     id: "p-mum",

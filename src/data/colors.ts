@@ -1,5 +1,4 @@
-// Token colour signatures (data-driven, per doctrine — the chrome stays monochrome; the objects carry
-// the colour). Shared by every asset fixture, which is why it sits in its own file.
+// The chrome stays monochrome; the objects carry the colour.
 
 export const C = {
   usdc: "#2775ca",
@@ -7,8 +6,7 @@ export const C = {
   usdt: "#1ba27a",
   sol: "#14f195",
   bnb: "#f1b90c",
-  // the polaroids take their colour from their own artwork; these only feed the chrome that still reads
-  // objectTint() — the drag label and the coins' fallback faces
+  // the polaroids take their colour from their own artwork; these only feed what reads objectTint()
   bayc: "#f0a03c",
   azuki: "#e5474b",
   doodles: "#5db4f0",

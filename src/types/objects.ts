@@ -1,6 +1,4 @@
-// PackSpace object system (spec §3.3). Everything important is an object; each class must be
-// instantly distinguishable. This prototype models the classes needed for the dashboard +
-// Send + Handoff; the rest are present on the canvas as launcher / display objects.
+// The object system (spec §3.3). Everything important is an object.
 import type { Wallet } from "@/lib/wallets"
 
 export type Chain = "Base" | "Ethereum" | "Solana" | "BNB" | "Bitcoin"
@@ -11,10 +9,10 @@ type ObjBase = {
   id: string
   class: ObjectClass
   label: string
-  /** Raw on-chain reference — always reachable on demand (DEV5), never the default view. */
+  /** Always reachable on demand (DEV5), never the default view. */
   address?: string
   chain?: Chain
-  /** Which of the two self-custody wallets holds this object. Absent reads as Openfort — see lib/wallets. */
+  /** Absent reads as Openfort. */
   wallet?: Wallet
 }
 
@@ -24,19 +22,17 @@ export type AssetObj = ObjBase & {
   class: "asset"
   symbol: string
   kind: AssetKind
-  /** Held balance in native units. */
+  /** Native units, not USD. */
   balance: number
   usd: number
   color: string
-  /** Commodity assets convert 1-tap to USDC in My Assets (spec §3.7). */
+  /** Converts 1-tap to USDC (spec §3.7). */
   convertible?: boolean
-  /** Absent = a normal, verified token. `false` = not on the verified list (spam/scam airdrop): the
-   *  object greys out, its name goes amber, and the Inspector leads with a warning. */
+  /** Absent = verified. `false` = a spam/scam airdrop: greys out, name goes amber, Inspector warns. */
   verified?: boolean
-  /** A standing approval this token has granted — the Approval Radar reads these, and an unlimited
-   *  allowance to an unverified spender is the classic drain vector. */
+  /** An unlimited allowance to an unverified spender is the classic drain vector. */
   approval?: { spender: string; unlimited: boolean; verified: boolean }
-  /** Freshly minted by a split, an unpack, or a Handoff receive — purely informational. */
+  /** Minted by a split, unpack or Handoff receive. Informational only. */
   derived?: boolean
 }
 
@@ -47,28 +43,23 @@ export type PersonObj = ObjBase & {
   handle: string
   trust: TrustState
   hue: number
-  /** Which shipped avatar this address wears, when it isn't the object's own id. The same person can sit
-   *  in both wallets' address books as two objects with two ids — they share one face, so the copy
-   *  carries the original's key rather than falling back to the default. */
+  /** One person can sit in both address books as two ids; the copy carries the original's key so they
+   *  share a face rather than falling back to the default. */
   avatarKey?: string
-  /** Address-lifecycle signals (spec §3.8.4) — the Safety Engine reacts to these. */
+  /** Spec §3.8.4 — the Safety Engine reacts to these. */
   retired?: boolean
   compromised?: boolean
-  /** 'g' = a Project G / Openfort smart account: multichain, accepts any asset. 'external' = an EVM/
-   *  single-chain address that can only receive assets of its own chain family. Absent → treated as 'g'. */
+  /** 'g' is multichain and accepts anything; 'external' only its own chain family. Absent = 'g'. */
   platform?: "g" | "external"
-  /** External contacts only: whether they're currently connected to PackSpace, so a live Handoff can
-   *  reach them (Project G contacts are always reachable). */
+  /** External contacts only — Project G ones are always reachable. */
   online?: boolean
-  /** `false` = an unknown address you've never transacted with (not in your address book): greys out,
-   *  name goes amber, and sends warn. Absent/true = a saved contact. */
+  /** `false` = an unknown address: greys out, name goes amber, sends warn. Absent/true = saved. */
   whitelisted?: boolean
 }
 
-/** One bundled line inside a builder-authored Pack. */
 export type PackContent = {
   kind: "asset" | "nft"
-  /** The source object it came from, for merge-back on unpack. */
+  /** For merge-back on unpack. */
   refId?: string
   label: string
   symbol: string
@@ -89,7 +80,7 @@ export type PackObj = ObjBase & {
   // ── builder-authored packs carry the richer runtime shape ──
   packType?: "Product" | "Randomized" | "Transit"
   standard?: string
-  /** The character shown on the pack's face — ★ product, ? randomized, 🔒 locked. */
+  /** ★ product, ? randomized, 🔒 locked. */
   packGlyph?: string
   meta?: string
   locked?: boolean
@@ -103,9 +94,9 @@ export type AppKind = "gacha" | "bag" | "aboyz" | "packmarket" | "handoff" | "ls
 export type AppObj = ObjBase & {
   class: "app"
   appKind: AppKind
-  /** The contract-as-machine label (spec §3.13). */
+  /** Contract-as-machine (spec §3.13). */
   machine: string
-  /** Integration surface named in the brief — linked, not built, in this prototype. */
+  /** Linked, not built. */
   href: string
   color: string
 }
@@ -130,7 +121,7 @@ export type ApprovalObj = ObjBase & {
 
 export type CanvasObj = AssetObj | PersonObj | PackObj | AppObj | VaultObj | CampaignObj | ApprovalObj
 
-/** A standing token approval, as the Approval Radar reads it. Distinct from the on-canvas ApprovalObj. */
+/** As the Approval Radar reads it. Distinct from the on-canvas ApprovalObj. */
 export type RiskLevel = "ok" | "watch" | "danger"
 export type Approval = {
   id: string
@@ -141,24 +132,21 @@ export type Approval = {
   glyph: string
   color: string
   unlimited: boolean
-  /** The capped allowance, when not unlimited. */
+  /** Present only when not unlimited. */
   allowance?: string
   chain: Chain
   wallet: string
   risk: RiskLevel
-  /** The scam token this approval is tied to — revoking removes it from the desk too. */
+  /** Revoking removes this token from the desk too. */
   assetId?: string
 }
 
 export type DesktopObj = AssetObj | PersonObj
 
-/** A desk folder: a name, the wallet whose desk it sits on, and the ids it holds. Objects in a folder
- *  stay in the flat asset/contact lists — the desk simply doesn't show them, so pulling one out is just
- *  removing its id here. */
+/** Contents stay in the flat asset/contact lists — the desk just doesn't show them. */
 export type FolderSpec = { id: string; label: string; wallet: Wallet; contents: string[] }
 
-/** One item in the bottom dock — a flat app tile drawn by the 3D scene (a textured plane, not a coin),
- *  so desktop objects can later be dragged onto it like any other scene object. */
+/** Drawn by the 3D scene as a flat plane, so objects can be dragged onto it like any other. */
 export type NavItem = {
   id: string
   label: string
@@ -169,7 +157,7 @@ export type NavItem = {
 
 export type Receipt = {
   id: string
-  /** Move is the internal one — an object crossing between your own two wallets, not a transfer out. */
+  /** Move is internal — between your own two wallets, not a transfer out. */
   action: "Send" | "Trade" | "Move"
   give: string
   receive?: string
@@ -177,7 +165,7 @@ export type Receipt = {
   chain: Chain
   hash: string
   confirmation: string
-  /** Chain-aware route line ("Base · to their Base account" / "Solana · same chain"). */
+  /** "Base · to their Base account" / "Solana · same chain". */
   route?: string
   status: "Settled"
   at: string

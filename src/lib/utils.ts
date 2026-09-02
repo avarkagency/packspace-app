@@ -16,7 +16,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-/** A plain dollar amount — the value a user reads (USDC rail underneath). */
 export function usd(amount: number, opts?: { cents?: boolean }) {
   const showCents = opts?.cents ?? amount < 1000
   return amount.toLocaleString("en-US", {
@@ -31,29 +30,27 @@ export function compact(n: number) {
   return Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n)
 }
 
-/** Balances carry at most four decimals — enough for the smallest holdings, no floating-point dust. */
+/** Four decimals: enough for the smallest holdings, and no floating-point dust. */
 export function round4(n: number) {
   return Math.round(n * 1e4) / 1e4
 }
 
-/** A token quantity — trims trailing zeros, keeps precision for small balances. */
 export function units(n: number) {
   return n.toLocaleString("en-US", { maximumFractionDigits: 4 })
 }
 
-/** The line under a desktop icon: the holding for an asset ("42 SOL"), the name for a wallet. The drag
- *  label shows the same string, so an object reads identically at rest and in hand. */
+/** The drag label shows the same string, so an object reads identically at rest and in hand. */
 export function desktopLabel(obj: DesktopObj) {
   return obj.class === "asset" ? `${units(obj.balance)} ${obj.symbol}` : obj.label
 }
 
-/** 0x1234…abcd — the truth-always-available address, shortened for display (spec DEV5). */
+/** 0x1234…abcd — truth always available, shortened for display (spec DEV5). */
 export function shortAddr(addr: string, lead = 6, tail = 4) {
   if (addr.length <= lead + tail) return addr
   return `${addr.slice(0, lead)}…${addr.slice(-tail)}`
 }
 
-/** A fake but plausible tx hash for prototype receipts. Seeded so it's stable per call site. */
+/** Seeded, so a receipt's hash is stable across renders. */
 export function fakeHash(seed: string) {
   let h = 0
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0

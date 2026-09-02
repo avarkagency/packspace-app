@@ -1,8 +1,5 @@
-// The desktop's widget system. Widgets live in a 2-column bento pinned to the top-right corner: each
-// widget spans 1 or 2 columns, and a 1-column widget can be pinned to column 1 or 2 (leaving a gap the
-// next widget fills). The list is ordered; `packWidgets` turns that order + each widget's span/column
-// into explicit grid (row, column) placements the grid renders from. No persistence — like the rest of
-// the desk, the arrangement is in-memory only.
+// A 2-column bento. The list is ordered; `packWidgets` turns that order plus each widget's span and
+// column pin into the explicit (row, column) placements the grid renders from.
 
 export type WidgetType = "balance" | "nft"
 
@@ -14,7 +11,7 @@ export type WidgetInstance = {
   col?: 1 | 2
 }
 
-/** The addable widget types — drives the "Add Widget ▸" submenus and the span a fresh one takes. */
+/** Drives the "Add Widget ▸" submenus and the span a fresh one takes. */
 export const WIDGET_TYPES: { type: WidgetType; label: string; defaultSpan: 1 | 2 }[] = [
   { type: "balance", label: "Balance", defaultSpan: 2 },
   { type: "nft", label: "NFT Collection", defaultSpan: 2 }
@@ -22,9 +19,8 @@ export const WIDGET_TYPES: { type: WidgetType; label: string; defaultSpan: 1 | 2
 
 export type PlacedWidget = WidgetInstance & { row: number; column: 1 | 2 }
 
-/** Pack the ordered list into the 2-column grid. A 2-span widget takes the next fully-empty row; a
- *  pinned 1-span takes its column in the first row where that cell is free; an unpinned 1-span takes the
- *  next free cell (column 1 before 2). Returns each widget with a 0-based row and a 1-based column. */
+/** A 2-span takes the next fully-empty row; a pinned 1-span its column in the first row where that cell
+ *  is free; an unpinned 1-span the next free cell. Rows are 0-based, columns 1-based. */
 export function packWidgets(widgets: WidgetInstance[]): PlacedWidget[] {
   const rows: [boolean, boolean][] = []
   const taken = (r: number, c: 0 | 1): boolean => {

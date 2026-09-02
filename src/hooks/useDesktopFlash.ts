@@ -2,13 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
-// The drop-target treatment worn briefly by objects a gesture just produced — both halves of a split, the
-// assets a Handoff brought back, a pack's released contents. It lands them next to identical-looking
-// neighbours, and nothing else says which ones are new.
-//
-// An announcement, not a state: it clears itself, and a second flash replaces the first rather than
-// queueing behind it. The CSS (`.split-flash`) owns the shape of the fade; this only owns how long the
-// ids stay marked.
+// Marks what a gesture just produced, which lands next to identical-looking neighbours. An announcement,
+// not a state: it clears itself, and a second flash replaces the first rather than queueing behind it.
 
 /** Slightly longer than the CSS animation, so the class is never pulled while it's still running. */
 const FLASH_MS = 2100

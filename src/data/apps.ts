@@ -1,7 +1,6 @@
 import type { AppObj, CampaignObj, NavItem, VaultObj } from "@/types/objects"
 
-/** The bottom dock, left to right. Labels surface as hover tooltips; the icons themselves are drawn by
- *  the 3D scene so desktop objects can be dropped onto the first two (Pack Builder and Inspector). */
+/** Left to right. The icons are drawn by the 3D scene, so objects can be dropped onto the first two. */
 export const NAV_ITEMS: NavItem[] = [
   { id: "nav-builder", label: "Pack Builder", icon: "/images/nav-icons/1.png" },
   { id: "nav-inspector", label: "Inspector", icon: "/images/nav-icons/2.png" },
@@ -12,8 +11,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "nav-reset", label: "Reset Demo", icon: "/images/nav-icons/7.png" }
 ]
 
-// The furnished dApp launcher set (spec §3.13). First run is never an empty canvas.
-// href = the integration surface named in the brief (§3.15) — linked, not built here.
+// The launcher set (spec §3.13) — first run is never an empty canvas. href is linked, not built here.
 export const APPS: AppObj[] = [
   { id: "app-gacha", class: "app", label: "Gacha Labs", appKind: "gacha", machine: "campaign machine", href: "https://gachalabs.example", color: "#f472b6" },
   { id: "app-bag", class: "app", label: "BAG", appKind: "bag", machine: "dispenser", href: "https://bag.example", color: "#f59e0b" },

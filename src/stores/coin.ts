@@ -2,15 +2,10 @@
 
 import { useSyncExternalStore } from "react"
 
-// Screen geometry shared between the DOM grid and the R3F coin overlay. The DOM stays the source of
-// truth for layout, hit-testing and labels; the canvas only draws. Each card registers the box its coin
-// should fill, and the frame loop reads those boxes back out.
-//
-// Lives outside React for the same reason as stores/drag: the frame loop reads this every tick and must
-// never cause a render. Hover is the one thing React can opt into, via useCoinHover — the frame loop
-// still reads `coinView.hoverId` straight off the object and subscribes to nothing.
+// Where each coin should draw: every icon registers its box, the frame loop reads them back out. Outside
+// React because that loop reads it every tick and must never cause a render.
 
-/** A coin's screen box: centre + diameter, in viewport px (the ortho camera maps 1 unit = 1 px). */
+/** Centre + diameter in viewport px (the ortho camera maps 1 unit = 1 px). */
 export type CoinRect = { cx: number; cy: number; size: number }
 
 const slots = new Map<string, HTMLElement>()
@@ -18,19 +13,17 @@ let viewport: HTMLElement | null = null
 
 export const coinView = {
   rects: new Map<string, CoinRect>(),
-  /** The box resting coins clip to, in px. */
   clip: { top: 0, right: 0, bottom: 0, left: 0 },
   hoverId: null as string | null,
-  /** While the AI Inspector is open, the id of the coin flying into its art card, and the card element it
-   *  flies to. The frame loop overrides that coin's target box with the card's, and the mesh eases to it. */
+  /** While the Inspector is open, the coin flying into its art card and the element it flies to — the
+   *  frame loop overrides that coin's target box with the card's. */
   focusId: null as string | null,
   focusSlot: null as HTMLElement | null,
-  /** True when focus jumped straight from one coin to another (Inspector navigation): the incoming coin
-   *  drops into place instead of flying, so it reads as the texture changing rather than coins swapping. */
+  /** Focus jumped coin-to-coin (Inspector navigation): the incoming one drops in rather than flying, so
+   *  it reads as the texture changing rather than two coins swapping. */
   focusInstant: false,
-  /** The focused coin's live spin angle, handed to the next coin on an instant swap so the spin is seamless. */
+  /** Handed to the next coin on an instant swap, so the spin is seamless across it. */
   focusSpin: 0,
-  /** Viewport px, written imperatively by the pointer handlers. */
   cursor: { x: 0, y: 0 }
 }
 
@@ -54,9 +47,8 @@ function subscribeHover(onChange: () => void) {
   }
 }
 
-/** Opt-in reactive read of the hover, for the one component that has to render on it. Everything else —
- *  the frame loop above all — reads `coinView.hoverId` directly and never subscribes, so hovering still
- *  costs no renders anywhere it isn't wanted. */
+/** Opt-in reactive read, for the one component that has to render on hover. Everything else reads
+ *  `coinView.hoverId` directly, so hovering costs no renders anywhere it isn't wanted. */
 export function useCoinHover() {
   return useSyncExternalStore(
     subscribeHover,
@@ -70,11 +62,9 @@ export const setCoinCursor = (x: number, y: number) => {
   coinView.cursor.y = y
 }
 
-/** Pull a coin off the desk and into the Inspector's art card `el`. Reactive so the canvas can lift its
- *  z above the takeover while a coin is in focus. */
+/** Pull a coin into the Inspector's art card. Reactive, so the canvas can lift its z over the takeover. */
 export const setCoinFocus = (id: string, el: HTMLElement, instant = false) => {
-  // drop straight in (no fly) when this is a navigation swap, or when the caller asks (a filed object has
-  // no desk position to fly from, so it just appears in the card)
+  // no fly on a navigation swap, or when the caller asks — a filed object has no desk position to fly from
   coinView.focusInstant = instant || (coinView.focusId !== null && coinView.focusId !== id)
   coinView.focusId = id
   coinView.focusSlot = el
@@ -96,7 +86,7 @@ function subscribeFocus(onChange: () => void) {
   }
 }
 
-/** Reactive read of the focused coin id, for the canvas that has to raise its z-index over the Inspector. */
+/** For the canvas, which has to raise its z-index over the Inspector while a coin is in focus. */
 export function useCoinFocus() {
   return useSyncExternalStore(
     subscribeFocus,
@@ -105,7 +95,7 @@ export function useCoinFocus() {
   )
 }
 
-/** Register the box a coin should fill. Returns a cleanup for the effect that called it. */
+/** Returns a cleanup for the effect that called it. */
 export function registerCoinSlot(id: string, el: HTMLElement) {
   slots.set(id, el)
   return () => {
@@ -114,8 +104,7 @@ export function registerCoinSlot(id: string, el: HTMLElement) {
   }
 }
 
-/** The desktop surface — resting coins clip to it. On the desktop this is the whole viewport, so in
- *  practice it only keeps the clip planes honest rather than ever visibly cutting anything. */
+/** The surface resting coins clip to. The whole viewport here, so it only keeps the planes honest. */
 export function registerCoinViewport(el: HTMLElement) {
   viewport = el
   return () => {
@@ -123,13 +112,9 @@ export function registerCoinViewport(el: HTMLElement) {
   }
 }
 
-/** Recompute every coin's screen box, once per frame, from inside the render loop.
- *
- *  Measured every frame rather than on a scroll/resize dirty flag. A flag defers the read to the frame
- *  after the event, and scroll events aren't guaranteed to land before that frame's rAF — so the labels
- *  scrolled and the coins arrived a frame late, which read as the coin sliding around on its own card.
- *  Reading ~a dozen rects costs one layout flush (they're batched, with no writes interleaved), which is
- *  far cheaper than that lag looked. */
+/** Measured every frame, not on a scroll/resize dirty flag: a flag defers the read to the frame AFTER
+ *  the event, and the coins then arrive late — which reads as one sliding around on its own icon. A dozen
+ *  batched rects cost one layout flush, far cheaper than that lag looked. */
 export function measureCoins() {
   for (const [id, el] of slots) {
     const r = el.getBoundingClientRect()

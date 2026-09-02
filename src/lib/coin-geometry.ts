@@ -1,12 +1,10 @@
 import * as THREE from "three"
 
-// Shared geometry for every coin — coins differ only by material, so these upload once.
+// Coins differ only by material, so the geometry uploads once.
 //
-// The coin is built from three pieces rather than one capped cylinder. CylinderGeometry derives its cap
-// UVs from (cosθ, sinθ) while the ring vertices run (sinθ, cosθ), so U maps to local Z and V to local X
-// — an axis swap, which is a reflection. Artwork on a cap lands rotated *and* mirrored, and no texture
-// rotation can undo a reflection. CircleGeometry maps U←x, V←y straight, so a face texture arrives
-// exactly as drawn. The rim is therefore open-ended and the faces are their own discs.
+// Three pieces rather than one capped cylinder: CylinderGeometry derives cap UVs from (cosθ, sinθ) while
+// its ring vertices run (sinθ, cosθ) — an axis swap, which is a REFLECTION, so cap artwork lands rotated
+// and mirrored and no texture rotation can undo it. CircleGeometry maps U←x, V←y straight.
 
 const SEGMENTS = 64
 const THICKNESS = 0.26 // relative to the unit radius; the coin is scaled to the card's slot
@@ -18,11 +16,9 @@ export const coinFaceGeometry = new THREE.CircleGeometry(1, SEGMENTS)
 
 const FACE_PX = 256
 
-/** The two face palettes. The light one is greyscale on purpose: `map` multiplies the material's
- *  colour, so white reads as the asset's full tint and darker values shade it — one canvas recipe
- *  tints itself for every coin. The dark one is drawn at its final colours instead (its face material
- *  stays white), because a multiply can only darken — light lettering on a black field is unreachable
- *  from a tinted white canvas. */
+/** The light palette is greyscale on purpose: `map` multiplies the material colour, so one canvas recipe
+ *  tints itself for every coin. The dark one is drawn at final colours instead — a multiply can only
+ *  darken, so light lettering on a black field is unreachable from a tinted white canvas. */
 export type CoinFinish = "light" | "dark"
 
 const FACE_INK: Record<CoinFinish, { base: string; ring: string; field: string; device: string; hub: string }> = {
@@ -43,7 +39,6 @@ const FACE_INK: Record<CoinFinish, { base: string; ring: string; field: string; 
   }
 }
 
-/** Shared drawing for both faces: base, milled ring just inside the rim, recessed field for the device. */
 function faceCanvas(finish: CoinFinish) {
   const c = document.createElement("canvas")
   c.width = FACE_PX
@@ -76,7 +71,6 @@ function toTexture(c: HTMLCanvasElement) {
   return tex
 }
 
-/** Front face — carries the ticker. */
 function makeCoinFrontTexture(symbol: string, finish: CoinFinish = "light") {
   const { c, ctx, r, ink } = faceCanvas(finish)
   const fit = symbol.length <= 3 ? 0.4 : symbol.length <= 4 ? 0.32 : 0.24
@@ -90,8 +84,7 @@ function makeCoinFrontTexture(symbol: string, finish: CoinFinish = "light") {
   return toTexture(c)
 }
 
-/** Back face — concentric milling, no text. It's viewed from behind, so any lettering would read
- *  mirrored anyway. */
+/** No text: it's viewed from behind, so any lettering would read mirrored. */
 function makeCoinBackTexture(finish: CoinFinish = "light") {
   const { c, ctx, r, ink } = faceCanvas(finish)
 
@@ -111,15 +104,14 @@ function makeCoinBackTexture(finish: CoinFinish = "light") {
   return toTexture(c)
 }
 
-/** Materials in mesh order: rim, front face, back face.
+/** Mesh order: rim, front, back.
  *
- *  The rim is metal; the faces are unlit, and deliberately so. Under an orthographic camera every point
- *  on a flat face-on surface shares one view vector, so a metal face reflects a single constant of the
- *  environment across its whole area — measurably: every pixel of it comes back byte-identical. That's
- *  not a reflection, it's a uniform wash sitting on top of the artwork, and it's what made the faces
- *  read pale against their own source images. The rim is curved, so it still catches the environment
- *  properly and carries the coin. `toneMapped: false` takes the faces around ACES as well, so art lands
- *  at exactly the colour it was authored. */
+ *  The faces are unlit deliberately. Under an ORTHOGRAPHIC camera every point on a flat face-on surface
+ *  shares one view vector, so a metal face reflects a single constant of the environment across its whole
+ *  area — every pixel comes back byte-identical. That isn't a reflection, it's a uniform wash on the
+ *  artwork, and it's what made faces read pale against their own source images. The rim is curved, so it
+ *  still catches the environment. `toneMapped: false` also takes the faces around ACES, so art lands at
+ *  exactly its authored colour. */
 export function makeCoinMaterials(tint: string, symbol: string, planes: THREE.Plane[], finish: CoinFinish = "light") {
   // a dark face is authored at its final colours, so its material must not tint it — the rim still
   // carries the coin's own (near-black) colour

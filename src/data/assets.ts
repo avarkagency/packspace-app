@@ -4,9 +4,7 @@ import { C } from "./colors"
 
 // Dummy data only — no backend, no chain (spec: "full fake product"). Values are illustrative.
 
-/** 24h price change per token, in percent — the green/red tag inside an asset's price pill. Keyed by
- *  symbol, not holding: the USDC dust pile moves exactly as the main pile does. Invented, like everything
- *  else here — nothing in this prototype models price history. */
+/** Keyed by symbol, not holding, so the USDC dust pile moves exactly as the main pile does. */
 const CHANGE_24H: Record<string, number> = {
   ETH: 2.4,
   SOL: -1.8,
@@ -28,15 +26,13 @@ const CHANGE_24H: Record<string, number> = {
   ZARD: 12.6
 }
 
-/** The tag-worthy 24h move for a token. Flat movers (stablecoins) and unknown symbols (the scam
- *  airdrop) return undefined — they wear no tag rather than a meaningless one. */
+/** Flat movers and unknown symbols return undefined — no tag rather than a meaningless one. */
 export function dayChange(symbol: string): number | undefined {
   const pct = CHANGE_24H[symbol]
   return pct === undefined || Math.abs(pct) < 0.05 ? undefined : pct
 }
 
-// Ordered as the desk lays them out: columns of five filled top-to-bottom, so this reads column one
-// (ETH → 100 USDC) then column two (BNB → BAYC); the Other Tokens folder takes the slot after BAYC.
+// Ordered as the desk lays them out: columns of five filled top-to-bottom.
 export const ASSETS: AssetObj[] = [
   {
     id: "a-eth",
@@ -171,9 +167,7 @@ export const ASSETS: AssetObj[] = [
   }
 ]
 
-/** The dust — the long tail of low-value balances. These live inside the Other Tokens folder rather
- *  than on the desk, but they're real assets: pulled out, they behave like any other coin. None have
- *  shipped artwork, so their coins draw their own faces from symbol + colour. */
+/** The long tail, filed in Other Tokens. Real assets — pulled out they behave like any other coin. */
 export const DUST_ASSETS: AssetObj[] = [
   {
     id: "a-link",
@@ -255,8 +249,7 @@ export const DUST_ASSETS: AssetObj[] = [
   }
 ]
 
-/** NFT dust — low-value one-of-ones that live in the Other NFTs folder. No shipped artwork, so their
- *  cards draw their own faces (and their folder tiles show tinted squares). */
+/** Filed in Other NFTs. No shipped artwork, so their cards draw their own faces. */
 export const DUST_NFTS: AssetObj[] = [
   {
     id: "a-moonbird",
@@ -297,11 +290,8 @@ export const DUST_NFTS: AssetObj[] = [
 ]
 
 // ── The MetaMask (EOA) desk ──────────────────────────────────────────────────
-// The second self-custody wallet, ported from the design prototype's EOA set. MetaMask is an EOA on EVM
-// only, so everything here is Base or Ethereum — nothing on Solana or Bitcoin can be held in it, which
-// is the rule the split view's divider enforces when you drag something across.
-//
-// USDC deliberately appears in BOTH wallets: moving one onto the other is what raises the merge prompt.
+// EVM only, so everything here is Base or Ethereum. USDC appears in BOTH wallets on purpose: moving one
+// onto the other is what raises the merge prompt.
 
 export const EOA_ASSETS: AssetObj[] = [
   {

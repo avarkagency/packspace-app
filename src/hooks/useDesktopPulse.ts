@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
-// A freshly-created pack pulses a soft ring a few times so the eye finds where it landed on the desk.
-// One at a time — a second pack takes the ring off the first.
+// A fresh pack rings so the eye finds it. One at a time — a second pack takes the ring off the first.
 
 /** Long enough for three beats of the CSS `pack-pulse` keyframes. */
 const PULSE_MS = 2400

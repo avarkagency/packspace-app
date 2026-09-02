@@ -2,25 +2,21 @@ import { useSyncExternalStore } from "react"
 
 import { type SoundName, play, setEnabled } from "cuelume"
 
-// The desktop's sound layer, over cuelume (synthesized Web Audio, no files). Three roles play here:
-//   • bloom  — a modal or panel opening
-//   • error  — a modal, panel or folder closing
-//   • press  — every other button click (wired globally, see installPressCues)
-// The app owns the on/off preference; cuelume only applies it. Muting persists across reloads.
+// Over cuelume (synthesized Web Audio, no files). bloom = a surface opening, error = one closing,
+// press = every other button click. The app owns the mute preference; cuelume only applies it.
 
 const STORAGE_KEY = "packspace:muted"
 /** A press that lands within this window of a bloom/error is the same gesture opening/closing a
  *  surface — it would double the sound, so we swallow it. */
 const GUARD_MS = 40
-/** Selector for "a button" — every interactive element that should knock on click. `[data-cue-press]`
- *  opts an element in explicitly, which is how desktop objects and widgets (plain divs) knock too. */
+/** `[data-cue-press]` opts an element in explicitly — that's how plain divs knock too. */
 const PRESS_SELECTOR = "button, a[href], summary, [role='button'], [role='menuitem'], [role='tab'], [role='switch'], [data-cue-press]"
 
 let muted = false
 let initialized = false
-/** The last time a bloom, error or sparkle played — the press guard reads this. */
+/** Read by the press guard. */
 let lastSurfaceCueAt = -Infinity
-/** The last time a transaction sparkled — the window closing on success reads this to stay quiet. */
+/** Read by a window closing on success, to stay quiet. */
 let lastSparkleAt = -Infinity
 const listeners = new Set<() => void>()
 
@@ -28,17 +24,13 @@ const listeners = new Set<() => void>()
  *  that close's dismissal error is swallowed, so success never sounds like a cancel. */
 const SETTLE_MS = 200
 
-/** How much louder than cuelume's own (fairly quiet) levels to play. cuelume exposes no volume control,
- *  so we scale its whole output (see boostAudioOutput). 4 = +12 dB; a limiter after the gain keeps the
- *  louder cues from hard-clipping, so quiet cues get the full lift while peaks stay clean. */
+/** cuelume exposes no volume control, so its whole output is scaled (see boostAudioOutput). 4 = +12 dB. */
 const VOLUME = 4
 
-/** cuelume wires every sound straight to its shared AudioContext's `destination`, with no master
- *  volume of its own. To make everything louder we splice a gain node in front of that destination:
- *  wrap the AudioContext constructor just long enough for cuelume to create its single shared context,
- *  give that context a `destination` that routes through our gain, then restore the constructor so no
- *  other audio is affected. Must run before cuelume's first play() creates the context — ensureInit
- *  (called on mount, ahead of any cue) guarantees that. */
+/** cuelume has no master volume, so a gain node is spliced in front of its destination: wrap the
+ *  AudioContext constructor just long enough for cuelume to create its one shared context, then restore
+ *  it so no other audio is affected. MUST run before cuelume's first play() creates that context —
+ *  ensureInit, called on mount ahead of any cue, guarantees it. */
 let audioBoosted = false
 function boostAudioOutput() {
   if (audioBoosted || typeof window === "undefined") return
@@ -78,8 +70,7 @@ function boostAudioOutput() {
   if (w.webkitAudioContext) w.webkitAudioContext = Wrapped
 }
 
-/** Read the stored preference once, on the client, and hand it to cuelume. Every entry point calls
- *  this first, so the very first cue already respects a saved mute. A no-op on the server. */
+/** Every entry point calls this first, so the very first cue already respects a saved mute. */
 function ensureInit() {
   if (initialized || typeof window === "undefined") return
   initialized = true
@@ -88,9 +79,8 @@ function ensureInit() {
   setEnabled(!muted)
 }
 
-/** Play a cue. Bloom, error and sparkle stamp the press guard so the click that triggered them doesn't
- *  also knock. A transaction's sparkle also swallows the error from the same click's window close.
- *  cuelume no-ops the play itself while muted. */
+/** Bloom, error and sparkle stamp the press guard, so the click that triggered them doesn't also knock;
+ *  a sparkle additionally swallows the error from the same click's window close. */
 export function cue(name: SoundName) {
   ensureInit()
   const now = performance.now()
@@ -125,8 +115,7 @@ function subscribe(cb: () => void) {
   }
 }
 
-/** The mute flag as React state. Server snapshot is always "on", and useSyncExternalStore reconciles
- *  to the stored value on the client without a hydration warning. */
+/** Server snapshot is always "on", reconciled on the client without a hydration warning. */
 export function useMuted() {
   return useSyncExternalStore(
     subscribe,
@@ -137,10 +126,9 @@ export function useMuted() {
 
 let pressInstalled = false
 
-/** Wire "press on every button" once, for the whole document. Capture phase so a component's own
- *  stopPropagation can't hide the click; the play is deferred to a microtask so any bloom/error the
- *  click's own handler fires (opening or closing a surface) has already stamped the guard by the time
- *  we check it — an open/close never doubles into a press. Returns a cleanup for the mount effect. */
+/** Capture phase, so a component's own stopPropagation can't hide the click. The play is deferred to a
+ *  microtask so any bloom/error that click's handler fires has already stamped the guard — an open or
+ *  close never doubles into a press. */
 export function installPressCues() {
   ensureInit()
   if (pressInstalled || typeof document === "undefined") return () => {}

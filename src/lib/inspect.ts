@@ -1,7 +1,5 @@
-// The AI Object Inspector's brains, minus the network call: a plain-English explanation and the
-// structured facts (type chip, detail rows, safety note, contextual actions) for any inspectable object.
-// Ported from the prototype's localExplain / inspectFacts. The panel renders these; the workspace wires
-// the actions to real handlers.
+// The Inspector's brains, minus the network call. The panel renders these; the workspace wires the
+// actions it returns to real handlers.
 import type { AssetObj, PackObj, PersonObj } from "@/types/objects"
 
 import { isProjectG } from "./chain"
@@ -9,10 +7,8 @@ import { units, usd } from "./utils"
 
 export type Inspectable = AssetObj | PersonObj | PackObj
 
-/** Where a held object lives — everything on this desk is the Openfort smart account. */
 const WALLET_LABEL = "Openfort wallet"
 
-/** The per-class type-chip / name colour. */
 const COL: Record<string, string> = {
   asset: "#ffffff",
   nft: "#f3c6ec",
@@ -22,7 +18,7 @@ const COL: Record<string, string> = {
 const AMBER = "#f7c86a"
 const RED = "#ff8a6a"
 
-/** A short, calm, plain-English explanation — the local fallback when there's no model call. */
+/** The local fallback for when there's no model call. */
 export function localExplain(obj: Inspectable): string {
   if (obj.class === "asset") {
     if (obj.kind === "nft")

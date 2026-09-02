@@ -5,8 +5,7 @@ export const APPROVALS: ApprovalObj[] = [
   { id: "ap-unknown", class: "approval", label: "Unknown Contract", app: "0x00…risk", scope: "Critical", color: "#f43f5e" }
 ]
 
-/** The standing approvals the Approval Radar shows. The scam entry links to the $REWARD token on the
- *  desk — revoking it removes both the approval and the token. */
+/** The scam entry links to the $REWARD token on the desk — revoking removes both. */
 export const APPROVAL_RADAR: Approval[] = [
   {
     id: "ap-uni",

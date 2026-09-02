@@ -14,11 +14,8 @@ import { cue } from "@/lib/sound"
 import { fakeHash, round4, units } from "@/lib/utils"
 import { walletOf } from "@/lib/wallets"
 
-// What actually happens when a transfer settles. Send and Handoff differ only in what they file
-// afterwards, so the spending half is shared and each writes its own receipt.
-//
-// Nothing here is chain-aware beyond the wording — no transaction is signed and no value moves. It is
-// the balances, the desk and the receipt list being kept consistent with what the user was shown.
+// Send and Handoff differ only in what they file afterwards, so the spending half is shared. Nothing is
+// signed and no value moves — this only keeps the balances, the desk and the receipts consistent.
 
 type Args = {
   setAssets: Dispatch<SetStateAction<AssetObj[]>>

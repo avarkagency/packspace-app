@@ -7,17 +7,13 @@ import type { DesktopObj, FolderSpec } from "@/types/objects"
 
 import { type Wallet, walletOf } from "@/lib/wallets"
 
-// Marquee select. Starts only on the desk itself (a press on an icon is a pick-up, not a sweep), draws
-// the box, and re-derives the selection from whichever icons it crosses. The coins need nothing: they
-// follow their slots whatever moves them.
-//
-// Boxes are taken once on press, in VIEWPORT coordinates — that's what the sweep is drawn in, and
-// nothing on the desk moves while a marquee is being dragged.
+// Starts only on the desk itself — a press on an icon is a pick-up, not a sweep. Boxes are taken once on
+// press, in VIEWPORT coordinates: that's what the sweep is drawn in, and nothing moves while it's out.
 
 type Marquee = { x0: number; y0: number; x1: number; y1: number }
 
 type Args = {
-  /** The desk surface. A press that didn't land on it exactly is a press on something else. */
+  /** A press that didn't land on it exactly is a press on something else. */
   rootRef: RefObject<HTMLDivElement | null>
   positions: Record<string, Pos> | null
   items: DesktopObj[]
@@ -27,7 +23,7 @@ type Args = {
 }
 
 export function useDesktopMarquee({ rootRef, positions, items, folders, toScreen }: Args) {
-  /** The ids swept up by the marquee. Dragging any of them moves the whole set. */
+  /** Dragging any of them moves the whole set. */
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set())
   const [marquee, setMarquee] = useState<Marquee | null>(null)
 

@@ -8,25 +8,18 @@ import type { DesktopObj } from "@/types/objects"
 
 import { FOLDER_DROP_PREFIX } from "@/lib/asset-ops"
 
-// Pointer-driven drag for every desktop object. Starts after a small threshold (so a stray press
-// doesn't lift the coin), and resolves on up:
+// Released over a `[data-drop]` zone this object can use → that action; anything else → it lands where
+// it was let go. Letting go IS placing.
 //
-//   - released over a `[data-drop]` zone this object can use → that action (the transfer modal,
-//     combine, or a dock app)
-//   - anything else → the object lands exactly where it was let go. This is an editable desktop;
-//     letting go IS placing.
-//
-// There is no separate drag ghost: `onDragMove` moves the real icon — label, badge and all — and the
-// coin follows the slot it always follows, so an object in hand IS the object at rest, just in motion.
-// (The workspace makes the dragged icon pointer-transparent, which is what lets `elementFromPoint` see
-// the drop zones underneath it.) A wallet in hand recognises no zones — deleting a contact lives in
-// its right-click menu, so moving one is only ever a move.
+// There is no drag ghost: `onDragMove` moves the real icon and the coin follows the slot it always
+// follows. The workspace makes the dragged icon pointer-transparent, which is what lets
+// `elementFromPoint` see the drop zones underneath it.
 
 export function useDesktopDrag(handlers: {
   onDrop: (obj: DesktopObj, dropKey: string) => void
-  /** Place the object with its coin centred at (x, y) — the cursor at release. */
+  /** (x, y) is the cursor at release; the coin centres on it. */
   onMove: (obj: DesktopObj, x: number, y: number) => void
-  /** The object is mid-drag with its coin centred at (x, y) — carry the icon along. */
+  /** Mid-drag: carry the icon along, coin centred on (x, y). */
   onDragMove: (obj: DesktopObj, x: number, y: number) => void
 }) {
   const drag = useRef<{ obj: DesktopObj; sx: number; sy: number; started: boolean; onStart?: (x: number, y: number) => void } | null>(null)
@@ -34,8 +27,7 @@ export function useDesktopDrag(handlers: {
   const dropAt = (x: number, y: number): string | null =>
     (document.elementFromPoint(x, y) as HTMLElement | null)?.closest("[data-drop]")?.getAttribute("data-drop") ?? null
 
-  /** The zone under the cursor, filtered to what this object may actually drop on. A wallet drag
-   *  recognises only folders — moving one anywhere else is only ever a move. */
+  /** Filtered to what this object may drop on: a wallet drag recognises only folders. */
   const zoneFor = (obj: DesktopObj, x: number, y: number): string | null => {
     const key = dropAt(x, y)
     if (obj.class === "person") return key?.startsWith(FOLDER_DROP_PREFIX) ? key : null
@@ -50,7 +42,7 @@ export function useDesktopDrag(handlers: {
       d.started = true
       // drop the hover: the readout would otherwise ride along under the coin the whole drag
       setCoinHover(null)
-      // the pick-up hook — a folder row uses this to materialise its object on the desk first
+      // a folder row uses this to materialise its object on the desk first
       d.onStart?.(e.clientX, e.clientY)
       startDrag(d.obj)
     }
