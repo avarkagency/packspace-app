@@ -14,15 +14,6 @@ import { cn, shortAddr, units, usd } from "@/lib/utils"
 import { type GiveSlot, type HandoffReceive, WindowHandoff } from "./WindowHandoff"
 import { type SendDeal, WindowSend } from "./WindowSend"
 
-// The modal a wallet drop opens — for one asset or several: a multi-select dropped onto a contact
-// cascades into this single window rather than a stack of one-asset modals. The desk behind falls out
-// of focus rather than under a shade, and the close button floats at the screen's top-right corner.
-//
-// ONE frame for the whole flow: the glass panel stays mounted and animates its size around whichever
-// step is showing — choosing Send grows the height into the confirm layout (Trade will grow the width
-// too when its design lands) — so choosing never fades one modal out and another in. Send and Trade
-// stay separate components on purpose; this only fronts them.
-
 type Props = {
   assets: AssetObj[]
   inventory: AssetObj[]
@@ -36,9 +27,6 @@ type Props = {
 type Step = "choose" | "send" | "handoff"
 
 const VERB: Record<Step, string> = { choose: "Transfer", send: "Send", handoff: "Trade" }
-
-/** The panel's width per step. Trade spreads into the two-panel MMO layout; height is measured from
- *  whatever the step renders, so only width needs declaring. */
 const WIDTH: Record<Step, number> = { choose: 480, send: 480, handoff: 820 }
 
 export function WindowTransfer({ assets, inventory, to, z, onClose, onSend, onLaunch }: Props) {
@@ -55,7 +43,6 @@ export function WindowTransfer({ assets, inventory, to, z, onClose, onSend, onLa
   const editable = !!single && single.kind !== "nft"
   const [amount, setAmount] = useState(editable ? single!.balance : 0)
   const what = assets.length > 1 ? `${assets.length}x assets` : editable ? `${units(amount)} ${single!.symbol}` : `${units(lead.balance)} ${lead.symbol}`
-  // a compromised recipient blocks the whole flow; retired / unknown warn but let it through
   const blocked = !!to.compromised
   const warn = blocked
     ? "This address is flagged COMPROMISED. Transfers are blocked to protect you — clear the flag first if you're certain."
@@ -115,8 +102,6 @@ export function WindowTransfer({ assets, inventory, to, z, onClose, onSend, onLa
 
           <div className="-mx-28 mt-24 h-px bg-white/20" aria-hidden />
 
-          {/* what's on the table — shown on the choose step (and multi-asset sends); a single-asset Send
-              carries its amount in the header + confirm panel, so the list would only duplicate it */}
           {step !== "handoff" && !(step === "send" && single) && (
             <ul className="mt-28 flex flex-col gap-8">
               {assets.map((a) => (

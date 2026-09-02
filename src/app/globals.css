@@ -1,11 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/*
-  Desktop-first responsive system, shared with Aboyz / Gacha Labs. Unprefixed classes are
-  desktop (base); named variants below are max-width breakpoints (apply at that width and
-  BELOW), declared largest -> smallest so the cascade is smallest-wins.
-*/
 @custom-variant sl (@media (max-width: 1600px));
 @custom-variant xxxl (@media (max-width: 1400px));
 @custom-variant xxl (@media (max-width: 1200px));
@@ -16,13 +11,6 @@
 @custom-variant xs (@media (max-width: 500px));
 @custom-variant xxs (@media (max-width: 400px));
 @custom-variant t (@media (max-width: 350px));
-
-/*
-  PackSpace — a clean desktop OS in dark. Neutral charcoal field (not the old navy), soft panels,
-  one restrained blue accent, Inter throughout. The objects carry all the colour; the chrome stays
-  quiet. Object/state colour is data-driven, not chrome. Shares only the px design-scale system
-  with the sibling apps, not the palette.
-*/
 
 :root {
   --background: #131315;
@@ -58,12 +46,9 @@
 }
 
 @theme inline {
-  /* Spacing scale is raw pixels: the utility number IS the pixel value (p-16 = 16px). */
   --spacing: 1px;
 
-  /* Clear Tailwind's default min-width breakpoints (we use the desktop-first variants above). */
   --breakpoint-*: initial;
-  /* Clear default named line-heights so only our percentage scale (leading-100..160) shows. */
   --leading-*: initial;
 
   --color-background: var(--background);
@@ -93,7 +78,7 @@
   --radius-md: 8px;
   --radius-lg: 10px;
   --radius-xl: 14px;
-  /* Px-named radii for the glass chrome, matching the px naming of the spacing scale. */
+
   --radius-4: 4px;
   --radius-8: 8px;
   --radius-12: 12px;
@@ -103,7 +88,6 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-victor-mono), ui-monospace, monospace;
 
-  /* Font sizes are raw pixels, same as spacing. Line-height controlled separately. */
   --text-10: 10px;
   --text-11: 11px;
   --text-12: 12px;
@@ -125,7 +109,6 @@
   --ease-in-out-quart: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
-/* Percentage-based line-height scale: the number IS the multiplier in hundredths. */
 @utility leading-100 {
   line-height: 1;
 }
@@ -145,9 +128,6 @@
   line-height: 1.6;
 }
 
-/* Must stay inside @layer base. Unlayered, this beats every layer — including `utilities` — and silently
-   kills every border-{color} utility in the app: border-accent, border-danger, the lot all resolve to
-   --border and nothing looks broken enough to notice. */
 @layer base {
   * {
     border-color: var(--border);
@@ -160,26 +140,14 @@ html {
   font-synthesis: none;
 }
 
-/* Inter everywhere — applied as the `font-sans` utility on <body> in layout.tsx, since `@theme inline`
-   never emits --font-sans as a real variable. Victor Mono stays available via `font-mono` for raw
-   addresses and hashes. */
 body {
   background: var(--background);
   color: var(--foreground);
-  color-scheme: dark; /* native controls (inputs, scrollbars) match the theme */
+  color-scheme: dark;
   line-height: 1.4;
-  overflow: hidden; /* the desktop owns the viewport */
+  overflow: hidden;
 }
 
-/*
-  ── Desktop UI utilities ─────────────────────────────────────────────────────
-*/
-
-/* The base floating surface — menus, tooltips, windows. Frosted glass over the wallpaper: a whisper of
-   white, heavy blur, and a light hairline border doing the lifting a drop shadow can't. */
-/* No hand-written -webkit-backdrop-filter here: Lightning CSS treats the pair as one logical property
-   and keeps only the LAST form — which silently deleted the standard `backdrop-filter` and killed the
-   blur in Chrome. Declare the standard property alone and let the compiler add prefixes. */
 @utility panel {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(20px) saturate(180%);
@@ -187,10 +155,6 @@ body {
   box-shadow: 0 12px 32px -8px #00000059;
 }
 
-/* The glass chrome surface — the toggle bar, balance card and dock. The border isn't a border: it's a
-   gradient ring on an overlay layer, masked down to a hairline (padding-box XOR border-box leaves only
-   the 1px rim) and blended soft-light, so the edge catches light top-left and bottom-right and melts
-   away in between rather than reading as a solid white stroke. */
 @utility glass {
   position: relative;
   background: rgba(255, 255, 255, 0.1);
@@ -212,13 +176,9 @@ body {
       linear-gradient(#fff 0 0) padding-box,
       linear-gradient(#fff 0 0);
     mask-composite: exclude;
-    /* no blend mode: soft-light crushed the ring so hard that alpha changes stopped reading at all —
-       plain compositing keeps the gradient's opacity honest */
   }
 }
 
-/* Panels arrive from their own centre. Never from scale(0) — that reads as a pop rather than an
-   approach, and the label inside it stretches on the way. */
 @keyframes panel-in {
   from {
     opacity: 0;
@@ -233,8 +193,6 @@ body {
   animation: panel-in 200ms var(--ease-out-quart);
 }
 
-/* The AI Inspector's bento cards fade up on open, staggered by an inline animation-delay per card, so the
-   grid assembles around the coin as it flies into place. `both` holds the pre-delay start state. */
 @keyframes bento-in {
   from {
     opacity: 0;
@@ -249,7 +207,6 @@ body {
   animation: bento-in 500ms var(--ease-out-quart) both;
 }
 
-/* The takeover's wallpaper fades in as the coin flies into place, rather than snapping on. */
 @keyframes bg-fade {
   from {
     opacity: 0;
@@ -262,7 +219,6 @@ body {
   animation: bg-fade 700ms var(--ease-out-quart) both;
 }
 
-/* The Inspector's price chart wipes in left-to-right as its card lands. */
 @keyframes chart-reveal {
   from {
     clip-path: inset(0 100% 0 0);
@@ -275,17 +231,6 @@ body {
   animation: chart-reveal 900ms var(--ease-out-quart) both;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .bento-in,
-  .bg-fade,
-  .chart-reveal {
-    animation: none;
-  }
-}
-
-/* The drop-target treatment in the split's yellow, worn briefly by both halves of a fresh split so
-   it's clear which icons it produced. Arrives fast, holds, then fades away — opacity only, so it
-   composites over the canvas without repaints. */
 @keyframes split-flash {
   0% {
     opacity: 0;
@@ -304,7 +249,6 @@ body {
   animation: split-flash 2000ms var(--ease-out-quart) forwards;
 }
 
-/* Right-docked panels (Inspector, Approval Radar) slide in from the edge. */
 @keyframes panel-slide {
   from {
     opacity: 0;
@@ -319,7 +263,6 @@ body {
   animation: panel-slide 240ms var(--ease-out-quart);
 }
 
-/* A freshly-created pack pulses a soft ring a few times so the eye finds where it landed on the desk. */
 @keyframes pack-pulse {
   0%,
   100% {
@@ -350,15 +293,6 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
 }
 
 ::-webkit-scrollbar {

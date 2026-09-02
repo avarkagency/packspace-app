@@ -13,21 +13,10 @@ import { ObjectMark } from "@/components/desktop/object/ObjectMark"
 import { cn, units, usd } from "@/lib/utils"
 import { WALLETS, type Wallet } from "@/lib/wallets"
 
-// Moving a holding between your OWN two wallets — the split view's cross-divider drop.
-//
-// Not a Send: there's no counterparty, no trust check and nothing leaves your custody, so the copy says
-// "move" throughout and the receipt files as a Move rather than a transfer. A fungible holding can move
-// in part (the slider); a one-of-one moves whole. Addresses never reach this window — they copy across
-// on release, with nothing to decide.
-//
-// If the destination wallet already holds the same token, the two pool by default — otherwise you'd end
-// up with two piles of the same thing for no reason. Untick it to keep them as separate objects.
-
 type Props = {
   asset: AssetObj
   from: Wallet
   to: Wallet
-  /** A matching holding already in the destination wallet, if any — the merge target. */
   existing: AssetObj | null
   z: number
   onClose: () => void
@@ -58,7 +47,6 @@ export function WindowMove({ asset, from, to, existing, z, onClose, onMove }: Pr
 
   return (
     <div className="fixed inset-0 grid place-items-center p-24" style={{ zIndex: z }}>
-      {/* the desk falls out of focus */}
       <div className="animate-in fade-in-0 absolute inset-0 bg-black/20 backdrop-blur-xl duration-200" onClick={onClose} aria-hidden />
 
       <button
@@ -120,7 +108,6 @@ export function WindowMove({ asset, from, to, existing, z, onClose, onMove }: Pr
             <p className="mt-28 text-13 leading-140 text-white/70">{asset.label} is a one-of-one, so it moves across whole.</p>
           )}
 
-          {/* pooling with what's already over there */}
           {existing && divisible && (
             <label className="mt-20 flex cursor-pointer items-start gap-10 rounded-md border border-white/10 bg-white/5 p-12">
               <input

@@ -8,12 +8,6 @@ import { ObjectMark } from "@/components/desktop/object/ObjectMark"
 
 import { units, usd } from "@/lib/utils"
 
-// The inverse of Split: pours two portions of one token back into a single object. Object-level only —
-// nothing settles, no chain semantics are implied, the holding is unchanged either way.
-//
-// Wears Split's glass frame, because it's Split's other half: same blurred desk, same floating close,
-// same header shape and inset panes.
-
 type Props = {
   a: AssetObj
   b: AssetObj
@@ -35,7 +29,6 @@ export function WindowCombine({ a, b, z, onClose, onCombine }: Props) {
 
   return (
     <div className="fixed inset-0 grid place-items-center p-24" style={{ zIndex: z }}>
-      {/* the desk falls out of focus */}
       <div className="animate-in fade-in-0 absolute inset-0 bg-black/20 backdrop-blur-xl duration-200" onClick={onClose} aria-hidden />
 
       <button

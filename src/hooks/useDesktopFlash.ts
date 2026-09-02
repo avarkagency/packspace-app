@@ -2,10 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
-// Marks what a gesture just produced, which lands next to identical-looking neighbours. An announcement,
-// not a state: it clears itself, and a second flash replaces the first rather than queueing behind it.
-
-/** Slightly longer than the CSS animation, so the class is never pulled while it's still running. */
 const FLASH_MS = 2100
 
 export function useDesktopFlash() {

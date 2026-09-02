@@ -15,24 +15,17 @@ import { chainImage } from "@/components/desktop/object/ObjectVisual"
 import { blockSendMessage, canReceive, chainWord } from "@/lib/chain"
 import { round4, units, usd } from "@/lib/utils"
 
-// The Send confirm step — renders inside WindowTransfer's frame, below the shared header and asset list.
-// A one-way give: an amount stage (fungibles only) then the confirm screen. Confirm deducts the balance
-// and settles a receipt. NFTs and multi-asset drops skip the amount stage and send in full.
-
 export type SendDeal = { asset: AssetObj; amount: number }
 
 type Props = {
-  /** Everything the drop carried — one asset from a plain drag, several from a multi-select. */
   assets: AssetObj[]
   to: PersonObj
-  /** The amount to send, owned by WindowTransfer so its header stays in step with the confirm panel. */
   amount: number
   setAmount: (v: number) => void
   onClose: () => void
   onSend: (deals: SendDeal[], to: PersonObj) => void
 }
 
-/** Fee fixture — nothing here estimates gas yet. */
 const FEE = { amount: "0.001 ETH", usd: "$0.08" }
 
 export function WindowSend({ assets, to, amount, setAmount, onClose, onSend }: Props) {

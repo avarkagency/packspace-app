@@ -15,29 +15,15 @@ import { cn, usd } from "@/lib/utils"
 
 import { dayChange } from "@/data/assets"
 
-// One desktop item: the 3D object above, a small label under it — nothing else. The object itself is
-// drawn by the canvas overlay into the slot this registers; the DOM here only lays out, hit-tests and
-// labels. The workspace places each icon absolutely, so dragging one anywhere is just new coordinates.
-//
-// The icon must never move on hover: a CSS transform would shift the slot without the canvas knowing,
-// and the object would drift off it. The object's own spin/scale is the hover feedback. A press is
-// different: the slot rects are re-measured every frame, so the subtle press-down scale carries the
-// 3D object with it rather than leaving it behind.
-
 type Props = {
   obj: DesktopObj
   label: string
-  /** Present when this icon can take a drop right now — wallets always, assets only as merge targets. */
   dropKey?: string
   dimmed?: boolean
   target?: boolean
   over?: boolean
   selected?: boolean
   flash?: boolean
-  /** Some object is in hand. The badges normally float above the canvas ("in front of the 3D object"),
-   *  but while one flies they duck underneath it — a badge must never sit on top of the coin being
-   *  carried across it. The carried icon's own badge is unaffected: its wrapper stacks above the
-   *  canvas wholesale. */
   anyDragging?: boolean
   renaming?: boolean
   onRename?: (name: string) => void
@@ -124,13 +110,10 @@ export const DesktopIcon = memo(function DesktopIcon({
         target && "bg-white/10 outline-1 outline-dashed outline-white/40",
         (over || selected) && "bg-white/20 outline-1 outline-dashed outline-white"
       )}>
-      {/* the split flare rides its own layer so only opacity animates — the icon itself never moves */}
       {flash && (
         <span aria-hidden className="split-flash pointer-events-none absolute inset-0 rounded-lg bg-action-split/20 outline-1 outline-action-split/50" />
       )}
-      {/* the object's box — drawn by the canvas overlay, not here. Empty by design: it exists only to
-          be measured, so nothing shows if WebGL is unavailable. Hover lives here rather than on the
-          whole icon: the object is the thing you're pointing at. */}
+
       <div
         ref={slotRef}
         onPointerEnter={onEnter}
@@ -138,11 +121,6 @@ export const DesktopIcon = memo(function DesktopIcon({
         onPointerMove={onMove}
         style={{ width: ICON_SLOT, height: ICON_SLOT }}
         className="relative shrink-0">
-        {/* class badge on the object's shoulder — the network mark for a holding; for a wallet, its
-            standing (verified check, or the warning for a bare address not in contacts). z-[60] lifts
-            it over the canvas (z-50), which is what "in front of the 3D object" means here; while
-            something is being carried it ducks to z-[40] so the flying coin passes over it rather
-            than under. */}
         <span className={cn("pointer-events-none absolute -right-px -bottom-px", anyDragging ? "z-[40]" : "z-[60]")}>
           {obj.class === "person" ? (
             compromised ? (
@@ -193,9 +171,6 @@ export const DesktopIcon = memo(function DesktopIcon({
           </p>
         )}
 
-        {/* the second line, worn as a small pill: the holding's dollar value for an asset (with its
-            24h move as a tag inside), the address for a wallet — or the warning that the address was
-            never saved. */}
         <span
           className={cn(
             "tnum flex max-w-full items-center gap-4 rounded-full bg-white/20 py-2 pl-6 text-10 leading-120 text-white/90",

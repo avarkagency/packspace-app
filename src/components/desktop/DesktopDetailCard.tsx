@@ -17,20 +17,7 @@ import { cn, units, usd } from "@/lib/utils"
 
 import { dayChange } from "@/data/assets"
 
-// A holding shown at length instead of as an icon: the object's art up in the header beside its name,
-// then a four-tile bento of the numbers the icon can only hint at. It's the same desktop object underneath —
-// same id, same position record, same drag — so it moves, combines and inspects exactly as its icon does.
-//
-// Desktop only, by design: a folder tile has no room for this, so filing one drops it back to an icon
-// (the workspace prunes the card set whenever an object leaves the desk).
-//
-// The header art is FLAT — the same DOM treatment a folder tile uses, not the 3D coin. A card is a solid
-// glass panel rather than an icon's empty slot, so a real coin would have to be layered either in front of
-// the card (blurred behind its own glass) or behind it (with every other object's coin sliding over the top
-// as it's dragged past). The workspace keeps carded objects out of the 3D scene entirely.
-
 const MARK = 28
-
 const UP = "#13e192"
 const DOWN = "#ef5a44"
 
@@ -66,7 +53,6 @@ export const DesktopDetailCard = memo(function DesktopDetailCard({
   const delta = dayChange(obj.symbol)
   const tag = chainTag(obj)
   const nft = obj.kind === "nft"
-  // the trend line takes the direction's colour: the move IS the reading, so it shouldn't need a legend
   const trendColor = (delta ?? market.change) < 0 ? DOWN : UP
 
   return (
@@ -82,19 +68,16 @@ export const DesktopDetailCard = memo(function DesktopDetailCard({
         target && "outline-1 outline-dashed outline-white/40",
         (over || selected) && "outline-1 outline-dashed outline-white"
       )}>
-      {/* the split flare rides its own layer so only opacity animates — the card itself never moves */}
       {flash && (
         <span aria-hidden className="split-flash pointer-events-none absolute inset-0 rounded-16 bg-action-split/20 outline-1 outline-action-split/50" />
       )}
 
       <div className="flex shrink-0 items-center gap-4">
-        {/* the object's art, flat — the same treatment a folder tile uses, not the 3D coin */}
         <span className="mr-2 grid shrink-0 place-items-center" style={{ width: MARK, height: MARK }}>
           <ObjectArt obj={obj} size={MARK} />
         </span>
         <p className="min-w-0 truncate text-14 leading-120 font-medium tracking-tight text-white">{obj.label}</p>
-        {/* the network's own mark, the same one the icon wears on its shoulder — which chain, beside
-            the chain FAMILY the pill names */}
+
         {obj.chain && (
           <Image
             src={chainImage(obj.chain)}
@@ -115,7 +98,6 @@ export const DesktopDetailCard = memo(function DesktopDetailCard({
         <button
           type="button"
           aria-label="Show as icon"
-          // the press must not start a drag of the card underneath it
           onPointerDown={(e) => e.stopPropagation()}
           onClick={onCollapse}
           className={cn("grid size-20 shrink-0 place-items-center rounded-4 text-white/60 trans-base hover:bg-white/15 hover:text-white", !tag && "ml-auto")}>
@@ -139,7 +121,6 @@ export const DesktopDetailCard = memo(function DesktopDetailCard({
           </span>
         </Tile>
 
-        {/* a single NFT's "price" is just its value again, so it reads its network instead */}
         <Tile label={nft ? "Network" : "Price"}>
           {nft ? (
             <p className="w-full truncate text-14 leading-120 font-medium text-white">{obj.chain ?? "Base"}</p>
@@ -164,13 +145,10 @@ function Tile({ label, children }: { label: string; children: React.ReactNode })
   )
 }
 
-/** The trend line — the Inspector's chart with the interaction stripped out; at this size a hover
- *  readout would be a target you can't hit. The gradient id is keyed by object so two cards on the desk
- *  don't both resolve to whichever one painted first. */
 function Sparkline({ id, prices, color }: { id: string; prices: number[]; color: string }) {
   const W = 100
   const H = 24
-  const PAD = 4 // vertical headroom, in viewBox units, so peaks never clip
+  const PAD = 4
   const lo = Math.min(...prices)
   const hi = Math.max(...prices)
   const step = W / (prices.length - 1)

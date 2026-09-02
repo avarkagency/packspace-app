@@ -42,7 +42,7 @@ src/app/        route + globals.css
 src/components/ base/ (the Base* primitives) + desktop/ (all feature code)
 src/const/      constants + layout maths (desktop-layout, desktop-config, pane, app-config)
 src/data/       the fixture sets (assets, people, packs, apps, approvals, folders, colors, objects)
-src/hooks/      the desk's own hooks (useDesktop*) + usePrefersReducedMotion
+src/hooks/      the desk's own hooks (useDesktop*)
 src/shaders/    <name>/{vertex,fragment}.glsl, imported as raw strings
 src/lib/        rules + helpers (asset-ops, chain, wallets, widgets, inspect, market, sound,
                 utils, object-art, coin-geometry, nft-geometry)
@@ -169,8 +169,6 @@ value as a constant. It is the same trick gacha's `CastleParticles` uses for its
   off a selector; plain divs opt in with `data-cue-press`). The guards matter: a press within `GUARD_MS`
   of a bloom/error is the same gesture and is swallowed, and a window closing within `SETTLE_MS` of a
   settle sparkle stays quiet so success never sounds like a cancel. Mute persists to localStorage.
-- **Reduced motion** is handled in CSS globally, but the frame loop no media query can reach asks
-  directly via `hooks/usePrefersReducedMotion` (matchMedia as an external store).
 
 ## Data
 

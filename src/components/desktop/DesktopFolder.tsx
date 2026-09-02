@@ -7,13 +7,6 @@ import { clearCoinHover, setCoinCursor, setCoinHover } from "@/stores/coin"
 
 import { cn } from "@/lib/utils"
 
-// A desk folder — Other Tokens holds the long tail of dust balances, and the desk menu can mint empty
-// ones to organise into. Double-click to open its window; drag to move it; right-click to rename or
-// delete it; drop assets or contacts onto it to file them (never another folder — folders go one level
-// deep, which is enforced simply by a folder never carrying a drop key while one is being moved). It
-// wears the same anatomy as every desktop icon (art, label, pill), but the art is a flat image rather
-// than a scene-drawn coin — a folder is furniture, not currency.
-
 type Props = {
   id: string
   label: string
@@ -77,9 +70,6 @@ export function DesktopFolder({
         (over || selected) && "bg-white/20 outline-1 outline-dashed outline-white"
       )}>
       <div className="grid h-48 shrink-0 place-items-center" onPointerEnter={onEnter} onPointerLeave={onLeave} onPointerMove={onMove}>
-        {/* draggable={false}: the browser's native image drag would carry a ghost of the artwork
-            instead of letting the pointer machinery move the icon. The art rests slightly small and
-            grows on hover — the flat cousin of the scale-up the scene gives a hovered coin. */}
         <Image
           src="/images/folder.png"
           alt={`${label} folder`}

@@ -15,26 +15,16 @@ import { WIDGET_TYPES, type WidgetInstance, type WidgetType, packWidgets } from 
 import { WidgetBalance } from "./WidgetBalance"
 import { WidgetNft } from "./WidgetNft"
 
-// The top-right widget bento. A 2-column grid (columns fixed so a 2-span widget matches the old balance
-// card's width); `packWidgets` turns the ordered list into explicit (row, column) placements. Widgets
-// rearrange by drag — drop onto any part of another widget to swap their slots, or drop a 1-column widget
-// into the empty column to move it there — and while dragging, the grid's cells show as faint guides with
-// the drop target lit. The right-click menu still offers resize / pin-to-column / remove / add, and its
-// "Add Widget" mirrors the desktop-background menu's, so both add from the same registry.
-
 const COL_W = 160
 const GAP = 8
-/** The base row height — a 1-column widget is (near enough) a square, and every widget shares it so the
- *  grid stays even however the Balance widget's content changes between its 1- and 2-column forms. */
 const ROW_H = 160
 
 type Props = {
   widgets: WidgetInstance[]
-  setWidgets: (updater: (ws: WidgetInstance[]) => WidgetInstance[]) => void
   assets: AssetObj[]
   wallet: Wallet
+  setWidgets: (updater: (ws: WidgetInstance[]) => WidgetInstance[]) => void
   onAdd: (type: WidgetType) => void
-  /** Report the grid's live keep-out box (px in from the top-right corner) so the desk clamps icons off it. */
   onKeepoutChange?: (w: number, h: number) => void
 }
 
@@ -43,7 +33,6 @@ function renderWidget(w: WidgetInstance, assets: AssetObj[], wallet: Wallet) {
   return <WidgetNft assets={assets} span={w.span} />
 }
 
-/** A drag's landing spot: onto another widget (swap slots), or into an empty cell (move there). */
 type Drop = { kind: "swap"; overId: string } | { kind: "cell"; row: number; col: 1 | 2 }
 
 export function Widget({ widgets, setWidgets, assets, wallet, onAdd, onKeepoutChange }: Props) {

@@ -7,31 +7,26 @@ import type { DesktopObj, FolderSpec } from "@/types/objects"
 
 import { type Wallet, walletOf } from "@/lib/wallets"
 
-// Starts only on the desk itself — a press on an icon is a pick-up, not a sweep. Boxes are taken once on
-// press, in VIEWPORT coordinates: that's what the sweep is drawn in, and nothing moves while it's out.
-
 type Marquee = { x0: number; y0: number; x1: number; y1: number }
 
 type Args = {
-  /** A press that didn't land on it exactly is a press on something else. */
   rootRef: RefObject<HTMLDivElement | null>
   positions: Record<string, Pos> | null
   items: DesktopObj[]
   folders: FolderSpec[]
-  /** Pane-relative → viewport, for an object whose wallet we know. */
   toScreen: (wallet: Wallet, p: Pos) => Pos
 }
 
 export function useDesktopMarquee({ rootRef, positions, items, folders, toScreen }: Args) {
-  /** Dragging any of them moves the whole set. */
+  // state
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set())
   const [marquee, setMarquee] = useState<Marquee | null>(null)
 
+  // events
   const onDeskPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 || e.target !== rootRef.current || !positions) return
     const sx = e.clientX
     const sy = e.clientY
-    // folders sweep up too — a selection is for organising, and folders are furniture worth moving
     const boxes = [
       ...items.map((o) => ({ id: o.id, p: positions[o.id] && toScreen(walletOf(o), positions[o.id]) })),
       ...folders.map((f) => ({ id: f.id, p: positions[f.id] && toScreen(f.wallet, positions[f.id]) }))

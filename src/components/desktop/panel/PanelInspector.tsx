@@ -35,18 +35,6 @@ import { type InspectAction, type Inspectable, inspectFacts, localExplain } from
 import { assetMarket } from "@/lib/market"
 import { cn, shortAddr, usd } from "@/lib/utils"
 
-// The AI Object Inspector as a full-screen takeover (design: Figma "Frame 5"). The whole viewport becomes
-// the wallpaper again, the rainbow edge-glow radiates over it, and the object's read-out is laid out as a
-// bento of glass cards — art, summary (spanning two), a price chart, the detail rows, a highlight/safety
-// card and the contextual actions.
-//
-// The desk's own 3D coin flies into the art card and keeps spinning there: while this is open we hand the
-// coin store the art card's box as the coin's target (setCoinFocus), the canvas lifts above the takeover,
-// and the coin eases in from wherever it sat on the desk. The other cards fade up around it, and the AI
-// summary "thinks" for two seconds before typing then scrambling in. The shader lives here so it only
-// exists while the inspector is open.
-
-/** Action kinds that resolve a warning — they ride inside the warning box rather than the actions box. */
 const WARNING_ACTION_KINDS = new Set(["confirm", "whitelist", "verify", "revoke"])
 
 const ACTION_ICON: Record<string, LucideIcon> = {
@@ -63,15 +51,11 @@ const ACTION_ICON: Record<string, LucideIcon> = {
 
 type Props = {
   obj: Inspectable
-  /** Every inspectable object, in order — the Inspector steps through these (arrow keys now, a list UI
-   *  later) and `onSelect` jumps to any of them. */
   objects: Inspectable[]
-  /** Whether this object has a 3D coin (every asset and contact does — packs don't). */
   coinPresent: boolean
-  /** Filed in a folder — its coin has no desk position, so it drops straight into the card rather than flying. */
   foldered: boolean
-  onSelect: (id: string) => void
   wallpaper: string
+  onSelect: (id: string) => void
   onAction: (kind: string) => void
   onClose: () => void
 }
@@ -88,10 +72,7 @@ export function PanelInspector({ obj, objects, coinPresent, foldered, wallpaper,
   const summary = localExplain(obj)
   const isAsset = obj.class === "asset"
   const market = useMemo(() => (obj.class === "asset" ? assetMarket(obj) : null), [obj])
-  // a big ghost of the symbol behind the coin, sized to spill a touch past the card (clipped by it)
   const ghostSize = isAsset ? Math.min(210, Math.max(100, Math.round(310 / (0.6 * obj.symbol.length)))) : 0
-  // the warning's own action (Confirm / Add to address book / Verify …) lives inside the warning box; the
-  // rest (View Card, Edit, Split …) sit in the actions box below
   const warnActions = facts.safety ? facts.actions.filter((a) => WARNING_ACTION_KINDS.has(a.kind)) : []
   const mainActions = facts.actions.filter((a) => !warnActions.includes(a))
 
@@ -142,7 +123,6 @@ export function PanelInspector({ obj, objects, coinPresent, foldered, wallpaper,
 
   return (
     <div className="fixed inset-0 z-[190]" role="dialog" aria-modal="true" aria-label="Object Inspector">
-      {/* the takeover's own wallpaper (fades in as the coin flies in), then the rainbow edge-glow over it */}
       <div aria-hidden className="bg-fade absolute inset-0" style={{ background: wallpaper }} />
       <FxRainbowBorder className="absolute inset-0" />
 
@@ -154,10 +134,8 @@ export function PanelInspector({ obj, objects, coinPresent, foldered, wallpaper,
         <X className="size-18" />
       </button>
 
-      {/* the bento */}
       <div className="absolute inset-0 grid place-items-center p-24">
         <div className="grid gap-8" style={{ gridTemplateColumns: "repeat(3, 300px)", gridTemplateRows: "repeat(2, 300px)" }}>
-          {/* art — the desk coin flies into the invisible target; a ghost of the symbol overflows behind */}
           <div
             className={cn(card, "bento-in relative flex items-center justify-center overflow-hidden")}
             style={{ gridColumn: 1, gridRow: 1, animationDelay: "60ms" }}>
@@ -172,14 +150,12 @@ export function PanelInspector({ obj, objects, coinPresent, foldered, wallpaper,
             {coinPresent ? (
               <div ref={artRef} aria-hidden className="size-200" />
             ) : (
-              // only packs land here — no scene coin, so the glyph mark fades in
               <div key={obj.id} className="bg-fade relative">
                 <ArtMark obj={obj} />
               </div>
             )}
           </div>
 
-          {/* summary */}
           <div className={cn(card, "bento-in flex flex-col")} style={{ gridColumn: "2 / span 2", gridRow: 1, animationDelay: "200ms" }}>
             <div className="flex items-center gap-8">
               <Sparkles className="size-16 text-[#c4b6ff]" />
@@ -191,7 +167,6 @@ export function PanelInspector({ obj, objects, coinPresent, foldered, wallpaper,
             </div>
           </div>
 
-          {/* price chart — assets only; the chart bleeds to the card edges */}
           {isAsset && market && (
             <div className={cn(card, "bento-in flex flex-col")} style={{ gridColumn: 1, gridRow: 2, animationDelay: "280ms" }}>
               <p className="text-11 leading-120 text-white/60">{obj.symbol} / USD</p>
@@ -204,7 +179,7 @@ export function PanelInspector({ obj, objects, coinPresent, foldered, wallpaper,
                 />
                 <BaseChangeTag pct={market.change} big countUp delay={0.32} />
               </div>
-              {/* keyed per object so the left-to-right wipe replays on every navigation */}
+
               <div className="-mx-32 my-16 min-h-0 flex-1">
                 <Sparkline key={obj.id} prices={market.prices} color={market.change < 0 ? "#ff6b5a" : "#22d3ee"} />
               </div>
@@ -226,8 +201,6 @@ export function PanelInspector({ obj, objects, coinPresent, foldered, wallpaper,
             </div>
           )}
 
-          {/* detail rows — Balance / Network carry their marks; the contract address gets a copy button.
-              Spans the chart's column too when there's no chart. */}
           <div className={cn(card, "bento-in flex flex-col")} style={{ gridColumn: isAsset ? "2" : "1 / span 2", gridRow: 2, animationDelay: "360ms" }}>
             <dl className="flex flex-col">
               {facts.rows.map(([k, v]) => (
@@ -267,10 +240,6 @@ export function PanelInspector({ obj, objects, coinPresent, foldered, wallpaper,
             )}
           </div>
 
-          {/* right column: the actions, with a card above them — a warning (which stands out and holds its
-              own fix-it action), or the holding/standing highlight. A safe contact drops the top card, and
-              when every action is a warning action the actions box drops too — either way the box left fills
-              the full height. */}
           <div className="flex flex-col gap-8" style={{ gridColumn: 3, gridRow: 2 }}>
             {facts.safety ? (
               <div
@@ -304,7 +273,6 @@ export function PanelInspector({ obj, objects, coinPresent, foldered, wallpaper,
   )
 }
 
-/** The Figma's inline marks: the chain icon beside the Network value, the token mark beside Balance. */
 function RowIcon({ rowKey, obj }: { rowKey: string; obj: Inspectable }) {
   if (obj.class !== "asset") return null
   if (rowKey === "Network" && obj.chain)
@@ -313,8 +281,6 @@ function RowIcon({ rowKey, obj }: { rowKey: string; obj: Inspectable }) {
   return null
 }
 
-/** The AI summary: a second of "generating" (skeleton), then the text types in. Mounted keyed by object
- *  id, so navigating to another object re-runs the whole thing — mimicking a fresh generation each time. */
 function Summary({ text }: { text: string }) {
   const [revealed, setRevealed] = useState(false)
   useEffect(() => {
@@ -334,8 +300,6 @@ function SummaryLoading() {
   )
 }
 
-/** The object's mark, sized for the art card — used for packs (no scene coin) and as the assets/contacts
- *  fallback if their coin isn't in the scene. */
 function ArtMark({ obj }: { obj: Inspectable }) {
   if (obj.class === "person") return <ObjectAvatar contact={obj} size={168} className="relative" />
   if (obj.class === "pack")
@@ -351,8 +315,6 @@ function ArtMark({ obj }: { obj: Inspectable }) {
   )
 }
 
-/** The top-right card when there's no safety warning — the holding's value for an asset, the standing for
- *  a contact, the contents for a pack. Labels match the other cards' ("BNB / USD") style. */
 function Highlight({ obj, market, facts }: { obj: Inspectable; market: ReturnType<typeof assetMarket> | null; facts: ReturnType<typeof inspectFacts> }) {
   if (obj.class === "asset")
     return (
@@ -377,10 +339,6 @@ function Highlight({ obj, market, facts }: { obj: Inspectable; market: ReturnTyp
   )
 }
 
-/** A cyan area sparkline. The line is inset vertically so its peaks and troughs never clip against the
- *  SVG's own top/bottom; the SVG wipes in (clip-path) while an overlay — a vertical guide, a marker dot and
- *  a value tooltip — reads out the price at the point under the cursor. The overlay sits outside the wipe
- *  so it never gets clipped. */
 function Sparkline({ prices, color }: { prices: number[]; color: string }) {
   const [hover, setHover] = useState<number | null>(null)
 

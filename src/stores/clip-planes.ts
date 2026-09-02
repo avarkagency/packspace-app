@@ -1,7 +1,5 @@
 import * as THREE from "three"
 
-// Each object copies from one of these into its OWN planes array every frame — the array reference a
-// material holds never changes, so swapping clip modes can never trigger a shader recompile.
 export const clipPlanes = [
   new THREE.Plane(new THREE.Vector3(0, -1, 0), 0), // keep y < top
   new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), // keep y > bottom

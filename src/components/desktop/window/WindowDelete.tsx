@@ -8,9 +8,6 @@ import { ObjectAvatar } from "@/components/desktop/object/ObjectAvatar"
 
 import { shortAddr } from "@/lib/utils"
 
-// The trash's second look. Deleting a wallet is permanent — its address book entry, its trust state,
-// its place on the desk — so a drop on the trash asks before it acts. Wears the shared glass frame.
-
 type Props = {
   contact: PersonObj
   z: number

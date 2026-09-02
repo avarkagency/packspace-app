@@ -1,5 +1,3 @@
-// The Inspector's brains, minus the network call. The panel renders these; the workspace wires the
-// actions it returns to real handlers.
 import type { AssetObj, PackObj, PersonObj } from "@/types/objects"
 
 import { isProjectG } from "./chain"

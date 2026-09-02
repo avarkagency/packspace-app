@@ -9,23 +9,11 @@ import { GripVertical } from "lucide-react"
 import { shortAddr } from "@/lib/utils"
 import { WALLETS, type Wallet } from "@/lib/wallets"
 
-// Split view's furniture: the two wallpapers, the pane labels, and the divider between them.
-//
-// Backgrounds only — the objects themselves stay in the workspace's single absolute layer above this,
-// positioned into each pane by the pane maths. Keeping them out of the panes is what lets an object in
-// hand fly across the divider (and lets its 3D coin, drawn by one full-screen canvas that knows nothing
-// about panes, follow it).
-//
-// Each wallet brings its own wallpaper, so the two halves are told apart by the desk itself rather than
-// by a tint laid over it.
-
 type Props = {
   panes: Record<Wallet, Pane>
-  /** Each wallet's wallpaper, as a CSS `background` shorthand. */
   wallpapers: Record<Wallet, string>
   ratio: number
   onRatioChange: (ratio: number) => void
-  /** The drag ended — the desk settles collisions once, rather than on every frame. */
   onRatioCommit: () => void
 }
 
@@ -56,17 +44,12 @@ export function DesktopPanes({ panes, wallpapers, ratio, onRatioChange, onRatioC
             aria-hidden
             className="pointer-events-none fixed overflow-hidden"
             style={{ left: pane.left, top: pane.top, width: pane.width, height: pane.height }}>
-            {/* the wallpaper is drawn at full viewport size and slid back by the pane's offset, so a
-                narrow pane shows a CROP of the image rather than a squashed copy of the whole thing */}
             <div className="absolute top-0 h-screen w-screen" style={{ left: -pane.left, background: wallpapers[w] }} />
             <div className="absolute inset-0 shadow-[inset_0_0_240px_rgba(0,0,0,0.5)]" />
           </div>
         )
       })}
 
-      {/* pane labels — which wallet this half is, and the address it holds. Sat below the floating
-          search / view chrome rather than beside it: the right pane's label starts under that cluster,
-          so anything level with it disappears behind the toggles. */}
       {wallets.map((w) => {
         const pane = panes[w]
         const spec = WALLETS[w]
@@ -82,7 +65,6 @@ export function DesktopPanes({ panes, wallpapers, ratio, onRatioChange, onRatioC
         )
       })}
 
-      {/* the divider — a hairline rule with a grab handle, above the desk but below the modals */}
       <div
         onPointerDown={onDividerDown}
         onContextMenu={(e) => e.preventDefault()}

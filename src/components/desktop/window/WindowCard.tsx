@@ -13,13 +13,6 @@ import { isProjectG } from "@/lib/chain"
 
 import { ME } from "@/data/people"
 
-// PackSpace Card — a shareable business card for a wallet: avatar, handle, address, chain chips, a
-// verification chip, and a deterministic pseudo-QR. Share opens real Telegram / X / WhatsApp intents or
-// copies the link. "Import a card" turns a pasted link / @handle / 0x address into an unconfirmed
-// contact. Cards live off the workspace; importing is how contacts are born.
-
-/** A deterministic pseudo-QR: a 13×13 grid with three corner finder blocks, the rest seeded from the
- *  card's address + name so the same card always draws the same code. */
 function qrCells(seed: string): boolean[] {
   const N = 13
   let h = 2166136261
@@ -46,7 +39,6 @@ const VCHIP = {
 } as const
 
 type Props = {
-  /** The contact whose card this is; undefined = your own card. */
   contact?: PersonObj
   onImport: (text: string) => void
   onClose: () => void
@@ -227,8 +219,6 @@ function ShareBtn({ label, color, Icon, onClick }: { label: string; color: strin
   )
 }
 
-/** Brand marks for the share row — Lucide ships no logos, so these are the official single-path glyphs
- *  (Simple Icons), filled via currentColor so the button's colour carries through. */
 function TelegramLogo({ className, style }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className} style={style} fill="currentColor" aria-hidden>

@@ -9,9 +9,6 @@ import { shortAddr } from "@/lib/utils"
 
 import { RECEIPT_STYLE } from "./WindowReceipt"
 
-// The Receipts history — every settled Send / Handoff / Move, newest first. Click one to open its proof
-// card. Wears the shared glass frame, and takes each action's signal colour from the proof card itself.
-
 type Props = {
   receipts: Receipt[]
   onOpen: (r: Receipt) => void

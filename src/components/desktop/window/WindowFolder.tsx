@@ -14,16 +14,6 @@ import { cn, desktopLabel, usd } from "@/lib/utils"
 
 import { dayChange } from "@/data/assets"
 
-// A folder open on the desk. A window, not a modal: no backdrop, no blur — the desktop stays visible
-// and interactive around it. It spawns centred, moves by its header (double-click the header to send
-// it home to the centre), and resizes from its bottom corners; the grid re-flows to whatever width
-// it's given. The tiles mimic the desktop icons as closely as a window can — same art treatment
-// (round coins, square NFT cards), same network/trust badges, same label + pill.
-//
-// Items pull straight out: press one and drag and it becomes the ordinary desktop drag. Click tiles
-// to pick several, then drag any picked tile to carry the whole handful out at once. The window is a
-// drop zone too, so anything dropped over it files itself here.
-
 const DEFAULT_W = 384
 const MIN_W = 296
 const MIN_H = 220
@@ -32,23 +22,17 @@ type Props = {
   label: string
   items: DesktopObj[]
   z: number
-  /** The folder's drop key — the whole window takes drops, not just the desk icon. */
   dropKey: string
+  flashIds: ReadonlySet<string>
+  overKey: string | null
   onClose: () => void
   onFocus: () => void
-  /** A press on a tile: the object, plus the picked set it belongs to (itself alone otherwise) —
-   *  the workspace turns it into a pull-out drag or a group carry. */
   onItemPointerDown: (obj: DesktopObj, group: DesktopObj[]) => (e: React.PointerEvent) => void
   onItemContextMenu: (obj: DesktopObj) => (e: React.MouseEvent) => void
-  flashIds: ReadonlySet<string>
-  /** A tile's drop key while something in hand could merge into it — same rule as the desk icons,
-   *  so split portions recombine without ever leaving the folder. */
   itemDropKey: (obj: DesktopObj) => string | undefined
   itemDimmed: (obj: DesktopObj) => boolean
-  overKey: string | null
 }
 
-/** The window's frame, owned imperatively — moving and resizing must never re-render the desk. */
 type Frame = { x: number; y: number; w: number; h: number | null }
 
 export function WindowFolder({
@@ -87,8 +71,6 @@ export function WindowFolder({
     el.style.height = f.h === null ? "" : `${f.h}px`
   }
 
-  /** Home position: dead centre of the viewport at the window's current size. Animated when asked —
-   *  the transition is worn only for the trip, so dragging stays instant. */
   const center = (animate = false) => {
     const el = ref.current
     const f = frameRef.current
@@ -103,7 +85,7 @@ export function WindowFolder({
         el.removeEventListener("transitionend", clear)
       }
       el.addEventListener("transitionend", clear)
-      setTimeout(clear, 400) // safety net — transitionend can be swallowed if nothing actually moves
+      setTimeout(clear, 400)
     }
     apply()
   }
@@ -181,9 +163,6 @@ export function WindowFolder({
   }
 
   // effects
-  // the frame is re-applied on every render (a focus re-render passing a new z must never snap the
-  // window elsewhere). Positioned by left/top, never transform: the panel-in entrance animates
-  // transform, and the two would fight.
   useLayoutEffect(() => {
     if (!frameRef.current) {
       frameRef.current = { x: 0, y: 0, w: DEFAULT_W, h: null }
@@ -213,7 +192,7 @@ export function WindowFolder({
         <button
           type="button"
           onClick={onClose}
-          onPointerDown={(e) => e.stopPropagation()} // a press on close is not a pick-up
+          onPointerDown={(e) => e.stopPropagation()}
           aria-label="Close folder"
           className="grid size-28 shrink-0 cursor-pointer place-items-center rounded-md text-white/70 trans-base hover:bg-white/10 hover:text-white">
           <X className="size-16" />
@@ -253,8 +232,6 @@ export function WindowFolder({
   )
 }
 
-/** One tile — the desktop icon's anatomy, minus the 3D: the same art shapes (round coin, square NFT
- *  card), the same shoulder badge, the same label and pill. */
 function FolderGridItem({
   obj,
   picked,
@@ -290,13 +267,11 @@ function FolderGridItem({
         dropKey && "bg-white/10 outline-1 outline-dashed outline-white/40",
         (picked || over) && "bg-white/20 outline-1 outline-dashed outline-white hover:bg-white/20"
       )}>
-      {/* the split flare — same layer the desk icons wear, riding above the hover/picked fill */}
       {flash && (
         <span aria-hidden className="split-flash pointer-events-none absolute inset-0 rounded-lg bg-action-split/20 outline-1 outline-action-split/50" />
       )}
       <span className="relative grid size-48 shrink-0 place-items-center">
         <ObjectArt obj={obj} />
-        {/* the shoulder badge — the same marks the desk icons wear */}
         <span className="pointer-events-none absolute -right-px -bottom-px">
           {obj.class === "person" ? (
             obj.trust === "unconfirmed" ? (

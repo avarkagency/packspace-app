@@ -2,8 +2,6 @@ import type { AssetObj } from "@/types/objects"
 
 import { dayChange } from "@/data/assets"
 
-/** Nothing here models price history — a fixture seeded off the symbol, so it's stable across renders
- *  and the Inspector's chart and the detail card's draw the same line for the same token. */
 export function assetMarket(a: AssetObj) {
   let s = 2166136261
   for (let i = 0; i < a.symbol.length; i++) s = ((s ^ a.symbol.charCodeAt(i)) * 16777619) >>> 0

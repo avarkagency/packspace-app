@@ -5,11 +5,6 @@ import type { PackObj } from "@/types/objects"
 
 import { cn } from "@/lib/utils"
 
-// A Pack on the desk — a bundle of assets wrapped into one object. Like a folder it's DOM furniture,
-// not a scene-drawn coin: a small sealed box with a lid band and a centre ribbon, its face carrying the
-// pack's glyph (★ product · ? randomized · 🔒 locked). Click to unpack and claim the contents; drag to
-// move it. Its name wears the pack colour-code; the meta pill reads the item count.
-
 type Props = {
   pack: PackObj
   pulse?: boolean
@@ -36,9 +31,7 @@ export function DesktopPack({ pack, pulse = false, selected = false, onPointerDo
         <div
           className={cn("relative grid h-46 w-54 place-items-center overflow-hidden rounded-[9px]", pulse && "pack-pulse")}
           style={{ background: pack.color, boxShadow: "0 5px 14px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.4)" }}>
-          {/* lid band across the top */}
           <span className="absolute inset-x-0 top-0 h-15 bg-black/20" aria-hidden />
-          {/* centre ribbon */}
           <span className="absolute inset-y-0 left-1/2 w-8 -translate-x-1/2 bg-white/30" aria-hidden />
           <span className="relative text-18 leading-100 font-extrabold text-white">{glyph}</span>
         </div>

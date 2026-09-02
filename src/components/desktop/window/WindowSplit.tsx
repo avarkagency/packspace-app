@@ -11,14 +11,6 @@ import { ObjectMark } from "@/components/desktop/object/ObjectMark"
 
 import { cn, units, usd } from "@/lib/utils"
 
-// Asset division — divides one fungible object into two so each can be sent or traded independently.
-// Object-level convenience only: nothing settles, no chain semantics are implied, both portions stay in
-// the wallet. (Spec: PLANNED, phase placement still open.)
-//
-// Wears the same glass frame as the Send/Trade flow: blurred desk, floating close, one panel. The
-// chrome stays white like its siblings; the split's yellow signal lives on the desk, where the fresh
-// halves flash once the split lands.
-
 const QUICK = [25, 50, 75]
 
 const roundTo = (n: number, dp: number) => Math.round(n * 10 ** dp) / 10 ** dp
@@ -51,7 +43,6 @@ export function WindowSplit({ asset, z, onClose, onSplit }: Props) {
 
   return (
     <div className="fixed inset-0 grid place-items-center p-24" style={{ zIndex: z }}>
-      {/* the desk falls out of focus */}
       <div className="animate-in fade-in-0 absolute inset-0 bg-black/20 backdrop-blur-xl duration-200" onClick={onClose} aria-hidden />
 
       <button

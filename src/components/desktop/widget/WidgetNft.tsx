@@ -12,26 +12,13 @@ import { cn, desktopLabel, usd } from "@/lib/utils"
 
 import { dayChange } from "@/data/assets"
 
-// The NFT Collection widget — a Cover Flow gallery of the wallet's NFTs. The centred one faces forward;
-// the rest turn away and recede with perspective the further they sit from centre, stacking behind each
-// other. Navigate with the side arrows, by dragging across the strip, or by clicking a side card to bring
-// it to centre. The active card's line mirrors the desktop icon: its amount + name, and a value / 24h pill.
-//
-// The perspective is pure 2D CSS (rotateY + translateZ under a `perspective` parent) — no WebGL here.
-
-const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
-
-/** Fade the strip's bottom so the reflections dissolve instead of hard-cutting at the edge. */
 const FADE = "linear-gradient(to bottom, #000 84%, transparent 100%)"
 
-/** The card size and drag throw per column width. The strip flexes to fill the widget's row, so there's
- *  no fixed stage height — the whole widget stays the same height as every other widget. */
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 function metrics(span: 1 | 2) {
   return { card: span === 2 ? 86 : 59, step: span === 2 ? 56 : 42 }
 }
 
-/** The Cover Flow transform for a card `offset` cards from the active one: centre forward and flat, the
- *  rest turned toward the middle, pushed aside, and receding — dimming out past a few deep. */
 function coverStyle(offset: number, card: number): { transform: string; zIndex: number; opacity: number } {
   if (offset === 0) return { transform: "translateX(0px) translateZ(72px) rotateY(0deg) scale(1)", zIndex: 50, opacity: 1 }
   const abs = Math.abs(offset)
@@ -57,8 +44,6 @@ export function WidgetNft({ assets, span }: { assets: AssetObj[]; span: 1 | 2 })
   const { card, step } = metrics(span)
 
   // events
-  // stops the press reaching the grid cell, so scrubbing the gallery never starts a widget rearrange
-  // (the info row below is the drag handle for that)
   const onStagePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation()
     movedRef.current = false
@@ -82,8 +67,6 @@ export function WidgetNft({ assets, span }: { assets: AssetObj[]; span: 1 | 2 })
 
   return (
     <div className="glass flex h-full flex-col overflow-hidden rounded-16">
-      {/* the Cover Flow strip — flush to the top / left / right edges, its reflections faded at the bottom.
-          It flexes to fill the row, so the whole widget is the same height as every other widget. */}
       <div className="relative min-h-0 w-full flex-1">
         <div
           onPointerDown={onStagePointerDown}
@@ -138,7 +121,6 @@ export function WidgetNft({ assets, span }: { assets: AssetObj[]; span: 1 | 2 })
         </div>
       </div>
 
-      {/* the active NFT's line — the desktop item's amount + name, and its value / 24h pill */}
       {current && (
         <div className="flex items-center justify-between gap-8 px-16 pb-16 pt-2">
           <p className="tnum truncate text-12 font-medium leading-120 text-white">{desktopLabel(current)}</p>

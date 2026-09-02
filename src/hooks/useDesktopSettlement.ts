@@ -14,9 +14,6 @@ import { cue } from "@/lib/sound"
 import { fakeHash, round4, units } from "@/lib/utils"
 import { walletOf } from "@/lib/wallets"
 
-// Send and Handoff differ only in what they file afterwards, so the spending half is shared. Nothing is
-// signed and no value moves — this only keeps the balances, the desk and the receipts consistent.
-
 type Args = {
   setAssets: Dispatch<SetStateAction<AssetObj[]>>
   setPositions: Dispatch<SetStateAction<Record<string, Pos> | null>>

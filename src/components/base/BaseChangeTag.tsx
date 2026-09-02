@@ -2,7 +2,6 @@
 
 import { useRef } from "react"
 
-import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
 
@@ -12,7 +11,6 @@ const fmt = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`
 
 export function BaseChangeTag({ pct, big = false, countUp = false, delay = 0 }: { pct: number; big?: boolean; countUp?: boolean; delay?: number }) {
   const ref = useRef<HTMLSpanElement>(null)
-  const reduced = usePrefersReducedMotion()
   const up = pct > 0
 
   useGSAP(
@@ -20,10 +18,6 @@ export function BaseChangeTag({ pct, big = false, countUp = false, delay = 0 }: 
       if (!countUp) return
       const el = ref.current
       if (!el) return
-      if (reduced) {
-        el.textContent = fmt(pct)
-        return
-      }
       el.textContent = fmt(0)
       const o = { v: 0 }
       gsap.to(o, { v: pct, duration: 1.1, delay, ease: "power2.out", onUpdate: () => (el.textContent = fmt(o.v)) })

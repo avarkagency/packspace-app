@@ -12,17 +12,8 @@ import { cn, shortAddr, units, usd } from "@/lib/utils"
 
 import { ObjectAvatar } from "./object/ObjectAvatar"
 
-// The command-palette search — a Raycast-style box in the centre of the screen that reaches across the
-// whole desk (tokens, NFTs, contacts, packs) at once. Opened from the top-bar search button or ⌘K.
-// Pick a result and it flies straight into the AI Inspector, the same as a right-click "Inspect with AI".
-//
-// It's the one place that searches everything regardless of where it sits — a dust token filed in a
-// folder, a saved contact, a pack you built — because it reads the same live lists the desk does, not the
-// desk's current arrangement.
-
 export type SearchItem = AssetObj | PersonObj | PackObj
 
-/** The fixed group order — assets first (what you reach for most), then packs and people. */
 type Category = "Tokens" | "NFTs" | "Packs" | "Contacts"
 const CATEGORY_ORDER: Category[] = ["Tokens", "NFTs", "Packs", "Contacts"]
 
@@ -32,14 +23,12 @@ function categoryOf(obj: SearchItem): Category {
   return obj.kind === "nft" ? "NFTs" : "Tokens"
 }
 
-/** The strings a query is matched against, and the second line each result shows. */
 function haystack(obj: SearchItem): string {
   if (obj.class === "asset") return `${obj.label} ${obj.symbol} ${obj.kind} ${obj.chain ?? ""} ${obj.address ?? ""}`.toLowerCase()
   if (obj.class === "pack") return `${obj.label} pack ${obj.contents} ${obj.chain ?? ""}`.toLowerCase()
   return `${obj.label} ${obj.handle} ${obj.chain ?? ""} ${obj.address ?? ""} contact`.toLowerCase()
 }
 
-/** A sortable value for the object — contacts hold none, so they fall to the bottom of their group. */
 function usdOf(obj: SearchItem): number {
   return obj.class === "person" ? 0 : obj.usd
 }
@@ -53,8 +42,6 @@ function subtitle(obj: SearchItem): string {
   return obj.handle === "unconfirmed" && obj.address ? shortAddr(obj.address) : obj.handle
 }
 
-/** How well `obj` matches `q` — lower is better, null drops it. Prefix hits on the name / symbol rank
- *  above a substring buried in the middle, so typing "et" surfaces ETH before it surfaces Tether. */
 function rank(obj: SearchItem, q: string): number | null {
   if (!q) return 0
   const label = obj.label.toLowerCase()
@@ -80,8 +67,6 @@ export function DesktopSearch({ items, onSelect, onItemContextMenu, onClose }: P
   // state
   const [query, setQuery] = useState("")
   const [active, setActive] = useState(0)
-  // a fresh query re-ranks, so the highlight jumps back to the top — adjusted during render (not an
-  // effect) so the first paint after a keystroke already has the right row active
   const [lastQuery, setLastQuery] = useState(query)
 
   // data
@@ -108,7 +93,6 @@ export function DesktopSearch({ items, onSelect, onItemContextMenu, onClose }: P
     onClose()
   }
   const onKeyDown = (e: React.KeyboardEvent) => {
-    // Escape is owned by the workspace's global handler, so it can peel off only the topmost layer
     if (e.key === "ArrowDown") {
       e.preventDefault()
       return setActive((i) => (results.length ? (i + 1) % results.length : 0))
@@ -134,11 +118,9 @@ export function DesktopSearch({ items, onSelect, onItemContextMenu, onClose }: P
 
   return (
     <div className="fixed inset-0 z-[210] flex justify-center px-24 pt-[14vh]" role="dialog" aria-modal="true" aria-label="Search">
-      {/* click-off backdrop — dims and blurs the desk behind the box */}
       <button type="button" aria-label="Close search" data-no-cue onClick={onClose} className="absolute inset-0 cursor-default bg-black/40 backdrop-blur-sm" />
 
       <div className="panel-in panel relative flex max-h-[62vh] w-full max-w-640 flex-col overflow-hidden rounded-20" onKeyDown={onKeyDown}>
-        {/* the query field */}
         <div className="flex items-center gap-12 border-b border-white/10 px-20">
           <Search className="size-16 shrink-0 text-white/50" strokeWidth={2.5} />
           <input
@@ -163,7 +145,6 @@ export function DesktopSearch({ items, onSelect, onItemContextMenu, onClose }: P
           )}
         </div>
 
-        {/* results */}
         {results.length === 0 ? (
           <div className="grid place-items-center px-20 py-40 text-14 leading-140 text-white/50">No matches for “{query}”</div>
         ) : (
@@ -190,7 +171,6 @@ export function DesktopSearch({ items, onSelect, onItemContextMenu, onClose }: P
           </div>
         )}
 
-        {/* Raycast-style hint bar */}
         <div className="flex items-center justify-between border-t border-white/10 px-16 py-10 text-11 leading-120 text-white/40">
           <span>
             {results.length} result{results.length === 1 ? "" : "s"}
@@ -218,8 +198,6 @@ export function DesktopSearch({ items, onSelect, onItemContextMenu, onClose }: P
   )
 }
 
-/** A single result: the object's own mark, its class-coloured name, and a class-appropriate second line.
- *  Hovering makes it the active row so the mouse and the arrow keys agree on what Enter opens. */
 const ResultRow = ({
   ref,
   obj,
@@ -253,8 +231,6 @@ const ResultRow = ({
   </button>
 )
 
-/** The 40px identity mark, drawn from the same source as the desk coin so a result looks like its object:
- *  a coin/art mark for assets, a photo for contacts, the coloured glyph tile for packs. */
 function ResultMark({ obj }: { obj: SearchItem }) {
   if (obj.class === "person") return <ObjectAvatar contact={obj} size={40} />
   if (obj.class === "pack")

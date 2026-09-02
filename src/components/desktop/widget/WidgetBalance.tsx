@@ -9,20 +9,8 @@ import { createPortal } from "react-dom"
 import { cn, shortAddr, usd } from "@/lib/utils"
 import { WALLETS, type Wallet } from "@/lib/wallets"
 
-// The balance widget, for whichever wallet's desk it's sitting on — its name, its address, and the
-// holdings that wallet actually has. Two-column form carries the legend list on the right; one-column
-// form drops the list and instead reads a slice out on hover over the distribution bar — the same
-// numbers, folded into the bar to fit the narrower footprint.
-//
-// The hover tooltip is PORTALED to <body>, not nested in the widget. The widget is a `.glass` surface —
-// its own backdrop-filter makes it a backdrop root, and Chrome silently drops a backdrop-filter nested
-// inside one. Out at the body it frosts whatever sits behind it on screen (here, the balance total).
-
 type Slice = { label: string; color: string; usd: number; pct: number }
 
-/** Designed chart colours for the tokens that have one. Display colours from the design — SOL charts
- *  black (its mark's colour), which is why this isn't the token tint used on the coins. Anything not
- *  listed charts in its own tint instead. */
 const LEGEND_COLOR: Record<string, string> = {
   ETH: "#627eeb",
   BNB: "#f1b90c",
@@ -32,14 +20,8 @@ const LEGEND_COLOR: Record<string, string> = {
 }
 
 const OTHER_COLOR = "rgba(255,255,255,0.5)"
-
-/** How many named slices the chart carries before the tail pools into Other. */
 const MAX_SLICES = 5
 
-/** The portfolio grouped for the card: a slice per holding, biggest first, with the tail pooled as
- *  Other. Derived from the wallet's own holdings rather than a fixed symbol list — the widget belongs to
- *  whichever desk it's sitting on, and a fixed list would chart a wallet holding none of those tokens as
- *  one undifferentiated grey bar. */
 function slices(assets: AssetObj[]) {
   const total = assets.reduce((t, a) => t + a.usd, 0)
   if (total <= 0) return { total: 0, rows: [] }
@@ -80,8 +62,6 @@ export function WidgetBalance({ assets, span, wallet }: { assets: AssetObj[]; sp
 
         <p className="tnum mt-auto text-24 font-light leading-120 tracking-tight text-white">{usd(total, { cents: false })}</p>
 
-        {/* the distribution bar — one sliver per slice, hairline gaps between. In the one-column form the
-            slices are hoverable and a tooltip reads out the slice the legend would otherwise name. */}
         <div className="mt-8 mb-4">
           <div className="flex h-4 w-full gap-px overflow-hidden rounded-full">
             {rows.map((r) => (
@@ -114,9 +94,6 @@ export function WidgetBalance({ assets, span, wallet }: { assets: AssetObj[]; sp
   )
 }
 
-/** The bar's hover readout, portaled to <body> so its backdrop-filter runs (see the note up top) and
- *  frosts the balance total behind it. Measured after mount, then clamped so it never spills off screen —
- *  which also handles a one-column widget parked in the right column. */
 function BarTip({ row, rect }: { row: Slice; rect: DOMRect }) {
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)

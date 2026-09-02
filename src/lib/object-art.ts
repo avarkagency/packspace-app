@@ -1,8 +1,5 @@
 import * as THREE from "three"
 
-// Anything without an entry keeps the face the coin drew for itself, so the fallback is a live path.
-// Keyed explicitly rather than derived from the symbol: deriving would turn a missing image into a 404
-// instead of a clean fall back to that drawn face.
 const ART_IMAGE: Record<string, string> = {
   USDC: "/images/tokens/usdc.jpg",
   ETH: "/images/tokens/eth.jpg",
@@ -23,26 +20,21 @@ const ART_IMAGE: Record<string, string> = {
   CLONEX: "/images/nfts/clonex.jpg"
 }
 
-/** Null where a symbol has no art, so the caller has to say what stands in. */
 export const artImage = (symbol: string): string | null => ART_IMAGE[symbol] ?? null
 
 export type ObjectArt = {
   map: THREE.Texture
-  /** The artwork's own background, for a coin's rim to sit flush with its face. */
+
   base: THREE.Color
 }
 
-// one load per symbol — split portions of the same token must not each decode their own copy
 const cache = new Map<string, Promise<ObjectArt | null>>()
 
-/** The rim must match the face or the coin reads as two objects stuck together. A token mark sits on a
- *  flat field, so its top-left corner IS that field — sample it rather than guessing a tint. */
 function sampleBase(img: HTMLImageElement) {
   const c = document.createElement("canvas")
   c.width = 2
   c.height = 2
   const ctx = c.getContext("2d", { willReadFrequently: true })!
-  // source rect first: this reads the image's own top-left 2×2, not a 2×2 scaling of the whole thing
   ctx.drawImage(img, 0, 0, 2, 2, 0, 0, 2, 2)
   const d = ctx.getImageData(0, 0, 2, 2).data
 
@@ -54,11 +46,9 @@ function sampleBase(img: HTMLImageElement) {
     g += d[i * 4 + 1]
     b += d[i * 4 + 2]
   }
-  // setStyle reads sRGB and converts into the renderer's working space, which raw setRGB would skip
   return new THREE.Color().setStyle(`rgb(${Math.round(r / 4)}, ${Math.round(g / 4)}, ${Math.round(b / 4)})`)
 }
 
-/** Cached by src, so shared art is fetched and decoded once. */
 export function loadArt(src: string): Promise<ObjectArt | null> {
   const hit = cache.get(src)
   if (hit) return hit
@@ -72,7 +62,6 @@ export function loadArt(src: string): Promise<ObjectArt | null> {
       map.needsUpdate = true
       resolve({ map, base: sampleBase(img) })
     }
-    // a missing or unreadable file just falls back to the drawn face
     img.onerror = () => resolve(null)
     img.src = src
   })

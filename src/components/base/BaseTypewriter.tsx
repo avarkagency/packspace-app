@@ -2,7 +2,6 @@
 
 import { Fragment, useMemo, useRef } from "react"
 
-import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
 
@@ -35,16 +34,9 @@ export function BaseTypewriter({ text, className = "" }: { text: string; classNa
     return out
   }, [chars])
 
-  // hooks
-  const reduced = usePrefersReducedMotion()
-
   useGSAP(
     () => {
       const spans = charsRef.current.filter(Boolean)
-      if (reduced) {
-        spans.forEach((s) => (s.style.visibility = "visible"))
-        return
-      }
       spans.forEach((s) => (s.style.visibility = "hidden"))
       const step = Math.min(TYPE_STEP, MAX_TOTAL / Math.max(1, spans.length))
       const tl = gsap.timeline()
@@ -52,7 +44,7 @@ export function BaseTypewriter({ text, className = "" }: { text: string; classNa
         tl.to({}, { duration: step, onStart: () => (s.style.visibility = "visible") }, i === 0 ? 0 : ">")
       })
     },
-    { scope: rootRef, dependencies: [chars, reduced] }
+    { scope: rootRef, dependencies: [chars] }
   )
 
   return (

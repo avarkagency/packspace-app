@@ -111,20 +111,7 @@ import { DesktopPanes } from "./DesktopPanes"
 import { DesktopSearch, type SearchItem } from "./DesktopSearch"
 import { DesktopToast } from "./DesktopToast"
 
-// The desktop. Floating chrome over the wallpaper — greeting and balance card up top, the app dock
-// along the bottom; between them every object sits wherever it was last put — holdings start in
-// columns on the left, wallets on the right, and dragging anywhere just places the icon
-// exactly where it's released. Everything happens on the objects themselves:
-// hover to inspect, drop a holding on a wallet to act on it (the transfer modal asks Send or Trade),
-// drop onto a matching portion to combine, right-click for the object's own menu (Split on a token;
-// Rename / Edit / Delete on a wallet). The desk itself right-clicks to housekeeping: New Contact,
-// Change Wallpaper, Clean Up, Clean Up By.
-
-// WebGL can't render on the server, and the coin faces are drawn to a 2D canvas at material-build time.
 const ObjectScene = dynamic(() => import("@/components/desktop/object/ObjectScene").then((m) => m.ObjectScene), { ssr: false })
-
-// `fromSearch` menus are raised over the palette — picking an action dismisses the palette so the result
-// (a window, the Inspector) isn't left hidden beneath it.
 type MenuSpec = { x: number; y: number; obj: DesktopObj; fromSearch?: boolean }
 
 export function Desktop() {
@@ -135,44 +122,30 @@ export function Desktop() {
   const folderIdc = useRef(0)
   const packIdc = useRef(0)
   const widgetIdc = useRef(0)
-  /** The icon wrapper nodes, for the drag to move without a render. */
   const iconNodes = useRef(new Map<string, HTMLElement>())
-  /** A pack press that never travelled is a click — open it rather than treat the gesture as a move. */
   const packMovedRef = useRef(false)
-  /** Ids currently in hand having been pulled out of a folder — they whisper only if they land on the
-   *  desk (taken out), not if they're dropped straight back into a folder. */
   const pulledFromFolder = useRef(new Set<string>())
 
   // state
   const [view, setView] = useState<View>("openfort")
   const [splitRatio, setSplitRatio] = useState(0.5)
-  /** The viewport, tracked in state (not read ad-hoc) because the pane maths renders from it. Zero until
-   *  the mount effect measures — the server has no window. */
+
   const [screen, setScreen] = useState({ w: 0, h: 0 })
 
   // state
   const [assets, setAssets] = useState<AssetObj[]>([...ASSETS, ...DUST_ASSETS, ...DUST_NFTS, ...EOA_ASSETS])
   const [contacts, setContacts] = useState<PersonObj[]>([...PEOPLE, ...EOA_PEOPLE])
   const [folders, setFolders] = useState<FolderSpec[]>(INITIAL_FOLDERS)
-  /** Which folder windows are open — order is stacking order, last on top. */
   const [folderWins, setFolderWins] = useState<string[]>([])
   const [positions, setPositions] = useState<Record<string, Pos> | null>(null)
   const [menu, setMenu] = useState<MenuSpec | null>(null)
-  /** The desk's own right-click menu, tagged with the pane it was opened over. */
   const [deskMenu, setDeskMenu] = useState<{ x: number; y: number; wallet: Wallet } | null>(null)
   const [folderMenu, setFolderMenu] = useState<{ x: number; y: number; id: string } | null>(null)
-  /** One wallpaper per wallet — also what distinguishes the two panes in split view. */
   const [wallpapers, setWallpapers] = useState<Record<Wallet, Wallpaper>>(initialWallpapers)
-  /** The top-right widget bento, per wallet. Both start with the Balance widget (the old fixed balance
-   *  card) and the NFT collection stacked under it, and diverge from there — see `initialWidgets`. Not
-   *  shown at all in split view: two bentos in two narrow panes would bury the desks they float over. */
   const [widgetsByWallet, setWidgetsByWallet] = useState<Record<Wallet, WidgetInstance[]>>(initialWidgets)
-  /** The widget grid's live keep-out box, mirrored from the module value so a change can re-clamp icons. */
   const [keepout, setKeepout] = useState({ ...chromeKeepout })
   const [renamingId, setRenamingId] = useState<string | null>(null)
-  /** Holdings currently wearing the detail card instead of their icon. Desktop only — see setDetailCard. */
   const [cardIds, setCardIds] = useState<ReadonlySet<string>>(new Set())
-  /** Packs built with the Pack Builder — DOM tiles on the desk, like folders. */
   const [packs, setPacks] = useState<PackObj[]>([])
   const [approvals, setApprovals] = useState<Approval[]>(APPROVAL_RADAR)
 
@@ -189,10 +162,8 @@ export function Desktop() {
     }),
     [view, splitRatio, screen.w, screen.h]
   )
-  /** The wallet a single-desk action belongs to. In split view the desk menu names its own pane, so this
-   *  is only the fallback for the handful of places that need one wallet and have no pointer to ask. */
   const activeWallet: Wallet = isSplit ? "openfort" : view
-  /** Pane-relative → viewport, for an object whose wallet we know. */
+
   const toScreen = (wallet: Wallet, p: Pos): Pos => ({ x: panes[wallet].left + p.x, y: panes[wallet].top + p.y })
   const walletAt = (x: number): Wallet => walletAtX(view, splitRatio, screen.w, x)
 
@@ -537,6 +508,7 @@ export function Desktop() {
    *  out around where the icon stood rather than jumping — and then steps aside if that much wider
    *  footprint has landed on a neighbour. */
   const setDetailCard = (id: string, on: boolean) => {
+    cue(on ? "bloom" : "error")
     const next = new Set(cardIds)
     if (on) next.add(id)
     else next.delete(id)
@@ -550,6 +522,14 @@ export function Desktop() {
       const p = clampPos(at.x + (from.w - to.w) / 2, at.y + (from.h - to.h) / 2, id)
       return { ...pos, [id]: nearestFreeSpot(p, pos, id) }
     })
+  }
+
+  /** Double-click swaps a holding between its icon and its detail card. Where no card can exist — a
+   *  contact, or a split pane with no room for one — it opens the Inspector instead, so the gesture is
+   *  never dead. */
+  const onObjectDoubleClick = (obj: DesktopObj) => {
+    if (obj.class !== "asset" || isSplit) return openInspector(obj.id)
+    setDetailCard(obj.id, !cardIds.has(obj.id))
   }
 
   // events
@@ -1756,7 +1736,7 @@ export function Desktop() {
                     selected={menu?.obj.id === a.id || selectedIds.has(a.id)}
                     flash={flashIds.has(a.id)}
                     onPointerDown={onIconPointerDown(a)}
-                    onDoubleClick={() => openInspector(a.id)}
+                    onDoubleClick={() => onObjectDoubleClick(a)}
                     onContextMenu={onIconMenu(a)}
                     onCollapse={() => setDetailCard(a.id, false)}
                   />
@@ -1773,7 +1753,7 @@ export function Desktop() {
                     flash={flashIds.has(a.id)}
                     anyDragging={anyDragging}
                     onPointerDown={onIconPointerDown(a)}
-                    onDoubleClick={() => openInspector(a.id)}
+                    onDoubleClick={() => onObjectDoubleClick(a)}
                     onContextMenu={onIconMenu(a)}
                   />
                 )}
@@ -1808,7 +1788,7 @@ export function Desktop() {
                   onRename={(name) => renameContact(c.id, name)}
                   onRenameCancel={() => setRenamingId(null)}
                   onPointerDown={onIconPointerDown(c)}
-                  onDoubleClick={() => openInspector(c.id)}
+                  onDoubleClick={() => onObjectDoubleClick(c)}
                   onContextMenu={onIconMenu(c)}
                 />
               </div>

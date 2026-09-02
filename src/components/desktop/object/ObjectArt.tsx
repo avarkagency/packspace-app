@@ -10,13 +10,6 @@ import { ObjectAvatar } from "./ObjectAvatar"
 import { ObjectMark } from "./ObjectMark"
 import { objectTint } from "./ObjectVisual"
 
-// The flat DOM twin of an object's 3D art — borderless round coin art for tokens, a 2px-bordered rounded
-// square for NFTs (their desk shape), the gradient avatar for contacts. NFTs without shipped art draw a
-// tinted monogram square, the flat cousin of the face their 3D card draws for itself.
-//
-// Used wherever the WebGL overlay doesn't reach: the folder window's tiles, and the desktop detail card
-// (which stacks above the flying canvas while it's in hand, so a real coin would end up behind its glass).
-
 export function ObjectArt({ obj, size = 48 }: { obj: DesktopObj; size?: number }) {
   if (obj.class === "person") return <ObjectAvatar contact={obj} size={size} />
 

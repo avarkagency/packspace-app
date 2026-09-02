@@ -12,19 +12,9 @@ import { ObjectMark } from "@/components/desktop/object/ObjectMark"
 import { canReceive, chainFamily, chainWord, isProjectG } from "@/lib/chain"
 import { cn, round4, units } from "@/lib/utils"
 
-// The Handoff (Trade) body — a confirmed, two-sided exchange, rendered inside WindowTransfer's frame.
-// It's LIVE: first a connection handshake reaches the counterparty (Project G wallets are always
-// reachable; an external address must be online), then the MMO-style window opens — an inventory rail
-// and two 3×3 trays ("You give" / "{name} gives"). Both sides Lock, a short review holds the exact
-// terms, then both Confirm and the deal launches atomically. The counterparty is timer-simulated.
-// Chain rules: an external single-chain address can only take assets of its own family; a mixed bundle
-// needs a Project G wallet.
-
-/** What the counterparty hands back on launch — not an owned asset until it settles. */
 export type HandoffReceive = { label: string; symbol: string; amount: number; usd: number; color: string; chain: Chain }
 
 type Props = {
-  /** Everything the drop carried — the trade opens seeded with all of it in "You give". */
   seeds: AssetObj[]
   inventory: AssetObj[]
   to: PersonObj
@@ -32,17 +22,13 @@ type Props = {
   onLaunch: (give: GiveSlot[], receive: HandoffReceive[], to: PersonObj) => void
 }
 
-/** One placed offer in the "You give" tray. */
 export type GiveSlot = { key: string; asset: AssetObj; amount: number }
 
-/** Counterparty sim timings (spec §3.5.2), verbatim from the prototype. */
 const T_LOCK = 950
 const T_REVIEW = 2200
 const T_CONFIRM = 950
 const T_SETTLE = 1300
 const T_CONNECT = 1700
-
-/** What the other side offers when you request something back — a flat 500 USDC, per the prototype. */
 const REQUEST_BACK: HandoffReceive = { label: "USD Coin", symbol: "USDC", amount: 500, usd: 500, color: "#2775ca", chain: "Base" }
 
 type Phase = "connecting" | "failed" | "active" | "settled"
@@ -76,7 +62,6 @@ export function WindowHandoff({ seeds, inventory, to, onClose, onLaunch }: Props
   const editable = !youLocked && phase === "active"
   const placedOf = (id: string) => give.filter((g) => g.asset.id === id).reduce((t, g) => t + g.amount, 0)
 
-  // the inventory: your holdings on this side, minus what's fully placed, with incompatibility flagged
   const rail = useMemo(
     () => inventory.filter((a) => a.kind === "nft" || a.balance - placedOf(a.id) > 0),
     [inventory, give] // eslint-disable-line react-hooks/exhaustive-deps

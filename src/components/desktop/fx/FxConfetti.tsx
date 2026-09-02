@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react"
 
-import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import FRAG_SRC from "@/shaders/confetti/fragment.glsl"
 import VERT from "@/shaders/confetti/vertex.glsl"
 
@@ -128,12 +127,8 @@ export function FxConfetti({ className = "" }: Props) {
   // refs
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  // hooks
-  const reduced = usePrefersReducedMotion()
-
   // effects
   useEffect(() => {
-    if (reduced) return
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -217,9 +212,7 @@ export function FxConfetti({ className = "" }: Props) {
       gl.deleteBuffer(buffer)
       gl.getExtension("WEBGL_lose_context")?.loseContext()
     }
-  }, [reduced])
-
-  if (reduced) return null
+  }, [])
 
   return <canvas ref={canvasRef} aria-hidden className={`pointer-events-none ${className}`} style={{ width: "100%", height: "100%" }} />
 }

@@ -8,12 +8,6 @@ import { FxConfetti } from "@/components/desktop/fx/FxConfetti"
 
 import { cn, shortAddr } from "@/lib/utils"
 
-// Every settled Send/Handoff/Move yields a receipt / proof card (spec §3.5.6, §3.11). Wears the same
-// glass frame as its sibling modals — blurred desk, floating close, one panel — with the action's own
-// signal colour on the header tile (Send green, Trade purple, Move blue).
-
-/** Per-action signal colour, mark, and what its route row is called. A Move never leaves your custody,
- *  so its counterparty is the other wallet and its route row reads "Route" like a Send's. */
 export const RECEIPT_STYLE = {
   Send: { color: "#3ddc84", Icon: ArrowUpRight, routeLabel: "Route" },
   Trade: { color: "#c4b6ff", Icon: ArrowRightLeft, routeLabel: "Settlement" },
@@ -33,10 +27,8 @@ export function WindowReceipt({ receipt, z, onClose }: { receipt: Receipt; z: nu
 
   return (
     <div className="fixed inset-0 grid place-items-center p-24" style={{ zIndex: z }}>
-      {/* the desk falls out of focus */}
       <div className="animate-in fade-in-0 absolute inset-0 bg-black/20 backdrop-blur-xl duration-200" onClick={onClose} aria-hidden />
 
-      {/* the transaction settled — a confetti fountain rises behind the proof card in celebration */}
       <FxConfetti className="absolute inset-0" />
 
       <button

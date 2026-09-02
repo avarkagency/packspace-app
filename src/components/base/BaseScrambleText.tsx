@@ -2,7 +2,6 @@
 
 import { useMemo, useRef } from "react"
 
-import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
 
@@ -27,14 +26,8 @@ export function BaseScrambleText({ text, duration = 0.3, className = "" }: BaseS
   // data
   const chars = useMemo(() => Array.from(text), [text])
 
-  // hooks
-  const reduced = usePrefersReducedMotion()
-
   useGSAP(
     () => {
-      // the spans already render their real characters, so opting out just means not scrambling them
-      if (reduced) return
-
       const setToText = () => charsRef.current.forEach((span, i) => span && (span.textContent = visibleChar(chars[i])))
       const steps = Math.max(1, Math.round(duration * FPS))
       const tl = gsap.timeline()
@@ -58,7 +51,7 @@ export function BaseScrambleText({ text, duration = 0.3, className = "" }: BaseS
 
       tl.to({}, { duration: 0.01, onStart: setToText }, ">")
     },
-    { scope: rootRef, dependencies: [chars, duration, reduced] }
+    { scope: rootRef, dependencies: [chars, duration] }
   )
 
   return (

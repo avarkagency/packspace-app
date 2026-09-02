@@ -11,11 +11,6 @@ import { ObjectMark } from "@/components/desktop/object/ObjectMark"
 
 import { cn, round4, units } from "@/lib/utils"
 
-// Pack Builder — bundle assets and NFTs into a single Pack object. Tap holdings from the rail into a
-// 3×3 tray (an amount picker for fungibles), name it, pick its class / token standard / lock, then
-// "Create pack" deducts the contents and spawns a sealed Pack on the desk. Wears the shared glass frame.
-
-/** The gradients each pack class carries, per the prototype's classBg. */
 const CLASS_BG: Record<string, string> = {
   Product: "linear-gradient(160deg,#6366f1,#4338ca)",
   Randomized: "linear-gradient(160deg,#a855f7,#7c3aed)",
@@ -118,7 +113,6 @@ export function WindowPackBuilder({ inventory, seed, onClose, onCreate }: Props)
           <div className="-mx-28 mt-24 h-px bg-white/20" aria-hidden />
 
           <div className="mt-24 flex gap-16">
-            {/* inventory rail */}
             <div className="flex w-160 shrink-0 flex-col gap-8">
               <p className="text-10 font-semibold tracking-wide text-white/45 uppercase">Your assets — tap to add</p>
               <div
@@ -144,7 +138,6 @@ export function WindowPackBuilder({ inventory, seed, onClose, onCreate }: Props)
               </div>
             </div>
 
-            {/* contents + fields */}
             <div className="flex min-w-0 flex-1 flex-col gap-16">
               <div>
                 <p className="mb-8 text-10 font-semibold tracking-wide text-white/45 uppercase">Pack contents</p>

@@ -6,11 +6,6 @@ import * as THREE from "three"
 import { coinView } from "@/stores/coin"
 import { useFrame } from "@react-three/fiber"
 
-// A dock icon in the scene: a flat textured plane riding the slot its tile registered, exactly as the
-// coins ride theirs. Flat on purpose — the nav artwork is an app tile, not an object you own — but it
-// lives in the canvas so a dragged coin and a dock target share one world, ready for the drop
-// interactions to come. Unlit and untonemapped, so the artwork's colours arrive exactly as authored.
-
 export function ObjectNavIcon({ id, src }: { id: string; src: string }) {
   // refs
   const meshRef = useRef<THREE.Mesh>(null!)

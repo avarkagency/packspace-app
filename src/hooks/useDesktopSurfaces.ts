@@ -7,9 +7,6 @@ import type { AssetObj, PackObj, PersonObj, Receipt } from "@/types/objects"
 import { cue } from "@/lib/sound"
 import { type Wallet, walletOf } from "@/lib/wallets"
 
-// Everything the desk can have OPEN. Collected because of the sound: every surface blooms as it opens
-// and errors as it closes, which only holds while there is no second way to set the state.
-
 export type WinBody =
   | { kind: "transfer"; assets: AssetObj[]; to: PersonObj }
   | { kind: "split"; asset: AssetObj }
@@ -18,28 +15,21 @@ export type WinBody =
   | { kind: "new-contact"; draft: PersonObj; at: { x: number; y: number }; wallet: Wallet }
   | { kind: "delete-contact"; contact: PersonObj }
   | { kind: "receipt"; receipt: Receipt }
-  // only holdings reach this: an address copies across on release instead (see `copyContactTo`)
   | { kind: "move"; asset: AssetObj; from: Wallet; to: Wallet; existing: AssetObj | null }
 
-/** `matchKey` makes a repeated gesture raise the window it already opened rather than stack a second. */
 export type WinDraft = WinBody & { matchKey: string }
 export type WinSpec = WinDraft & { id: string }
-
-/** One at a time. */
 export type RightPanel = { kind: "inspect"; id: string } | { kind: "radar" }
 
 export function useDesktopSurfaces(activeWallet: Wallet) {
   const idc = useRef(0)
 
-  /** Order is stacking order, last on top. */
   const [wins, setWins] = useState<WinSpec[]>([])
-  /** Newest first. */
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [receiptsOpen, setReceiptsOpen] = useState(false)
   const [packBuilder, setPackBuilder] = useState<{ seed?: AssetObj; wallet: Wallet } | null>(null)
   const [unpacking, setUnpacking] = useState<PackObj | null>(null)
   const [rightPanel, setRightPanel] = useState<RightPanel | null>(null)
-  /** Undefined contact = your own card. */
   const [card, setCard] = useState<{ contact?: PersonObj } | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
 

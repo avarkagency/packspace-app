@@ -19,26 +19,12 @@ import { dayChange } from "@/data/assets"
 
 import { ObjectAvatar } from "./object/ObjectAvatar"
 
-// The readout that rides with the cursor while an object is hovered. It carries only what the icon
-// doesn't already say — the icon has the holding and the name, so this has the type, the network and
-// the raw address (truth-always-available, spec DEV5).
-//
-// It trails the cursor rather than pinning to it: a readout welded to the pointer reads as part of the
-// cursor, where a slight lag reads as an object being carried along. Position is lerped in a frame loop
-// and written imperatively, like the drag label — this moves every frame and must never re-render to do
-// it. It re-renders only when the hovered object changes.
-
 const GAP = 18
 const WIDTH = 240
-const LERP = 16 // per second — enough lag to feel carried, not enough to feel late
-
-/** A folder's peek: its name and the objects it holds, resolved from the flat lists. The readout shows
- *  the first few so a folder says what's inside without opening it. */
-export type FolderPreview = { id: string; label: string; items: DesktopObj[] }
-
-/** Most rows a folder peek ever shows before it rolls the rest into a "+N more" line. Anything can be
- *  filed, so the list stays generic — art, name, and the one figure that matters for that class. */
+const LERP = 16
 const FOLDER_ROWS = 5
+
+export type FolderPreview = { id: string; label: string; items: DesktopObj[] }
 
 type Row = { label: string; value: string; icon?: string | null; tag?: { label: string; color: string } | null; changePct?: number }
 
@@ -67,8 +53,6 @@ function rowsFor(obj: DesktopObj): Row[] {
   return [...rows, { label: "Type", value: objectKindLabel(obj) }, network, { label: "Address", value: obj.address ? shortAddr(obj.address) : "—" }]
 }
 
-/** Flip rather than spill against the desktop's edges. `coinView.clip` is already exactly that box —
- *  it's what the objects themselves clip to. */
 function aimAt(x: number, y: number, height: number) {
   const { right, bottom } = coinView.clip
   const dx = x + GAP + WIDTH > right ? -(GAP + WIDTH) : GAP
@@ -149,7 +133,6 @@ export function DesktopHover({ items, folders = [] }: { items: DesktopObj[]; fol
   )
 }
 
-/** The object readout — the type, network and raw address the icon can't carry itself. */
 function ObjectPeek({ obj }: { obj: DesktopObj }) {
   return (
     <div key={obj.id} className="panel rounded-lg px-12 py-10">
@@ -161,13 +144,11 @@ function ObjectPeek({ obj }: { obj: DesktopObj }) {
           <div key={row.label} className="flex items-center justify-between gap-10">
             <dt className="shrink-0 text-11 text-white/50">{row.label}</dt>
             <dd className="flex min-w-0 items-center gap-6 text-11 font-medium text-white/80">
-              {/* `unoptimized` for the same reason as everywhere these marks appear: Next's dev image
-                  converter drops the connection on the tiny variants it would request */}
               {row.icon && <Image src={row.icon} alt="" width={16} height={16} unoptimized className="size-16 shrink-0 rounded-full object-cover" />}
               <span className="tnum truncate">
                 <BaseScrambleText text={row.value} />
               </span>
-              {/* the chain-family tag (EVM / SOL / BTC / MULTI), worn beside the network name */}
+
               {row.tag && (
                 <span
                   className="shrink-0 rounded-4 px-3 py-px text-[8.5px] leading-none font-extrabold tracking-wide text-white"
@@ -175,7 +156,7 @@ function ObjectPeek({ obj }: { obj: DesktopObj }) {
                   {row.tag.label}
                 </span>
               )}
-              {/* the 24h move, worn beside the value — same green/red tag as the desk pill */}
+
               {row.changePct !== undefined && <BaseChangeTag pct={row.changePct} />}
             </dd>
           </div>
@@ -185,10 +166,6 @@ function ObjectPeek({ obj }: { obj: DesktopObj }) {
   )
 }
 
-/** The folder peek — a glance at what's filed inside, without opening the window. Anything can live in a
- *  folder, so each line stays generic: the item's art, its name, and the single figure that reads for its
- *  class (an asset's value, a contact's handle/address). Only the first FOLDER_ROWS show; the rest roll
- *  into a "+N more" tail so the panel never grows past a peek. */
 function FolderPeek({ folder }: { folder: FolderPreview }) {
   const shown = folder.items.slice(0, FOLDER_ROWS)
   const overflow = folder.items.length - shown.length
@@ -225,9 +202,6 @@ function FolderPeek({ folder }: { folder: FolderPreview }) {
   )
 }
 
-/** One folder row's mark — the flat cousin of the desk icon's face: shipped art where a symbol has it
- *  (round for a coin, a rounded square for an NFT), a tinted monogram where it doesn't, and the gradient
- *  avatar for a contact. */
 function FolderItemArt({ obj }: { obj: DesktopObj }) {
   if (obj.class === "person") return <ObjectAvatar contact={obj} size={18} />
 

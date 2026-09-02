@@ -2,22 +2,8 @@
 
 import { useEffect, useRef } from "react"
 
-import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import FRAG from "@/shaders/rainbow-border/fragment.glsl"
 import VERT from "@/shaders/rainbow-border/vertex.glsl"
-
-// A soft, iridescent rainbow that radiates inward from the screen's edges and slowly flows around it —
-// the Apple-Intelligence / Siri "the screen is listening" glow, not a fire. It's a full-screen overlay,
-// pointer-transparent, `plus-lighter`-blended so the colours add light to whatever's beneath rather than
-// painting a solid frame. Built like FxConfetti — one full-screen triangle, raw WebGL, premultiplied
-// output — and, like it, removes itself under reduced motion.
-//
-// The look: an edge band of uniform pixel thickness (aspect-corrected distance to the nearest edge, joined
-// with a smooth-min so corners round instead of creasing on the 45° diagonal), feathered inward; a hue
-// that sweeps around the perimeter through a soft pastel palette; a couple of low-frequency noise fields
-// that make the band breathe and let brighter blooms roam; and subtle twinkling particles hugging the
-// edge. Two clocks — one for the colour flow, one for the thickness pulse (and particles). The constants
-// below are the values dialled in on the Leva panel that used to live here. `active` fades it in/out.
 
 const COLOR_SPEED = 4.0
 const PULSE_SPEED = 1.4
@@ -47,9 +33,6 @@ export function FxRainbowBorder({ className = "", active = true }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const activeRef = useRef(active)
 
-  // hooks
-  const reduced = usePrefersReducedMotion()
-
   // effects
   useEffect(() => {
     activeRef.current = active
@@ -57,7 +40,6 @@ export function FxRainbowBorder({ className = "", active = true }: Props) {
 
   // effects
   useEffect(() => {
-    if (reduced) return
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -144,9 +126,7 @@ export function FxRainbowBorder({ className = "", active = true }: Props) {
       gl.deleteBuffer(buffer)
       gl.getExtension("WEBGL_lose_context")?.loseContext()
     }
-  }, [reduced])
-
-  if (reduced) return null
+  }, [])
 
   return (
     <canvas

@@ -9,10 +9,6 @@ import { BaseBtn } from "@/components/base/BaseBtn"
 
 import { units } from "@/lib/utils"
 
-// Unpack — open a Pack and claim its contents back onto the desk. A password-locked pack gates behind
-// the passphrase; a randomized pack reveals one of its possible contents. Fungibles merge back into any
-// matching balance you already hold. Wears the shared glass frame.
-
 type Props = {
   pack: PackObj
   onClose: () => void

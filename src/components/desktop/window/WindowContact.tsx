@@ -8,14 +8,8 @@ import { Check, X } from "lucide-react"
 import { BaseBtn } from "@/components/base/BaseBtn"
 import { ObjectAvatar } from "@/components/desktop/object/ObjectAvatar"
 
-// Edit a wallet (contact) object — name, handle, address — or fill in a brand-new one. In create mode
-// the contact is only a draft: nothing lands on the desk unless it's saved, so closing the window
-// leaves no orphan behind. Object-level only: nothing here verifies an address or touches trust state;
-// that's the address-lifecycle flow, out of scope for this pass. Wears the shared glass frame.
-
 type Props = {
   contact: PersonObj
-  /** The contact is a draft that doesn't exist yet — retitle, and save reads as Add. */
   create?: boolean
   z: number
   onClose: () => void

@@ -11,24 +11,10 @@ import { cn } from "@/lib/utils"
 
 import { NAV_ITEMS } from "@/data/apps"
 
-// The dock along the bottom — a glass shelf of app tiles. Like every desktop icon, the DOM here only
-// lays out, hover-tests and labels: each tile registers the box its icon fills and the 3D scene draws
-// the artwork into it as a flat plane. The first two tiles take asset drops (the app interaction is
-// still to come — today the drop just lands and the icon steps back off the shelf); a scene-drawn icon
-// means the flying coin and the tile live in the same visual world.
-
-/** How many tiles, from the left, take single-asset drops. */
 const DROP_TILES = 2
-/** A carried multi-selection is narrower: only Pack Builder takes a whole handful. */
 const GROUP_DROP_TILES = 1
-
-/** A tile's full hit box, from its slot's measured centre. */
 const TILE = 48
 
-/** The tile a group carry could drop on under (x, y), if any — group carries can't elementFromPoint
- *  through the icons they're carrying. Reads the slot boxes the tiles register with the coin store
- *  (measured every frame), so the hit-test is the rendered layout itself rather than a mirror of its
- *  numbers. */
 export function dropTileAt(x: number, y: number): NavItem | undefined {
   return NAV_ITEMS.slice(0, GROUP_DROP_TILES).find((item) => {
     const r = coinView.rects.get(item.id)
@@ -44,7 +30,6 @@ export function DesktopDock({ carriedAsset = false, onOpen }: { carriedAsset?: b
   return (
     <nav className="glass fixed bottom-8 left-1/2 z-40 flex -translate-x-1/2 items-center gap-4 rounded-16 p-4">
       {NAV_ITEMS.map((item, i) => {
-        // a single asset can land on the first two tiles; a carried handful only on Pack Builder
         const armed = (!!draggedAsset && i < DROP_TILES) || (carriedAsset && i < GROUP_DROP_TILES)
         return (
           <DockTile
@@ -100,8 +85,6 @@ function DockTile({ item, dropKey, target = false, over = false, dragging = fals
       )}>
       <div ref={slotRef} className="size-32" />
 
-      {/* the label, worn as a tooltip above the shelf. One opaque surface — the caret shares the
-          bubble's solid fill, so the two read as a single shape. */}
       {hovered && !dragging && (
         <span className="panel-in pointer-events-none absolute bottom-full left-1/2 mb-12 -translate-x-1/2 rounded-md bg-surface px-8 py-4 text-12 font-medium leading-120 tracking-tight whitespace-nowrap text-white">
           {item.label}

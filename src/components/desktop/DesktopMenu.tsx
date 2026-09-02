@@ -7,23 +7,14 @@ import { createPortal } from "react-dom"
 
 import { cn } from "@/lib/utils"
 
-// The right-click menu — options anchored to the spot where the gesture happened. An item can carry a
-// flyout submenu (macOS "Clean Up By ▸" style), which opens on hover beside its row.
-// Dismisses on outside press, Escape, or after any selection.
-//
-// The flyout is PORTALED to <body>, not nested in the menu: the menu's backdrop blur makes it a
-// backdrop root, and a child's backdrop-filter can only sample what's painted inside that root — a
-// nested flyout hanging outside its parent would blur nothing and read as flat glass.
-
 export type DesktopMenuItem = {
   label: string
   icon?: LucideIcon
   danger?: boolean
   checked?: boolean
   separator?: boolean
-  /** Selecting closes the menu; an item with children opens its flyout on hover instead. */
-  onSelect?: () => void
   children?: DesktopMenuItem[]
+  onSelect?: () => void
 }
 
 const EDGE = 12
@@ -48,15 +39,11 @@ export function DesktopMenu({ x, y, items, onClose }: { x: number; y: number; it
   }, [x, y, items.length])
 
   // effects
-  // capture-phase, so a press anywhere that isn't the menu (or its portaled flyout) closes it before it
-  // does anything else
   useEffect(() => {
     const onPress = (e: PointerEvent) => {
       const t = e.target as Node
       if (ref.current?.contains(t) || subRef.current?.contains(t)) return
-      // an outside press dismisses the menu and is otherwise swallowed whole: the pointerdown is stopped
-      // here (so it can't start a drag or marquee), and the click it becomes is eaten below — so the item
-      // underneath isn't actioned. The user clicks once to close, then again to do anything else.
+
       e.preventDefault()
       e.stopPropagation()
       onClose()
@@ -65,8 +52,7 @@ export function DesktopMenu({ x, y, items, onClose }: { x: number; y: number; it
         ev.stopPropagation()
       }
       window.addEventListener("click", swallow, { capture: true, once: true })
-      // if the gesture never resolves to a click (it became a drag, say), drop the guard so it can never
-      // eat an unrelated later click
+
       window.setTimeout(() => window.removeEventListener("click", swallow, true), 350)
     }
     const onKey = (e: KeyboardEvent) => {
@@ -90,8 +76,6 @@ export function DesktopMenu({ x, y, items, onClose }: { x: number; y: number; it
   const flyLeft = sub ? sub.rect.right + FLYOUT_GAP + FLYOUT_W > window.innerWidth : false
 
   return (
-    // positioning transform lives on this outer div; the entrance animation animates transform too, so
-    // it has to run on the inner one or it would override the translate for its whole duration
     <div ref={ref} className="fixed top-0 left-0 z-[940]" onContextMenu={(e) => e.preventDefault()}>
       <div className="panel panel-in w-180 origin-top-left rounded-md p-4">
         {items.map((it, i) => (

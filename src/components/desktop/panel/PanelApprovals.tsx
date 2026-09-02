@@ -10,14 +10,8 @@ import { chainImage } from "@/components/desktop/object/ObjectVisual"
 
 import { artImage } from "@/lib/object-art"
 
-// Approval Radar — a large modal listing every standing token approval as a row: who can spend, which
-// token, how much (Unlimited flagged red), and the network. Rows are divided by a hairline. The risk
-// read-out lives in a tooltip on the shield beside the spender. Revoke removes the approval (and the
-// linked scam token). Read-only safety surface.
-
 const RL: Record<RiskLevel, string> = { ok: "Looks safe", watch: "Review", danger: "High risk" }
 
-/** The token's own mark; a bare address / scam token with no shipped art falls back to the default face. */
 const FALLBACK = "/images/contacts/default.jpg"
 
 type Props = {

@@ -1,13 +1,9 @@
-// The asymmetry that drives most of the rules: Openfort is a smart account and multichain, so it holds
-// anything; MetaMask is an EOA on EVM only. An absent `wallet` on an object reads as Openfort, so the
-// stock data needs no migration and nothing minting an object has to remember to tag it.
 import type { DesktopObj } from "@/types/objects"
 
 import { chainFamily, chainWord, isProjectG } from "./chain"
 
 export type Wallet = "openfort" | "eoa"
 
-/** One wallet on its own, or both side by side. */
 export type View = Wallet | "split"
 
 export type WalletSpec = {
