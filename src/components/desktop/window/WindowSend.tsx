@@ -19,7 +19,6 @@ import { round4, units, usd } from "@/lib/utils"
 // A one-way give: an amount stage (fungibles only) then the confirm screen. Confirm deducts the balance
 // and settles a receipt. NFTs and multi-asset drops skip the amount stage and send in full.
 
-/** One asset leaving, with the quantity to send. */
 export type SendDeal = { asset: AssetObj; amount: number }
 
 type Props = {

@@ -12,7 +12,6 @@ import { CircleAlert, CircleCheck, TriangleAlert } from "lucide-react"
 
 export type ToastTone = "alert" | "error" | "success"
 
-/** 12px of air between the notice and the top of the dock. */
 const DOCK_CLEARANCE = 12
 
 const TONE = {

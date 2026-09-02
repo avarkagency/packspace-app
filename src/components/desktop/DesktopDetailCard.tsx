@@ -29,7 +29,6 @@ import { dayChange } from "@/data/assets"
 // the card (blurred behind its own glass) or behind it (with every other object's coin sliding over the top
 // as it's dragged past). The workspace keeps carded objects out of the 3D scene entirely.
 
-/** The art's box in the header. */
 const MARK = 28
 
 const UP = "#13e192"
@@ -163,7 +162,6 @@ export const DesktopDetailCard = memo(function DesktopDetailCard({
   )
 })
 
-/** One bento cell: its name up top, the reading sat on the floor of the tile. */
 function Tile({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col rounded-4 bg-white/10 px-8 pt-8 py-6">

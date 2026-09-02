@@ -174,7 +174,6 @@ export function Desktop() {
   const [cardIds, setCardIds] = useState<ReadonlySet<string>>(new Set())
   /** Packs built with the Pack Builder — DOM tiles on the desk, like folders. */
   const [packs, setPacks] = useState<PackObj[]>([])
-  /** Standing approvals for the Approval Radar. */
   const [approvals, setApprovals] = useState<Approval[]>(APPROVAL_RADAR)
 
   // drag — one object in hand, or a carried multi-selection; the store treats both as "dragging"
@@ -195,7 +194,6 @@ export function Desktop() {
   const activeWallet: Wallet = isSplit ? "openfort" : view
   /** Pane-relative → viewport, for an object whose wallet we know. */
   const toScreen = (wallet: Wallet, p: Pos): Pos => ({ x: panes[wallet].left + p.x, y: panes[wallet].top + p.y })
-  /** Which pane a viewport x falls in. */
   const walletAt = (x: number): Wallet => walletAtX(view, splitRatio, screen.w, x)
 
   // data — what's ON the desk is everything not filed in a folder AND held by a wallet currently shown;

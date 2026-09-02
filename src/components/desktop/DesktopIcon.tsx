@@ -44,7 +44,6 @@ type Props = {
    *  carried across it. The carried icon's own badge is unaffected: its wrapper stacks above the
    *  canvas wholesale. */
   anyDragging?: boolean
-  /** The label is being edited in place (wallet rename). */
   renaming?: boolean
   onRename?: (name: string) => void
   onRenameCancel?: () => void

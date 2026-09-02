@@ -13,14 +13,12 @@ import type { Wallet } from "@/lib/wallets"
 
 import type { Pane } from "./pane"
 
-/** An icon's top-left corner, in viewport px. */
 export type Pos = { x: number; y: number }
 
 // ── Footprints ───────────────────────────────────────────────────────────────
 // Exported here rather than from the components that draw them: the layout maths is the primary reader,
 // and a const file importing a component to learn its width would invert the dependency.
 
-/** The icon's fixed footprint. */
 export const ICON_W = 104
 export const ICON_SLOT = 48
 export const ICON_PAD = 8
@@ -43,15 +41,12 @@ export const DOCK_GAP = 8
 export const LABEL_TOP = 48
 export const LABEL_H = 28
 
-/** What an object occupies on the desk. */
 export type Box = { w: number; h: number }
 export const ICON_BOX: Box = { w: ICON_W, h: ICON_SLOT + ICON_FOOT }
 export const CARD_BOX: Box = { w: CARD_W, h: CARD_H }
 
 export const boxOf = (id?: string): Box => (id && detailCardIds.has(id) ? CARD_BOX : ICON_BOX)
 
-// The default arrangement, straight from the design: assets in columns filled top-to-bottom from the left
-// edge (the Other Tokens folder takes the slot after the last asset), contacts in rows of 3 anchored to
 // The default arrangement, straight from the design: assets in columns filled top-to-bottom from the left
 // edge (the Other Tokens folder takes the slot after the last asset), contacts in rows of 3 anchored to
 // the bottom-right, clear of the top-right widgets. Only the starting point; every drag rewrites it.

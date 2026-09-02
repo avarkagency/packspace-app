@@ -18,14 +18,11 @@ export type View = Wallet | "split"
 
 export type WalletSpec = {
   id: Wallet
-  /** The segmented control's label. */
   label: string
-  /** The pane label's provider line. */
   provider: string
   address: string
   /** The wallet's mark, wherever it's named — the balance widget, the split pane label, the Move window. */
   image: string
-  /** EVM-only wallets refuse anything off an EVM chain. */
   evmOnly: boolean
 }
 
@@ -56,7 +53,6 @@ export const walletOf = (obj: { wallet?: Wallet }): Wallet => obj.wallet ?? "ope
 
 export const walletLabel = (w: Wallet) => WALLETS[w].label
 
-/** The wallets a view shows — one, or both in pane order. */
 export const visibleWallets = (view: View): Wallet[] => (view === "split" ? WALLET_ORDER : [view])
 
 /** Why this object can't move into that wallet, or null if it can. Only the EVM-only rule blocks a move:

@@ -25,7 +25,6 @@ import { type SendDeal, WindowSend } from "./WindowSend"
 
 type Props = {
   assets: AssetObj[]
-  /** The live holdings, for the Handoff inventory rail. */
   inventory: AssetObj[]
   to: PersonObj
   z: number

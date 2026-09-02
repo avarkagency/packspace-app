@@ -17,12 +17,9 @@ import { cn } from "@/lib/utils"
 
 export type DesktopMenuItem = {
   label: string
-  /** The row's mark, drawn at 16px on the left. */
   icon?: LucideIcon
   danger?: boolean
-  /** This option is the one currently in effect — ticked on the right. */
   checked?: boolean
-  /** Draw a group divider above this item. */
   separator?: boolean
   /** Selecting closes the menu; an item with children opens its flyout on hover instead. */
   onSelect?: () => void

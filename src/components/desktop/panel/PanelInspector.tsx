@@ -150,7 +150,6 @@ export function PanelInspector({ obj, objects, coinPresent, foldered, wallpaper,
       <div aria-hidden className="bg-fade absolute inset-0" style={{ background: wallpaper }} />
       <FxRainbowBorder className="absolute inset-0" />
 
-      {/* close */}
       <button
         type="button"
         onClick={onClose}
@@ -329,7 +328,6 @@ function Summary({ text }: { text: string }) {
   return revealed ? <BaseTypewriter text={text} /> : <SummaryLoading />
 }
 
-/** The AI summary's "thinking" state — pulsing skeleton lines until the text resolves in. */
 function SummaryLoading() {
   return (
     <div aria-hidden className="flex flex-col gap-10">

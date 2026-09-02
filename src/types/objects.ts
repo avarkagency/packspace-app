@@ -26,7 +26,6 @@ export type AssetObj = ObjBase & {
   kind: AssetKind
   /** Held balance in native units. */
   balance: number
-  /** Total USD value of the holding. */
   usd: number
   /** Colour signature so a coin ≠ a coin at a glance. */
   color: string
@@ -136,14 +135,12 @@ export type CanvasObj = AssetObj | PersonObj | PackObj | AppObj | VaultObj | Cam
 export type RiskLevel = "ok" | "watch" | "danger"
 export type Approval = {
   id: string
-  /** The contract/dApp that can spend. */
   spender: string
   verified: boolean
   assetName: string
   symbol: string
   glyph: string
   color: string
-  /** Unlimited allowance — the high-risk case. */
   unlimited: boolean
   /** The capped allowance, when not unlimited. */
   allowance?: string
@@ -154,7 +151,6 @@ export type Approval = {
   assetId?: string
 }
 
-/** What sits on the desktop: your holdings on the left, your wallets (contacts) on the right. */
 export type DesktopObj = AssetObj | PersonObj
 
 /** A desk folder: a name, the wallet whose desk it sits on, and the ids it holds. Objects in a folder

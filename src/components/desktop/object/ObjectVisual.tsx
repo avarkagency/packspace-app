@@ -128,7 +128,6 @@ export function objectNameColor(obj: CanvasObj): string {
   return NAME_COLOR[obj.class] ?? "#ffffff"
 }
 
-/** The class label shown as the object's category tag. */
 export function objectKindLabel(obj: CanvasObj): string {
   switch (obj.class) {
     case "asset":

@@ -9,7 +9,6 @@ export type WidgetType = "balance" | "nft"
 export type WidgetInstance = {
   id: string
   type: WidgetType
-  /** How many of the two columns it occupies. */
   span: 1 | 2
   /** A 1-span widget can be pinned to a column; unset means "first free cell". Ignored when span is 2. */
   col?: 1 | 2

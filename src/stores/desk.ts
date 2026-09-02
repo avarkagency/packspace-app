@@ -14,7 +14,6 @@ import type { Wallet } from "@/lib/wallets"
 /** The holdings currently shown as detail cards rather than icons — they have a much wider footprint. */
 export const detailCardIds = new Set<string>()
 
-/** Which wallet each object belongs to, and the pane each wallet currently occupies. */
 export const objectWallet = new Map<string, Wallet>()
 export const panesMirror: Record<Wallet, Pane> = {
   openfort: { left: 0, top: 0, width: 0, height: 0 },

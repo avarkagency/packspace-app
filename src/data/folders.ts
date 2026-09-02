@@ -5,7 +5,6 @@ import type { FolderSpec } from "@/types/objects"
 
 import { DUST_ASSETS, DUST_NFTS } from "./assets"
 
-/** The Other Tokens folder's desk id. */
 export const FOLDER_ID = "folder-other"
 
 /** First run: the token dust lives in Other Tokens, the NFT dust in Other NFTs — both on the Openfort

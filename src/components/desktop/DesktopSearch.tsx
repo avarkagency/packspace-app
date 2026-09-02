@@ -20,7 +20,6 @@ import { ObjectAvatar } from "./object/ObjectAvatar"
 // folder, a saved contact, a pack you built — because it reads the same live lists the desk does, not the
 // desk's current arrangement.
 
-/** Anything the palette can find and hand to the Inspector — the three inspectable classes. */
 export type SearchItem = AssetObj | PersonObj | PackObj
 
 /** The fixed group order — assets first (what you reach for most), then packs and people. */
@@ -69,7 +68,6 @@ function rank(obj: SearchItem, q: string): number | null {
 type Props = {
   items: SearchItem[]
   onSelect: (id: string) => void
-  /** Right-click a result — opens the object's desktop context menu at the cursor. */
   onItemContextMenu: (obj: SearchItem, e: React.MouseEvent) => void
   onClose: () => void
 }

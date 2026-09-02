@@ -48,7 +48,6 @@ export function useDesktopSurfaces(activeWallet: Wallet) {
   const [rightPanel, setRightPanel] = useState<RightPanel | null>(null)
   /** The PackSpace Card modal — your own (contact undefined) or a saved contact's. */
   const [card, setCard] = useState<{ contact?: PersonObj } | null>(null)
-  /** The ⌘K command palette. */
   const [searchOpen, setSearchOpen] = useState(false)
 
   const open = useCallback((spec: WinDraft) => {
@@ -129,7 +128,6 @@ export function useDesktopSurfaces(activeWallet: Wallet) {
     setSearchOpen(false)
   }
 
-  /** A settled transaction files its receipt and shows it. */
   const onSettle = useCallback(
     (receipt: Receipt) => {
       setReceipts((r) => [receipt, ...r])

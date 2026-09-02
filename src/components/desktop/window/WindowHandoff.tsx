@@ -26,7 +26,6 @@ export type HandoffReceive = { label: string; symbol: string; amount: number; us
 type Props = {
   /** Everything the drop carried — the trade opens seeded with all of it in "You give". */
   seeds: AssetObj[]
-  /** The live holdings, for the inventory rail. */
   inventory: AssetObj[]
   to: PersonObj
   onClose: () => void

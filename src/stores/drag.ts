@@ -20,7 +20,6 @@ export function startDrag(obj: DesktopObj) {
   state = { obj, carriedIds: null, over: null }
   emit()
 }
-/** A multi-selection picked up as one handful. */
 export function startGroupDrag(ids: ReadonlySet<string>) {
   state = { obj: null, carriedIds: ids, over: null }
   emit()

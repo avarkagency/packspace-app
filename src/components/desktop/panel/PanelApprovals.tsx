@@ -108,7 +108,6 @@ export function PanelApprovals({ approvals, onRevoke, onClose }: Props) {
                     </span>
                   </div>
 
-                  {/* revoke */}
                   <BaseBtn variant="secondary" size="sm" icon={Ban} onClick={() => onRevoke(a.id)}>
                     Revoke
                   </BaseBtn>
