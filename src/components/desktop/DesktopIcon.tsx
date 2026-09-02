@@ -4,14 +4,15 @@ import Image from "next/image"
 import { memo, useEffect, useRef } from "react"
 
 import { ICON_PAD, ICON_SLOT, ICON_W } from "@/const/desktop-layout"
-import { clearCoinHover, registerCoinSlot, setCoinCursor, setCoinHover } from "@/stores/coin"
+import { coinHoverProps, registerCoinSlot } from "@/stores/coin"
 import type { DesktopObj } from "@/types/objects"
 import { Check, History, ShieldX, TriangleAlert } from "lucide-react"
 
 import { BaseChangeTag } from "@/components/base/BaseChangeTag"
+import { BaseRenameInput } from "@/components/base/BaseRenameInput"
 import { chainImage, objectNameColor } from "@/components/desktop/object/ObjectVisual"
 
-import { cn, usd } from "@/lib/utils"
+import { addrStub, cn, usd } from "@/lib/utils"
 
 import { dayChange } from "@/data/assets"
 
@@ -68,26 +69,7 @@ export const DesktopIcon = memo(function DesktopIcon({
           ? { text: "Retired", color: "#f7c86a" }
           : obj.trust === "unconfirmed"
             ? { text: obj.whitelisted === false ? "Not in contacts" : "Unconfirmed", color: "#f7c86a" }
-            : { text: obj.address ? `${obj.address.slice(0, 6)}...` : obj.handle }
-
-  // events
-  const onEnter = (e: React.PointerEvent) => {
-    setCoinCursor(e.clientX, e.clientY)
-    setCoinHover(obj.id)
-  }
-  const onLeave = () => clearCoinHover(obj.id)
-  const onMove = (e: React.PointerEvent) => setCoinCursor(e.clientX, e.clientY)
-
-  // events
-  const commit = (el: HTMLInputElement) => {
-    const name = el.value.trim()
-    if (name && name !== label) onRename?.(name)
-    else onRenameCancel?.()
-  }
-  const onRenameKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") commit(e.currentTarget)
-    if (e.key === "Escape") onRenameCancel?.()
-  }
+            : { text: obj.address ? addrStub(obj.address) : obj.handle }
 
   // effects
   useEffect(() => {
@@ -114,13 +96,7 @@ export const DesktopIcon = memo(function DesktopIcon({
         <span aria-hidden className="split-flash pointer-events-none absolute inset-0 rounded-lg bg-action-split/20 outline-1 outline-action-split/50" />
       )}
 
-      <div
-        ref={slotRef}
-        onPointerEnter={onEnter}
-        onPointerLeave={onLeave}
-        onPointerMove={onMove}
-        style={{ width: ICON_SLOT, height: ICON_SLOT }}
-        className="relative shrink-0">
+      <div ref={slotRef} {...coinHoverProps(obj.id)} style={{ width: ICON_SLOT, height: ICON_SLOT }} className="relative shrink-0">
         <span className={cn("pointer-events-none absolute -right-px -bottom-px", anyDragging ? "z-[40]" : "z-[60]")}>
           {obj.class === "person" ? (
             compromised ? (
@@ -153,16 +129,7 @@ export const DesktopIcon = memo(function DesktopIcon({
 
       <div className="flex w-full flex-col items-center gap-4">
         {renaming ? (
-          <input
-            defaultValue={label}
-            autoFocus
-            onFocus={(e) => e.currentTarget.select()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onKeyDown={onRenameKey}
-            onBlur={(e) => commit(e.currentTarget)}
-            className="w-full rounded-sm border border-accent bg-surface px-4 py-2 text-center text-12 text-foreground outline-none"
-            aria-label="Rename wallet"
-          />
+          <BaseRenameInput value={label} ariaLabel="Rename wallet" className="border-accent" onCommit={onRename} onCancel={onRenameCancel} />
         ) : (
           <p
             className="tnum w-full truncate text-center text-12 font-medium leading-120 tracking-tight trans-base"

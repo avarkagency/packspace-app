@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react"
 
 import type { AssetObj, PersonObj } from "@/types/objects"
-import { ArrowRightLeft, ChevronLeft, Send, ShieldX, TriangleAlert, X } from "lucide-react"
+import { ArrowRightLeft, ChevronLeft, Send, ShieldX, TriangleAlert } from "lucide-react"
 
 import { BaseBtn } from "@/components/base/BaseBtn"
 import { ObjectAvatar } from "@/components/desktop/object/ObjectAvatar"
 import { ObjectMark } from "@/components/desktop/object/ObjectMark"
+import { WindowShell } from "@/components/desktop/window/WindowShell"
 
 import { cn, shortAddr, units, usd } from "@/lib/utils"
 
@@ -64,88 +65,78 @@ export function WindowTransfer({ assets, inventory, to, z, onClose, onSend, onLa
   }, [step])
 
   return (
-    <div className="fixed inset-0 grid place-items-center p-24" style={{ zIndex: z }}>
-      {/* the desk falls out of focus */}
-      <div className="animate-in fade-in-0 absolute inset-0 bg-black/20 backdrop-blur-xl duration-200" onClick={onClose} aria-hidden />
+    <WindowShell
+      z={z}
+      width={WIDTH[step]}
+      onClose={onClose}
+      cardClassName="transition-[width,height] duration-300 ease-in-out-quart"
+      cardStyle={{ height: height ?? undefined }}>
+      {/* keyed so each step's content fades in while the frame stretches around it */}
+      <div ref={bodyRef} key={step} className="animate-in fade-in-0 p-28 duration-300">
+        {step !== "choose" && (
+          <button
+            type="button"
+            onClick={() => setStep("choose")}
+            className="mb-8 flex cursor-pointer items-center gap-4 text-12 leading-120 tracking-tight text-white trans-base hover:text-white/70">
+            <ChevronLeft className="size-16" />
+            Head back
+          </button>
+        )}
 
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        className="glass absolute top-28 right-28 grid size-40 cursor-pointer place-items-center rounded-12 text-white trans-base hover:bg-white/20 active:scale-97">
-        <X className="size-16" />
-      </button>
+        <h2 className="flex items-center gap-6 text-18 leading-120 tracking-tight text-white">
+          {VERB[step]} {what} to
+          <ObjectAvatar contact={to} size={24} />
+          {to.label}
+        </h2>
+        <span className="tnum mt-8 inline-block rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">
+          {to.address ? shortAddr(to.address) : to.handle}
+        </span>
 
-      <div
-        className="glass panel-in relative overflow-hidden rounded-16 transition-[width,height] duration-300 ease-in-out-quart"
-        style={{ width: WIDTH[step], height: height ?? undefined }}>
-        {/* keyed so each step's content fades in while the frame stretches around it */}
-        <div ref={bodyRef} key={step} className="animate-in fade-in-0 p-28 duration-300">
-          {step !== "choose" && (
-            <button
-              type="button"
-              onClick={() => setStep("choose")}
-              className="mb-8 flex cursor-pointer items-center gap-4 text-12 leading-120 tracking-tight text-white trans-base hover:text-white/70">
-              <ChevronLeft className="size-16" />
-              Head back
-            </button>
-          )}
+        <div className="-mx-28 mt-24 h-px bg-white/20" aria-hidden />
 
-          <h2 className="flex items-center gap-6 text-18 leading-120 tracking-tight text-white">
-            {VERB[step]} {what} to
-            <ObjectAvatar contact={to} size={24} />
-            {to.label}
-          </h2>
-          <span className="tnum mt-8 inline-block rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">
-            {to.address ? shortAddr(to.address) : to.handle}
-          </span>
-
-          <div className="-mx-28 mt-24 h-px bg-white/20" aria-hidden />
-
-          {step !== "handoff" && !(step === "send" && single) && (
-            <ul className="mt-28 flex flex-col gap-8">
-              {assets.map((a) => (
-                <li key={a.id} className="flex items-center justify-between gap-12">
-                  <span className="flex min-w-0 items-center gap-12">
-                    <span className="inline-flex shrink-0 rounded-full ring-1 ring-white">
-                      <ObjectMark obj={a} size={24} />
-                    </span>
-                    <span className="tnum truncate text-14 leading-120 tracking-tight text-white">
-                      {units(a.balance)} {a.symbol}
-                    </span>
+        {step !== "handoff" && !(step === "send" && single) && (
+          <ul className="mt-28 flex flex-col gap-8">
+            {assets.map((a) => (
+              <li key={a.id} className="flex items-center justify-between gap-12">
+                <span className="flex min-w-0 items-center gap-12">
+                  <span className="inline-flex shrink-0 rounded-full ring-1 ring-white">
+                    <ObjectMark obj={a} size={24} />
                   </span>
-                  <span className="tnum text-14 leading-120 tracking-tight text-white">{usd(a.usd, { cents: false })}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+                  <span className="tnum truncate text-14 leading-120 tracking-tight text-white">
+                    {units(a.balance)} {a.symbol}
+                  </span>
+                </span>
+                <span className="tnum text-14 leading-120 tracking-tight text-white">{usd(a.usd, { cents: false })}</span>
+              </li>
+            ))}
+          </ul>
+        )}
 
-          {step === "choose" && (
-            <>
-              {warn && (
-                <div
-                  className={cn(
-                    "mt-24 flex items-start gap-8 rounded-md border p-12 text-12 leading-140",
-                    blocked ? "border-danger/40 bg-danger/10 text-[#ffcdbf]" : "border-warning/40 bg-warning/10 text-[#f7c86a]"
-                  )}>
-                  {blocked ? <ShieldX className="mt-px size-16 shrink-0" /> : <TriangleAlert className="mt-px size-16 shrink-0" />}
-                  <p>{warn}</p>
-                </div>
-              )}
-              <div className="mt-28 flex gap-8">
-                <BaseBtn icon={Send} className="flex-1" disabled={blocked} onClick={() => setStep("send")}>
-                  Send assets
-                </BaseBtn>
-                <BaseBtn variant="secondary" icon={ArrowRightLeft} className="flex-1" disabled={blocked} onClick={() => setStep("handoff")}>
-                  Trade assets
-                </BaseBtn>
+        {step === "choose" && (
+          <>
+            {warn && (
+              <div
+                className={cn(
+                  "mt-24 flex items-start gap-8 rounded-md border p-12 text-12 leading-140",
+                  blocked ? "border-danger/40 bg-danger/10 text-[#ffcdbf]" : "border-warning/40 bg-warning/10 text-[#f7c86a]"
+                )}>
+                {blocked ? <ShieldX className="mt-px size-16 shrink-0" /> : <TriangleAlert className="mt-px size-16 shrink-0" />}
+                <p>{warn}</p>
               </div>
-            </>
-          )}
-          {step === "send" && <WindowSend assets={assets} to={to} amount={amount} setAmount={setAmount} onClose={onClose} onSend={onSend} />}
-          {step === "handoff" && <WindowHandoff seeds={assets} inventory={inventory} to={to} onClose={onClose} onLaunch={onLaunch} />}
-        </div>
+            )}
+            <div className="mt-28 flex gap-8">
+              <BaseBtn icon={Send} className="flex-1" disabled={blocked} onClick={() => setStep("send")}>
+                Send assets
+              </BaseBtn>
+              <BaseBtn variant="secondary" icon={ArrowRightLeft} className="flex-1" disabled={blocked} onClick={() => setStep("handoff")}>
+                Trade assets
+              </BaseBtn>
+            </div>
+          </>
+        )}
+        {step === "send" && <WindowSend assets={assets} to={to} amount={amount} setAmount={setAmount} onClose={onClose} onSend={onSend} />}
+        {step === "handoff" && <WindowHandoff seeds={assets} inventory={inventory} to={to} onClose={onClose} onLaunch={onLaunch} />}
       </div>
-    </div>
+    </WindowShell>
   )
 }

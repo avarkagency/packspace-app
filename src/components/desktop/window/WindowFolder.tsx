@@ -10,7 +10,8 @@ import { BaseChangeTag } from "@/components/base/BaseChangeTag"
 import { ObjectArt } from "@/components/desktop/object/ObjectArt"
 import { chainImage } from "@/components/desktop/object/ObjectVisual"
 
-import { cn, desktopLabel, usd } from "@/lib/utils"
+import { dragLoop } from "@/lib/drag-loop"
+import { addrStub, cn, desktopLabel, usd } from "@/lib/utils"
 
 import { dayChange } from "@/data/assets"
 
@@ -97,20 +98,14 @@ export function WindowFolder({
     const f = frameRef.current
     if (!f) return
     const start = { ...f }
-    const sx = e.clientX
-    const sy = e.clientY
 
-    const onMove = (ev: PointerEvent) => {
-      f.x = Math.min(Math.max(start.x + ev.clientX - sx, 8), window.innerWidth - f.w - 8)
-      f.y = Math.min(Math.max(start.y + ev.clientY - sy, 8), window.innerHeight - 96)
-      apply()
-    }
-    const onUp = () => {
-      window.removeEventListener("pointermove", onMove)
-      window.removeEventListener("pointerup", onUp)
-    }
-    window.addEventListener("pointermove", onMove)
-    window.addEventListener("pointerup", onUp)
+    dragLoop(e, {
+      onMove: (dx, dy) => {
+        f.x = Math.min(Math.max(start.x + dx, 8), window.innerWidth - f.w - 8)
+        f.y = Math.min(Math.max(start.y + dy, 8), window.innerHeight - 96)
+        apply()
+      }
+    })
   }
 
   // events
@@ -122,28 +117,20 @@ export function WindowFolder({
     const f = frameRef.current
     if (!el || !f) return
     const start = { ...f, h: f.h ?? el.offsetHeight }
-    const sx = e.clientX
-    const sy = e.clientY
 
-    const onMove = (ev: PointerEvent) => {
-      const dx = ev.clientX - sx
-      const dy = ev.clientY - sy
-      if (corner === "se") {
-        f.w = Math.max(MIN_W, start.w + dx)
-      } else {
-        const w = Math.max(MIN_W, start.w - dx)
-        f.x = start.x + (start.w - w)
-        f.w = w
+    dragLoop(e, {
+      onMove: (dx, dy) => {
+        if (corner === "se") {
+          f.w = Math.max(MIN_W, start.w + dx)
+        } else {
+          const w = Math.max(MIN_W, start.w - dx)
+          f.x = start.x + (start.w - w)
+          f.w = w
+        }
+        f.h = Math.max(MIN_H, start.h + dy)
+        apply()
       }
-      f.h = Math.max(MIN_H, start.h + dy)
-      apply()
-    }
-    const onUp = () => {
-      window.removeEventListener("pointermove", onMove)
-      window.removeEventListener("pointerup", onUp)
-    }
-    window.addEventListener("pointermove", onMove)
-    window.addEventListener("pointerup", onUp)
+    })
   }
 
   // events
@@ -308,7 +295,7 @@ function FolderGridItem({
               : obj.trust === "unconfirmed"
                 ? "Not in contacts"
                 : obj.address
-                  ? `${obj.address.slice(0, 6)}...`
+                  ? addrStub(obj.address)
                   : obj.handle}
           </span>
           {delta !== undefined && <BaseChangeTag pct={delta} />}

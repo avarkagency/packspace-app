@@ -118,3 +118,13 @@ export function measureCoins() {
   coinView.clip.right = v.right
   coinView.clip.bottom = v.bottom
 }
+
+/** The pointer handlers an icon, a folder or a pack hangs on its art so the cursor readout can follow it. */
+export const coinHoverProps = (id: string) => ({
+  onPointerEnter: (e: React.PointerEvent) => {
+    setCoinCursor(e.clientX, e.clientY)
+    setCoinHover(id)
+  },
+  onPointerLeave: () => clearCoinHover(id),
+  onPointerMove: (e: React.PointerEvent) => setCoinCursor(e.clientX, e.clientY)
+})

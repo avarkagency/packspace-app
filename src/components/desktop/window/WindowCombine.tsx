@@ -1,10 +1,12 @@
 "use client"
 
 import type { AssetObj } from "@/types/objects"
-import { Combine, Plus, X } from "lucide-react"
+import { Combine, Plus } from "lucide-react"
 
 import { BaseBtn } from "@/components/base/BaseBtn"
 import { ObjectMark } from "@/components/desktop/object/ObjectMark"
+import { WindowHeading } from "@/components/desktop/window/WindowHeading"
+import { WindowShell } from "@/components/desktop/window/WindowShell"
 
 import { units, usd } from "@/lib/utils"
 
@@ -28,50 +30,30 @@ export function WindowCombine({ a, b, z, onClose, onCombine }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 grid place-items-center p-24" style={{ zIndex: z }}>
-      <div className="animate-in fade-in-0 absolute inset-0 bg-black/20 backdrop-blur-xl duration-200" onClick={onClose} aria-hidden />
+    <WindowShell z={z} width={480} onClose={onClose}>
+      <div className="p-28">
+        <WindowHeading gap={6} mark={<ObjectMark obj={a} size={24} />} title={`Combine ${units(balance)} ${a.symbol}`} chip={usd(value)} />
 
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        className="glass absolute top-28 right-28 grid size-40 cursor-pointer place-items-center rounded-12 text-white trans-base hover:bg-white/20 active:scale-97">
-        <X className="size-16" />
-      </button>
-
-      <div className="glass panel-in relative overflow-hidden rounded-16" style={{ width: 480 }}>
-        <div className="p-28">
-          <h2 className="flex items-center gap-6 text-18 leading-120 tracking-tight text-white">
-            <span className="inline-flex shrink-0 rounded-full ring-1 ring-white">
-              <ObjectMark obj={a} size={24} />
-            </span>
-            Combine {units(balance)} {a.symbol}
-          </h2>
-          <span className="tnum mt-8 inline-block rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">{usd(value)}</span>
-
-          <div className="-mx-28 mt-24 h-px bg-white/20" aria-hidden />
-
-          {/* the two portions being poured together */}
-          <div className="mt-28 grid grid-cols-[1fr_auto_1fr] items-center gap-8">
-            <Portion amount={a.balance} symbol={a.symbol} value={a.usd} />
-            <Plus className="size-16 shrink-0 text-white/70" />
-            <Portion amount={b.balance} symbol={b.symbol} value={b.usd} />
-          </div>
-
-          <div className="glass mt-8 rounded-md p-16">
-            <p className="text-11 leading-120 font-medium text-white/70">Result</p>
-            <p className="tnum mt-8 text-24 font-semibold leading-100 text-white">
-              {units(balance)} <span className="text-12 font-medium text-white/70">{a.symbol}</span>
-            </p>
-            <p className="tnum mt-4 text-11 leading-120 text-white/70">{usd(value)}</p>
-          </div>
-
-          <BaseBtn icon={Combine} className="mt-28 w-full" onClick={onConfirm}>
-            Combine assets
-          </BaseBtn>
+        {/* the two portions being poured together */}
+        <div className="mt-28 grid grid-cols-[1fr_auto_1fr] items-center gap-8">
+          <Portion amount={a.balance} symbol={a.symbol} value={a.usd} />
+          <Plus className="size-16 shrink-0 text-white/70" />
+          <Portion amount={b.balance} symbol={b.symbol} value={b.usd} />
         </div>
+
+        <div className="glass mt-8 rounded-md p-16">
+          <p className="text-11 leading-120 font-medium text-white/70">Result</p>
+          <p className="tnum mt-8 text-24 font-semibold leading-100 text-white">
+            {units(balance)} <span className="text-12 font-medium text-white/70">{a.symbol}</span>
+          </p>
+          <p className="tnum mt-4 text-11 leading-120 text-white/70">{usd(value)}</p>
+        </div>
+
+        <BaseBtn icon={Combine} className="mt-28 w-full" onClick={onConfirm}>
+          Combine assets
+        </BaseBtn>
       </div>
-    </div>
+    </WindowShell>
   )
 }
 

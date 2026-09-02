@@ -77,6 +77,7 @@ import { WindowUnpack } from "@/components/desktop/window/WindowUnpack"
 import {
   assetDropId,
   assetDropKey,
+  assetKindFor,
   canCombine,
   folderDropId,
   folderDropKey,
@@ -87,9 +88,10 @@ import {
   walletDropId,
   walletDropKey
 } from "@/lib/asset-ops"
+import { dragLoop } from "@/lib/drag-loop"
 import type { Inspectable } from "@/lib/inspect"
 import { cue, installPressCues } from "@/lib/sound"
-import { cn, desktopLabel, fakeHash, round4, units } from "@/lib/utils"
+import { cn, desktopLabel, round4 } from "@/lib/utils"
 import { type View, WALLET_ORDER, type Wallet, moveBlockMessage, visibleWallets, walletLabel, walletOf } from "@/lib/wallets"
 import { WIDGET_TYPES, type WidgetInstance, type WidgetType } from "@/lib/widgets"
 
@@ -113,6 +115,38 @@ import { DesktopToast } from "./DesktopToast"
 
 const ObjectScene = dynamic(() => import("@/components/desktop/object/ObjectScene").then((m) => m.ObjectScene), { ssr: false })
 type MenuSpec = { x: number; y: number; obj: DesktopObj; fromSearch?: boolean }
+type TidyKey = "name" | "kind" | "value"
+
+/** An object sitting on the desk: registered with the node map the drag writes through, lifted above
+ *  everything (folder windows included) and made pointer-transparent while it is in hand, so the drop
+ *  hit-testing sees the zones underneath. Positioned in viewport coordinates — the layout effect re-pins
+ *  it after every render. Module-level, so the desk's re-renders never remount what it holds. */
+function Placed({
+  id,
+  at,
+  nodes,
+  carried = false,
+  children
+}: {
+  id: string
+  at: Pos
+  nodes: Map<string, HTMLElement>
+  carried?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      ref={(el) => {
+        if (el) nodes.set(id, el)
+        else nodes.delete(id)
+      }}
+      data-cue-press
+      className={cn("absolute", carried && "pointer-events-none z-[160]")}
+      style={{ left: at.x, top: at.y }}>
+      {children}
+    </div>
+  )
+}
 
 export function Desktop() {
   // refs
@@ -123,7 +157,6 @@ export function Desktop() {
   const packIdc = useRef(0)
   const widgetIdc = useRef(0)
   const iconNodes = useRef(new Map<string, HTMLElement>())
-  const packMovedRef = useRef(false)
   const pulledFromFolder = useRef(new Set<string>())
 
   // state
@@ -208,7 +241,7 @@ export function Desktop() {
   const { toast, showToast } = useDesktopToast()
   const { flashIds, flash } = useDesktopFlash()
   const { pulseId, pulse, clearPulse } = useDesktopPulse()
-  const { consumeAssets, applySend, applyHandoff } = useDesktopSettlement({ setAssets, setPositions, setFolders, onSettle, flash })
+  const { consumeAssets, applySend, applyHandoff, applyMove } = useDesktopSettlement({ setAssets, setPositions, setFolders, onSettle, flash })
   const { selectedIds, setSelectedIds, marquee, onDeskPointerDown } = useDesktopMarquee({
     rootRef,
     positions,
@@ -315,7 +348,7 @@ export function Desktop() {
         class: "asset",
         label: c.label,
         symbol: c.symbol,
-        kind: c.kind === "nft" ? "nft" : c.symbol === "USDC" || c.symbol === "USDT" ? "stablecoin" : "token",
+        kind: c.kind === "nft" ? "nft" : assetKindFor(c.symbol),
         balance: c.amount,
         usd: c.usd,
         chain: c.chain,
@@ -345,40 +378,6 @@ export function Desktop() {
     if (fresh.length) {
       flash(fresh.map((a) => a.id))
     }
-  }
-
-  const startPackDrag = (pack: PackObj) => (e: React.PointerEvent) => {
-    if (e.button !== 0 || !positions) return
-    const local = positions[pack.id]
-    if (!local) return
-    // moved in viewport coordinates, stored back pane-relative — the same trick the folder drag uses
-    const wallet = walletOf(pack)
-    const origin = toScreen(wallet, local)
-    const sx = e.clientX
-    const sy = e.clientY
-    packMovedRef.current = false
-    const onMove = (ev: PointerEvent) => {
-      const dx = ev.clientX - sx
-      const dy = ev.clientY - sy
-      if (!packMovedRef.current && Math.hypot(dx, dy) < 6) return
-      packMovedRef.current = true
-      const el = iconNodes.current.get(pack.id)
-      if (el) {
-        el.style.left = `${origin.x + dx}px`
-        el.style.top = `${origin.y + dy}px`
-      }
-    }
-    const onUp = (ev: PointerEvent) => {
-      window.removeEventListener("pointermove", onMove)
-      window.removeEventListener("pointerup", onUp)
-      // a press that never travelled is a click, not a move — opening is the double-click's job
-      if (!packMovedRef.current) return
-      const pane = panes[wallet]
-      const p = clampPos(origin.x + ev.clientX - sx - pane.left, origin.y + ev.clientY - sy - pane.top, pack.id, wallet)
-      setPositions((pos) => (pos ? { ...pos, [pack.id]: nearestFreeSpot(p, pos, pack.id, 0, wallet) } : pos))
-    }
-    window.addEventListener("pointermove", onMove)
-    window.addEventListener("pointerup", onUp)
   }
 
   // events
@@ -430,56 +429,6 @@ export function Desktop() {
       return { ...pos, [copy.id]: nearestFreeSpot(want, pos, copy.id, 0, to) }
     })
     showToast("success", `Copied ${contact.label} to your ${walletLabel(to)} address book.`)
-  }
-
-  /** Settle a move: the holding changes wallet and takes a fresh slot on the far desk. A part-move of a
-   *  fungible splits the balance instead, leaving the remainder behind; pooling folds it into the holding
-   *  already over there rather than landing a second pile of the same token. */
-  const applyMove = (asset: AssetObj, to: Wallet, amount: number, mergeIntoId: string | null) => {
-    cue("sparkle") // a settled transaction
-    const from = walletOf(asset)
-    const pane = panesMirror[to]
-    const whole = asset.kind === "nft" || amount >= asset.balance
-    const landedId = mergeIntoId ?? (whole ? asset.id : `mv-${assetIdc.current++}`)
-    const rate = asset.usd / asset.balance
-
-    setAssets((list) => {
-      // moved whole, and not pooling: the same object simply changes desks
-      if (whole && !mergeIntoId) return list.map((a) => (a.id === asset.id ? { ...a, wallet: to } : a))
-
-      const kept = round4(asset.balance - amount)
-      const withSource = list.map((a) => (a.id === asset.id ? { ...a, balance: kept, usd: kept * rate } : a)).filter((a) => a.id !== asset.id || kept > 0)
-      if (mergeIntoId) return withSource.map((a) => (a.id === mergeIntoId ? { ...a, balance: round4(a.balance + amount), usd: a.usd + amount * rate } : a))
-      const i = withSource.findIndex((a) => a.id === asset.id)
-      const moved: AssetObj = { ...asset, id: landedId, wallet: to, balance: amount, usd: amount * rate, derived: true }
-      return i < 0 ? [...withSource, moved] : [...withSource.slice(0, i + 1), moved, ...withSource.slice(i + 1)]
-    })
-
-    setPositions((pos) => {
-      if (!pos) return pos
-      const next = { ...pos }
-      // a whole move takes the holding off this desk entirely — either it reappears on the far one under
-      // the same id, or it was poured into a holding already there and is gone
-      if (whole) delete next[asset.id]
-      if (!mergeIntoId) next[landedId] = nearestFreeSpot({ x: pane.width / 2 - ICON_W / 2, y: pane.height / 2 }, next, landedId, 0, to)
-      return next
-    })
-    // a holding that moved out of a folder's wallet can't stay filed there
-    if (whole) setFolders((list) => list.map((f) => (f.wallet === from ? { ...f, contents: f.contents.filter((c) => c !== asset.id) } : f)))
-
-    const what = asset.kind === "nft" ? asset.label : `${units(amount)} ${asset.symbol}`
-    onSettle({
-      id: `rcpt-move-${Date.now()}`,
-      action: "Move",
-      give: what,
-      counterparty: walletLabel(to),
-      chain: asset.chain ?? "Base",
-      hash: fakeHash(`move-${asset.id}-${to}-${amount}`),
-      confirmation: "Internal · same owner",
-      route: mergeIntoId ? `${walletLabel(from)} → ${walletLabel(to)} · pooled` : `${walletLabel(from)} → ${walletLabel(to)}`,
-      status: "Settled",
-      at: new Date().toLocaleTimeString("en-US", { hour12: false })
-    })
   }
 
   // events
@@ -614,6 +563,15 @@ export function Desktop() {
     })
   }
 
+  /** Give up an object's desk slot — it has been spent, deleted or revoked. */
+  const forgetPosition = (id: string) =>
+    setPositions((pos) => {
+      if (!pos) return pos
+      const { [id]: gone, ...rest } = pos
+      void gone
+      return rest
+    })
+
   // events
   const renameContact = (id: string, name: string) => {
     setContacts((list) => list.map((c) => (c.id === id ? { ...c, label: name } : c)))
@@ -623,12 +581,7 @@ export function Desktop() {
     setContacts((list) => list.map((c) => (c.id === id ? { ...c, ...patch } : c)))
   const deleteContact = (id: string) => {
     setContacts((list) => list.filter((c) => c.id !== id))
-    setPositions((pos) => {
-      if (!pos) return pos
-      const { [id]: gone, ...rest } = pos
-      void gone
-      return rest
-    })
+    forgetPosition(id)
     // an edit window for a wallet that no longer exists would save into nothing — take it down with it
     dismissWins((w) => w.kind === "contact" && w.contact.id === id)
   }
@@ -891,7 +844,7 @@ export function Desktop() {
   }
 
   // events
-  const cleanupKeyRef = useRef<"name" | "kind" | "value" | null>(null)
+  const cleanupKeyRef = useRef<TidyKey | null>(null)
   // merged over the old map, not swapped in: defaultPositions only knows the stock objects, and a
   // wholesale replace would strand any user-made folders without a position. Foldered objects are
   // skipped — they hold no desk slot while filed. One wallet's desk at a time: tidying Openfort must
@@ -922,14 +875,19 @@ export function Desktop() {
   const cleanUp = (assetOrder = assets, contactOrder = contacts) => {
     for (const w of shownWallets) cleanUpWallet(w, assetOrder, contactOrder)
   }
-  const cleanUpBy = (key: "name" | "kind" | "value") => {
-    cleanupKeyRef.current = key
+  /** The order a tidy lays a desk out in. Only "Name" says anything about wallets; the other keys are
+   *  asset-shaped, so the contacts keep the order they already had. */
+  const sortedFor = (key: TidyKey) => {
     const byName = (a: DesktopObj, b: DesktopObj) => a.label.localeCompare(b.label)
-    const sorted = [...assets].sort(
-      key === "name" ? byName : key === "value" ? (a, b) => b.usd - a.usd : (a, b) => a.kind.localeCompare(b.kind) || b.usd - a.usd
-    )
-    // only "Name" says anything about wallets; the other keys are asset-shaped
-    cleanUp(sorted, key === "name" ? [...contacts].sort(byName) : contacts)
+    return {
+      assets: [...assets].sort(key === "name" ? byName : key === "value" ? (a, b) => b.usd - a.usd : (a, b) => a.kind.localeCompare(b.kind) || b.usd - a.usd),
+      contacts: key === "name" ? [...contacts].sort(byName) : contacts
+    }
+  }
+  const cleanUpBy = (key: TidyKey) => {
+    cleanupKeyRef.current = key
+    const { assets: a, contacts: c } = sortedFor(key)
+    cleanUp(a, c)
   }
 
   /** A fresh wallet starts as a draft in the new-contact window — nothing lands on the desk unless
@@ -1034,62 +992,64 @@ export function Desktop() {
     })(e)
   }
 
-  /** Folders move like any icon, but through their own little drag: they never enter the drag store
-   *  (nothing 3D flies — the folder art is part of the icon) and they never see drop zones, which is
-   *  the whole one-level-deep rule. A press that never travels is a click, which opens the window. */
-  const folderMovedRef = useRef(false)
-  const startFolderDrag = (id: string) => (e: React.PointerEvent) => {
+  /** Packs and folders move through their own little drag rather than the desk's: nothing 3D flies (both
+   *  are drawn flat in the DOM) and neither sees a drop zone, which is the whole one-level-deep rule. The
+   *  wrapper is moved in viewport coordinates and the result stored back pane-relative. A press that never
+   *  travelled is a click, so `onEnd` — which only fires for a real drag — is where the move lands.
+   *  `onCross` is what to say when the release landed on the other wallet's half. */
+  const movedRef = useRef(false)
+  const startTileDrag = (id: string, wallet: Wallet, onCross?: (to: Wallet) => void) => (e: React.PointerEvent) => {
     if (e.button !== 0 || !positions) return
+    const local = positions[id]
+    if (!local) return
+    const origin = toScreen(wallet, local)
+    movedRef.current = false
+
+    dragLoop(e, {
+      threshold: 6,
+      onStart: () => {
+        movedRef.current = true
+      },
+      onMove: (dx, dy) => {
+        const el = iconNodes.current.get(id)
+        if (el) {
+          el.style.left = `${origin.x + dx}px`
+          el.style.top = `${origin.y + dy}px`
+        }
+      },
+      onEnd: (dx, dy, ev) => {
+        const landed = walletAt(ev.clientX)
+        if (landed !== wallet) onCross?.(landed)
+        const pane = panes[wallet]
+        const p = clampPos(origin.x + dx - pane.left, origin.y + dy - pane.top, id, wallet)
+        setPositions((pos) => (pos ? { ...pos, [id]: nearestFreeSpot(p, pos, id, 0, wallet) } : pos))
+      }
+    })
+  }
+
+  const startPackDrag = (pack: PackObj) => startTileDrag(pack.id, walletOf(pack))
+
+  const startFolderDrag = (id: string) => (e: React.PointerEvent) => {
+    if (e.button !== 0) return
     // part of a selection: the whole handful goes, folders included (they just can't be filed)
     if (selectedIds.has(id) && selectedIds.size > 1) {
-      folderMovedRef.current = true // the click that follows must not open the window
+      movedRef.current = true // the click that follows must not open the window
       return startCarry([...selectedIds], { settle: "formation" })(e)
     }
     if (selectedIds.size) setSelectedIds(new Set())
-    const local = positions[id]
-    if (!local) return
-    // the wrapper is moved in viewport coordinates and the result stored back pane-relative
-    const wallet = folders.find((f) => f.id === id)?.wallet ?? activeWallet
-    const origin = toScreen(wallet, local)
-    const sx = e.clientX
-    const sy = e.clientY
-    folderMovedRef.current = false
-
-    const onMove = (ev: PointerEvent) => {
-      const dx = ev.clientX - sx
-      const dy = ev.clientY - sy
-      if (!folderMovedRef.current && Math.hypot(dx, dy) < 6) return
-      folderMovedRef.current = true
-      const el = iconNodes.current.get(id)
-      if (el) {
-        el.style.left = `${origin.x + dx}px`
-        el.style.top = `${origin.y + dy}px`
-      }
+    const folder = folders.find((f) => f.id === id)
+    // a folder is desk furniture, not a holding — there's nothing to settle, and its contents may not all
+    // be welcome on the far desk (MetaMask takes no Solana). It stays put and says what to do.
+    const onCross = (to: Wallet) => {
+      cue("error")
+      showToast("alert", `"${folder?.label ?? "That folder"}" can't move to ${walletLabel(to)} as one — open it and drag the assets across individually.`)
     }
-    const onUp = (ev: PointerEvent) => {
-      window.removeEventListener("pointermove", onMove)
-      window.removeEventListener("pointerup", onUp)
-      if (!folderMovedRef.current) return
-      // a folder is desk furniture, not a holding — there's nothing to settle, and its contents may not
-      // all be welcome on the far desk (MetaMask takes no Solana). It stays put and says what to do.
-      if (walletAt(ev.clientX) !== wallet) {
-        const folder = folders.find((f) => f.id === id)
-        cue("error")
-        showToast(
-          "alert",
-          `"${folder?.label ?? "That folder"}" can't move to ${walletLabel(walletAt(ev.clientX))} as one — open it and drag the assets across individually.`
-        )
-      }
-      const pane = panes[wallet]
-      const p = clampPos(origin.x + ev.clientX - sx - pane.left, origin.y + ev.clientY - sy - pane.top, id, wallet)
-      setPositions((pos) => (pos ? { ...pos, [id]: nearestFreeSpot(p, pos, id, 0, wallet) } : pos))
-    }
-    window.addEventListener("pointermove", onMove)
-    window.addEventListener("pointerup", onUp)
+    startTileDrag(id, folder?.wallet ?? activeWallet, onCross)(e)
   }
+
   const onFolderOpen = (id: string) => () => {
     // that gesture was a move, not an open
-    if (folderMovedRef.current) return
+    if (movedRef.current) return
     openFolderWindow(id)
   }
 
@@ -1127,12 +1087,7 @@ export function Desktop() {
 
   const removeAssetObject = (id: string) => {
     setAssets((list) => list.filter((a) => a.id !== id))
-    setPositions((pos) => {
-      if (!pos) return pos
-      const { [id]: gone, ...rest } = pos
-      void gone
-      return rest
-    })
+    forgetPosition(id)
     setFolders((list) => list.map((f) => ({ ...f, contents: f.contents.filter((c) => c !== id) })))
   }
   const revokeApprovalEntry = (apId: string) => {
@@ -1380,13 +1335,10 @@ export function Desktop() {
     // one of each widget type only — offer just the ones not already on that desk's grid, and drop the
     // item entirely once every type is placed (or in split view, where there's no bento to add to)
     const addable = isSplit ? [] : WIDGET_TYPES.filter((t) => !widgetsByWallet[wallet].some((w) => w.type === t.type))
-    const byName = (a: DesktopObj, b: DesktopObj) => a.label.localeCompare(b.label)
-    const tidy = (key: "name" | "kind" | "value") => {
+    const tidy = (key: TidyKey) => {
       cleanupKeyRef.current = key
-      const sorted = [...assets].sort(
-        key === "name" ? byName : key === "value" ? (a, b) => b.usd - a.usd : (a, b) => a.kind.localeCompare(b.kind) || b.usd - a.usd
-      )
-      cleanUpWallet(wallet, sorted, key === "name" ? [...contacts].sort(byName) : contacts)
+      const { assets: a, contacts: c } = sortedFor(key)
+      cleanUpWallet(wallet, a, c)
     }
     return [
       { label: "New Contact", icon: UserPlus, onSelect: () => addContact(at, wallet) },
@@ -1714,17 +1666,7 @@ export function Desktop() {
             if (!local || folderedIds.has(a.id) || !onScreen.has(walletOf(a))) return null
             const p = toScreen(walletOf(a), local)
             return (
-              <div
-                key={a.id}
-                ref={(el) => {
-                  if (el) iconNodes.current.set(a.id, el)
-                  else iconNodes.current.delete(a.id)
-                }}
-                // in hand: above everything on the desk — folder windows included — and
-                // pointer-transparent so the drop hit-testing sees the zones underneath
-                data-cue-press
-                className={cn("absolute", (dragged?.id === a.id || carriedIds?.has(a.id)) && "pointer-events-none z-[160]")}
-                style={{ left: p.x, top: p.y }}>
+              <Placed key={a.id} id={a.id} at={p} nodes={iconNodes.current} carried={dragged?.id === a.id || carriedIds?.has(a.id)}>
                 {cardIds.has(a.id) ? (
                   <DesktopDetailCard
                     obj={a}
@@ -1757,7 +1699,7 @@ export function Desktop() {
                     onContextMenu={onIconMenu(a)}
                   />
                 )}
-              </div>
+              </Placed>
             )
           })}
 
@@ -1767,15 +1709,7 @@ export function Desktop() {
             if (!local || folderedIds.has(c.id) || !onScreen.has(walletOf(c))) return null
             const p = toScreen(walletOf(c), local)
             return (
-              <div
-                key={c.id}
-                ref={(el) => {
-                  if (el) iconNodes.current.set(c.id, el)
-                  else iconNodes.current.delete(c.id)
-                }}
-                data-cue-press
-                className={cn("absolute", (dragged?.id === c.id || carriedIds?.has(c.id)) && "pointer-events-none z-[160]")}
-                style={{ left: p.x, top: p.y }}>
+              <Placed key={c.id} id={c.id} at={p} nodes={iconNodes.current} carried={dragged?.id === c.id || carriedIds?.has(c.id)}>
                 <DesktopIcon
                   obj={c}
                   label={desktopLabel(c)}
@@ -1791,7 +1725,7 @@ export function Desktop() {
                   onDoubleClick={() => onObjectDoubleClick(c)}
                   onContextMenu={onIconMenu(c)}
                 />
-              </div>
+              </Placed>
             )
           })}
 
@@ -1803,15 +1737,7 @@ export function Desktop() {
             if (!local) return null
             const p = toScreen(f.wallet, local)
             return (
-              <div
-                key={f.id}
-                ref={(el) => {
-                  if (el) iconNodes.current.set(f.id, el)
-                  else iconNodes.current.delete(f.id)
-                }}
-                data-cue-press
-                className={cn("absolute", carriedIds?.has(f.id) && "pointer-events-none z-[160]")}
-                style={{ left: p.x, top: p.y }}>
+              <Placed key={f.id} id={f.id} at={p} nodes={iconNodes.current} carried={carriedIds?.has(f.id)}>
                 <DesktopFolder
                   id={f.id}
                   label={f.label}
@@ -1827,7 +1753,7 @@ export function Desktop() {
                   onDoubleClick={onFolderOpen(f.id)}
                   onContextMenu={onFolderMenu(f.id)}
                 />
-              </div>
+              </Placed>
             )
           })}
 
@@ -1838,15 +1764,7 @@ export function Desktop() {
             if (!local) return null
             const p = toScreen(walletOf(pack), local)
             return (
-              <div
-                key={pack.id}
-                ref={(el) => {
-                  if (el) iconNodes.current.set(pack.id, el)
-                  else iconNodes.current.delete(pack.id)
-                }}
-                data-cue-press
-                className="absolute"
-                style={{ left: p.x, top: p.y }}>
+              <Placed key={pack.id} id={pack.id} at={p} nodes={iconNodes.current}>
                 <DesktopPack
                   pack={pack}
                   pulse={pulseId === pack.id}
@@ -1854,7 +1772,7 @@ export function Desktop() {
                   onDoubleClick={() => openUnpack(pack)}
                   onContextMenu={(e) => e.preventDefault()}
                 />
-              </div>
+              </Placed>
             )
           })}
 
@@ -1960,7 +1878,7 @@ export function Desktop() {
               existing={w.existing}
               z={z}
               onClose={() => close(w.id)}
-              onMove={(amount, mergeIntoId) => applyMove(w.asset, w.to, amount, mergeIntoId)}
+              onMove={(amount, mergeIntoId) => applyMove(w.asset, w.to, amount, mergeIntoId, () => `mv-${assetIdc.current++}`)}
             />
           )
         return <WindowReceipt key={w.id} receipt={w.receipt} z={z} onClose={() => close(w.id)} />

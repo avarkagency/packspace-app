@@ -3,11 +3,13 @@
 import { useState } from "react"
 
 import type { AssetObj } from "@/types/objects"
-import { Scissors, X } from "lucide-react"
+import { Scissors } from "lucide-react"
 
 import { BaseBtn } from "@/components/base/BaseBtn"
 import { BaseSlider } from "@/components/base/BaseSlider"
 import { ObjectMark } from "@/components/desktop/object/ObjectMark"
+import { WindowHeading } from "@/components/desktop/window/WindowHeading"
+import { WindowShell } from "@/components/desktop/window/WindowShell"
 
 import { cn, units, usd } from "@/lib/utils"
 
@@ -42,63 +44,43 @@ export function WindowSplit({ asset, z, onClose, onSplit }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 grid place-items-center p-24" style={{ zIndex: z }}>
-      <div className="animate-in fade-in-0 absolute inset-0 bg-black/20 backdrop-blur-xl duration-200" onClick={onClose} aria-hidden />
+    <WindowShell z={z} width={480} onClose={onClose}>
+      <div className="p-28">
+        <WindowHeading gap={6} mark={<ObjectMark obj={asset} size={24} />} title={`Split ${units(asset.balance)} ${asset.symbol}`} chip={usd(asset.usd)} />
 
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        className="glass absolute top-28 right-28 grid size-40 cursor-pointer place-items-center rounded-12 text-white trans-base hover:bg-white/20 active:scale-97">
-        <X className="size-16" />
-      </button>
-
-      <div className="glass panel-in relative overflow-hidden rounded-16" style={{ width: 480 }}>
-        <div className="p-28">
-          <h2 className="flex items-center gap-6 text-18 leading-120 tracking-tight text-white">
-            <span className="inline-flex shrink-0 rounded-full ring-1 ring-white">
-              <ObjectMark obj={asset} size={24} />
-            </span>
-            Split {units(asset.balance)} {asset.symbol}
-          </h2>
-          <span className="tnum mt-8 inline-block rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">{usd(asset.usd)}</span>
-
-          <div className="-mx-28 mt-24 h-px bg-white/20" aria-hidden />
-
-          {/* the two portions the slider carves */}
-          <div className="mt-28 grid grid-cols-2 gap-8">
-            <Portion amount={a} symbol={asset.symbol} value={a * rate} />
-            <Portion amount={b} symbol={asset.symbol} value={b * rate} />
-          </div>
-
-          <div className="mt-8">
-            <BaseSlider min={0} max={100} step={step} value={pct} onChange={setPct} label={`Split ${pct}%`} ariaLabel="Split ratio" />
-          </div>
-
-          <div className="mt-8 flex gap-6">
-            {QUICK.map((q) => (
-              <button
-                key={q}
-                type="button"
-                onClick={() => setPct(q)}
-                aria-label={`Portion A ${q}%`}
-                className={cn(
-                  "tnum cursor-pointer rounded-full border border-white/20 px-10 py-4 text-11 leading-120 trans-base active:scale-97",
-                  pct === q ? "bg-white/20 text-white" : "bg-white/5 text-white/70 hover:text-white"
-                )}>
-                {q}/{100 - q}
-              </button>
-            ))}
-          </div>
-
-          {!valid && <p className="mt-8 text-11 leading-120 text-warning">A split needs something on both sides — nudge the slider.</p>}
-
-          <BaseBtn icon={Scissors} className="mt-28 w-full" disabled={!valid} onClick={onConfirm}>
-            Split asset
-          </BaseBtn>
+        {/* the two portions the slider carves */}
+        <div className="mt-28 grid grid-cols-2 gap-8">
+          <Portion amount={a} symbol={asset.symbol} value={a * rate} />
+          <Portion amount={b} symbol={asset.symbol} value={b * rate} />
         </div>
+
+        <div className="mt-8">
+          <BaseSlider min={0} max={100} step={step} value={pct} onChange={setPct} label={`Split ${pct}%`} ariaLabel="Split ratio" />
+        </div>
+
+        <div className="mt-8 flex gap-6">
+          {QUICK.map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => setPct(q)}
+              aria-label={`Portion A ${q}%`}
+              className={cn(
+                "tnum cursor-pointer rounded-full border border-white/20 px-10 py-4 text-11 leading-120 trans-base active:scale-97",
+                pct === q ? "bg-white/20 text-white" : "bg-white/5 text-white/70 hover:text-white"
+              )}>
+              {q}/{100 - q}
+            </button>
+          ))}
+        </div>
+
+        {!valid && <p className="mt-8 text-11 leading-120 text-warning">A split needs something on both sides — nudge the slider.</p>}
+
+        <BaseBtn icon={Scissors} className="mt-28 w-full" disabled={!valid} onClick={onConfirm}>
+          Split asset
+        </BaseBtn>
       </div>
-    </div>
+    </WindowShell>
   )
 }
 

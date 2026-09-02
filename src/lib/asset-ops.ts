@@ -10,18 +10,34 @@ export function canCombine(a: AssetObj, b: AssetObj | PackObj): b is AssetObj {
   return isSameToken(a, b) && b.class === "asset" && b.id !== a.id && a.kind !== "nft" && b.kind !== "nft"
 }
 
-const ASSET_DROP_PREFIX = "asset:"
-export const assetDropKey = (id: string) => `${ASSET_DROP_PREFIX}${id}`
-export const assetDropId = (key: string) => (key.startsWith(ASSET_DROP_PREFIX) ? key.slice(ASSET_DROP_PREFIX.length) : null)
+/** Every icon is a potential drop target, so the prefix is what tells the handlers apart. */
+function dropKind(prefix: string) {
+  return {
+    prefix,
+    key: (id: string) => `${prefix}${id}`,
+    id: (key: string) => (key.startsWith(prefix) ? key.slice(prefix.length) : null)
+  }
+}
 
-const WALLET_DROP_PREFIX = "wallet:"
-export const walletDropKey = (id: string) => `${WALLET_DROP_PREFIX}${id}`
-export const walletDropId = (key: string) => (key.startsWith(WALLET_DROP_PREFIX) ? key.slice(WALLET_DROP_PREFIX.length) : null)
+const asset = dropKind("asset:")
+const wallet = dropKind("wallet:")
+const folder = dropKind("folder:")
+const nav = dropKind("nav:")
 
-export const FOLDER_DROP_PREFIX = "folder:"
-export const folderDropKey = (id: string) => `${FOLDER_DROP_PREFIX}${id}`
-export const folderDropId = (key: string) => (key.startsWith(FOLDER_DROP_PREFIX) ? key.slice(FOLDER_DROP_PREFIX.length) : null)
+export const assetDropKey = asset.key
+export const assetDropId = asset.id
 
-const NAV_DROP_PREFIX = "nav:"
-export const navDropKey = (id: string) => `${NAV_DROP_PREFIX}${id}`
-export const navDropId = (key: string) => (key.startsWith(NAV_DROP_PREFIX) ? key.slice(NAV_DROP_PREFIX.length) : null)
+export const walletDropKey = wallet.key
+export const walletDropId = wallet.id
+
+export const FOLDER_DROP_PREFIX = folder.prefix
+export const folderDropKey = folder.key
+export const folderDropId = folder.id
+
+export const navDropKey = nav.key
+export const navDropId = nav.id
+
+const STABLECOINS = new Set(["USDC", "USDT"])
+
+/** What a minted holding counts as — anything unpacked, received or claimed comes back through here. */
+export const assetKindFor = (symbol: string): AssetObj["kind"] => (STABLECOINS.has(symbol) ? "stablecoin" : "token")

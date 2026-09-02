@@ -3,10 +3,12 @@
 import { useState } from "react"
 
 import type { PersonObj } from "@/types/objects"
-import { Check, X } from "lucide-react"
+import { Check } from "lucide-react"
 
 import { BaseBtn } from "@/components/base/BaseBtn"
 import { ObjectAvatar } from "@/components/desktop/object/ObjectAvatar"
+import { WindowHeading } from "@/components/desktop/window/WindowHeading"
+import { WindowShell } from "@/components/desktop/window/WindowShell"
 
 type Props = {
   contact: PersonObj
@@ -37,46 +39,26 @@ export function WindowContact({ contact, create = false, z, onClose, onSave }: P
   }
 
   return (
-    <div className="fixed inset-0 grid place-items-center p-24" style={{ zIndex: z }}>
-      <div className="animate-in fade-in-0 absolute inset-0 bg-black/20 backdrop-blur-xl duration-200" onClick={onClose} aria-hidden />
+    <WindowShell z={z} width={440} onClose={onClose}>
+      <div className="p-28">
+        <WindowHeading mark={<ObjectAvatar contact={contact} size={24} />} title={create ? "New Contact" : "Edit Wallet"} chip={label.trim() || undefined} />
 
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        className="glass absolute top-28 right-28 grid size-40 cursor-pointer place-items-center rounded-12 text-white trans-base hover:bg-white/20 active:scale-97">
-        <X className="size-16" />
-      </button>
+        <div className="mt-24 flex flex-col gap-16">
+          <ContactField label="Name" value={label} onChange={setLabel} />
+          <ContactField label="Handle" value={handle} onChange={setHandle} />
+          <ContactField label="Address" value={address} onChange={setAddress} mono />
+        </div>
 
-      <div className="glass panel-in relative overflow-hidden rounded-16" style={{ width: 440 }}>
-        <div className="p-28">
-          <h2 className="flex items-center gap-8 text-18 leading-120 tracking-tight text-white">
-            <span className="inline-flex shrink-0 rounded-full ring-1 ring-white">
-              <ObjectAvatar contact={contact} size={24} />
-            </span>
-            {create ? "New Contact" : "Edit Wallet"}
-          </h2>
-          {label.trim() && <span className="tnum mt-8 inline-block rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">{label.trim()}</span>}
-
-          <div className="-mx-28 mt-24 h-px bg-white/20" aria-hidden />
-
-          <div className="mt-24 flex flex-col gap-16">
-            <ContactField label="Name" value={label} onChange={setLabel} />
-            <ContactField label="Handle" value={handle} onChange={setHandle} />
-            <ContactField label="Address" value={address} onChange={setAddress} mono />
-          </div>
-
-          <div className="mt-28 flex gap-8">
-            <BaseBtn variant="secondary" className="flex-1" onClick={onClose}>
-              Cancel
-            </BaseBtn>
-            <BaseBtn icon={Check} className="flex-1" disabled={!valid} onClick={onConfirm}>
-              {create ? "Add" : "Save"}
-            </BaseBtn>
-          </div>
+        <div className="mt-28 flex gap-8">
+          <BaseBtn variant="secondary" className="flex-1" onClick={onClose}>
+            Cancel
+          </BaseBtn>
+          <BaseBtn icon={Check} className="flex-1" disabled={!valid} onClick={onConfirm}>
+            {create ? "Add" : "Save"}
+          </BaseBtn>
         </div>
       </div>
-    </div>
+    </WindowShell>
   )
 }
 

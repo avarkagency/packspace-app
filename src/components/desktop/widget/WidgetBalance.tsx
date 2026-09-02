@@ -9,14 +9,18 @@ import { createPortal } from "react-dom"
 import { cn, shortAddr, usd } from "@/lib/utils"
 import { WALLETS, type Wallet } from "@/lib/wallets"
 
+import { C } from "@/data/colors"
+
 type Slice = { label: string; color: string; usd: number; pct: number }
 
 const LEGEND_COLOR: Record<string, string> = {
-  ETH: "#627eeb",
-  BNB: "#f1b90c",
+  ETH: C.eth,
+  BNB: C.bnb,
+  // the donut reads SOL as its black mark, not the fixture green — the ring's other slices are too
+  // close to it, and a legend swatch is not the coin
   SOL: "#000000",
-  USDC: "#2775ca",
-  USDT: "#1ba27a"
+  USDC: C.usdc,
+  USDT: C.usdt
 }
 
 const OTHER_COLOR = "rgba(255,255,255,0.5)"

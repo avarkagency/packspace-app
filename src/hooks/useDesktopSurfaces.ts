@@ -21,6 +21,17 @@ export type WinDraft = WinBody & { matchKey: string }
 export type WinSpec = WinDraft & { id: string }
 export type RightPanel = { kind: "inspect"; id: string } | { kind: "radar" }
 
+/** Every surface blooms open and errors closed. Routing all of them through this pair is what keeps that
+ *  true — there is deliberately no second way to set the state. */
+const show = <T>(set: (v: T) => void, v: T) => {
+  cue("bloom")
+  set(v)
+}
+const hide = <T>(set: (v: T) => void, v: T) => {
+  cue("error")
+  set(v)
+}
+
 export function useDesktopSurfaces(activeWallet: Wallet) {
   const idc = useRef(0)
 
@@ -47,47 +58,20 @@ export function useDesktopSurfaces(activeWallet: Wallet) {
     setWins((w) => w.filter((x) => x.id !== id))
   }
 
-  const openReceipts = () => {
-    cue("bloom")
-    setReceiptsOpen(true)
-  }
-  const closeReceipts = () => {
-    cue("error")
-    setReceiptsOpen(false)
-  }
+  const openReceipts = () => show(setReceiptsOpen, true)
+  const closeReceipts = () => hide(setReceiptsOpen, false)
 
   // a pack lands on the desk whose holdings built it — a dropped seed names it, else the active desk
-  const openPackBuilder = (seed?: AssetObj, wallet?: Wallet) => {
-    cue("bloom")
-    setPackBuilder({ seed, wallet: wallet ?? (seed ? walletOf(seed) : activeWallet) })
-  }
-  const closePackBuilder = () => {
-    cue("error")
-    setPackBuilder(null)
-  }
+  const openPackBuilder = (seed?: AssetObj, wallet?: Wallet) => show(setPackBuilder, { seed, wallet: wallet ?? (seed ? walletOf(seed) : activeWallet) })
+  const closePackBuilder = () => hide(setPackBuilder, null)
 
-  const openUnpack = (pack: PackObj) => {
-    cue("bloom")
-    setUnpacking(pack)
-  }
-  const closeUnpack = () => {
-    cue("error")
-    setUnpacking(null)
-  }
+  const openUnpack = (pack: PackObj) => show(setUnpacking, pack)
+  const closeUnpack = () => hide(setUnpacking, null)
 
-  const closePanel = () => {
-    cue("error")
-    setRightPanel(null)
-  }
+  const closePanel = () => hide(setRightPanel, null)
 
-  const openSearch = () => {
-    cue("bloom")
-    setSearchOpen(true)
-  }
-  const closeSearch = () => {
-    cue("error")
-    setSearchOpen(false)
-  }
+  const openSearch = () => show(setSearchOpen, true)
+  const closeSearch = () => hide(setSearchOpen, false)
 
   /** For a window whose subject has gone. Silent: nobody closed it, it stopped being about anything. */
   const dismissWins = (match: (w: WinSpec) => boolean) => setWins((w) => w.filter((x) => !match(x)))

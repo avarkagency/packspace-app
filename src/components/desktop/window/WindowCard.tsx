@@ -4,10 +4,11 @@ import { useMemo, useState } from "react"
 
 import type { Chain, PersonObj } from "@/types/objects"
 import { GradientAvatar } from "@outpacelabs/avatars"
-import { BadgeCheck, ChevronLeft, CreditCard, HelpCircle, Link2, ShieldCheck, X } from "lucide-react"
+import { BadgeCheck, ChevronLeft, CreditCard, HelpCircle, Link2, ShieldCheck } from "lucide-react"
 
 import { BaseBtn } from "@/components/base/BaseBtn"
 import { ObjectAvatar } from "@/components/desktop/object/ObjectAvatar"
+import { WindowShell } from "@/components/desktop/window/WindowShell"
 
 import { isProjectG } from "@/lib/chain"
 
@@ -90,117 +91,105 @@ export function WindowCard({ contact, onImport, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 grid place-items-center p-24" style={{ zIndex: 220 }}>
-      <div className="animate-in fade-in-0 absolute inset-0 bg-black/20 backdrop-blur-xl duration-200" onClick={onClose} aria-hidden />
+    <WindowShell z={220} width={392} onClose={onClose}>
+      <div className="p-28">
+        <div className="flex items-center gap-12">
+          <span
+            className="grid size-40 shrink-0 place-items-center rounded-12"
+            style={{ background: "rgba(150,160,255,0.16)", border: "1px solid rgba(150,160,255,0.35)", color: "#c7d2fe" }}>
+            <CreditCard className="size-20" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-18 leading-120 tracking-tight text-white">PackSpace Card</h2>
+            <p className="text-12 leading-120 text-white/60">{mine ? "Yours to share" : "Imported contact"}</p>
+          </div>
+        </div>
 
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        className="glass absolute top-28 right-28 grid size-40 cursor-pointer place-items-center rounded-12 text-white trans-base hover:bg-white/20 active:scale-97">
-        <X className="size-16" />
-      </button>
+        <div className="-mx-28 mt-24 h-px bg-white/20" aria-hidden />
 
-      <div className="glass panel-in relative overflow-hidden rounded-16" style={{ width: 392 }}>
-        <div className="p-28">
-          <div className="flex items-center gap-12">
-            <span
-              className="grid size-40 shrink-0 place-items-center rounded-12"
-              style={{ background: "rgba(150,160,255,0.16)", border: "1px solid rgba(150,160,255,0.35)", color: "#c7d2fe" }}>
-              <CreditCard className="size-20" />
-            </span>
-            <div className="min-w-0">
-              <h2 className="text-18 leading-120 tracking-tight text-white">PackSpace Card</h2>
-              <p className="text-12 leading-120 text-white/60">{mine ? "Yours to share" : "Imported contact"}</p>
+        {importing ? (
+          <div className="mt-24">
+            <p className="text-12 leading-140 text-white/60">
+              Paste a PackSpace card link, @handle, or wallet address someone shared with you. It becomes an unconfirmed contact you can then confirm.
+            </p>
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="packspace.xyz/c/…  ·  @name.pack  ·  0x…"
+              className="glass mt-16 w-full rounded-md px-13 py-12 font-mono text-12 text-white outline-none placeholder:text-white/40"
+            />
+            <div className="mt-20 flex gap-8">
+              <BaseBtn variant="secondary" icon={ChevronLeft} className="flex-1" onClick={() => setImporting(false)}>
+                Back
+              </BaseBtn>
+              <BaseBtn className="flex-1" disabled={!text.trim()} onClick={doImport}>
+                Import card
+              </BaseBtn>
             </div>
           </div>
-
-          <div className="-mx-28 mt-24 h-px bg-white/20" aria-hidden />
-
-          {importing ? (
-            <div className="mt-24">
-              <p className="text-12 leading-140 text-white/60">
-                Paste a PackSpace card link, @handle, or wallet address someone shared with you. It becomes an unconfirmed contact you can then confirm.
-              </p>
-              <input
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="packspace.xyz/c/…  ·  @name.pack  ·  0x…"
-                className="glass mt-16 w-full rounded-md px-13 py-12 font-mono text-12 text-white outline-none placeholder:text-white/40"
-              />
-              <div className="mt-20 flex gap-8">
-                <BaseBtn variant="secondary" icon={ChevronLeft} className="flex-1" onClick={() => setImporting(false)}>
-                  Back
-                </BaseBtn>
-                <BaseBtn className="flex-1" disabled={!text.trim()} onClick={doImport}>
-                  Import card
-                </BaseBtn>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* the card itself */}
-              <div
-                className="mt-24 rounded-md border border-[#96a0ff]/28 p-18"
-                style={{ background: "linear-gradient(150deg, rgba(120,90,255,0.22), rgba(59,130,246,0.14))" }}>
-                <div className="flex gap-14">
-                  <div className="flex min-w-0 flex-1 flex-col gap-11">
-                    {contact ? <ObjectAvatar contact={contact} size={52} /> : <GradientAvatar seed={address || name} size={52} className="shrink-0" />}
-                    <div className="min-w-0">
-                      <p className="truncate text-17 leading-120 font-extrabold text-white">{name}</p>
-                      <p className="truncate font-mono text-12 leading-120 text-[#c7d2fe]">{handle}</p>
-                    </div>
-                    <span
-                      className="flex w-fit items-center gap-4 rounded-full px-9 py-3 text-10 leading-120 font-bold tracking-wide"
-                      style={{ color: vchip.color, background: vchip.bg }}>
-                      <vchip.Icon className="size-11" /> {vKey}
-                    </span>
-                    <div>
-                      <p className="text-9 leading-120 font-bold tracking-wide text-white/40 uppercase">Address</p>
-                      <p className="truncate font-mono text-12 leading-120 text-white">{address}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-4">
-                      {chains.map((c) => (
-                        <span key={c} className="rounded-full bg-white/10 px-8 py-2 text-10 leading-120 font-medium text-[#dbe4ff]">
-                          {c}
-                        </span>
-                      ))}
-                    </div>
+        ) : (
+          <>
+            {/* the card itself */}
+            <div
+              className="mt-24 rounded-md border border-[#96a0ff]/28 p-18"
+              style={{ background: "linear-gradient(150deg, rgba(120,90,255,0.22), rgba(59,130,246,0.14))" }}>
+              <div className="flex gap-14">
+                <div className="flex min-w-0 flex-1 flex-col gap-11">
+                  {contact ? <ObjectAvatar contact={contact} size={52} /> : <GradientAvatar seed={address || name} size={52} className="shrink-0" />}
+                  <div className="min-w-0">
+                    <p className="truncate text-17 leading-120 font-extrabold text-white">{name}</p>
+                    <p className="truncate font-mono text-12 leading-120 text-[#c7d2fe]">{handle}</p>
                   </div>
-
-                  {/* the pseudo-QR */}
-                  <div
-                    className="grid size-104 shrink-0 gap-0 rounded-10 bg-white p-7"
-                    style={{ gridTemplateColumns: "repeat(13,1fr)", gridTemplateRows: "repeat(13,1fr)" }}>
-                    {cells.map((on, i) => (
-                      <span key={i} style={{ background: on ? "#0b0e17" : "#fff" }} />
+                  <span
+                    className="flex w-fit items-center gap-4 rounded-full px-9 py-3 text-10 leading-120 font-bold tracking-wide"
+                    style={{ color: vchip.color, background: vchip.bg }}>
+                    <vchip.Icon className="size-11" /> {vKey}
+                  </span>
+                  <div>
+                    <p className="text-9 leading-120 font-bold tracking-wide text-white/40 uppercase">Address</p>
+                    <p className="truncate font-mono text-12 leading-120 text-white">{address}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-4">
+                    {chains.map((c) => (
+                      <span key={c} className="rounded-full bg-white/10 px-8 py-2 text-10 leading-120 font-medium text-[#dbe4ff]">
+                        {c}
+                      </span>
                     ))}
                   </div>
                 </div>
-              </div>
 
-              {/* share row */}
-              <p className="mt-20 text-10 leading-120 font-bold tracking-wide text-white/40 uppercase">Share</p>
-              <div className="mt-8 grid grid-cols-4 gap-8">
-                <ShareBtn label="Telegram" color="#29a9ea" Icon={TelegramLogo} onClick={() => share("telegram")} />
-                <ShareBtn label="X" color="#e7e9ea" Icon={XLogo} onClick={() => share("x")} />
-                <ShareBtn label="WhatsApp" color="#25d366" Icon={WhatsAppLogo} onClick={() => share("whatsapp")} />
-                <ShareBtn label="Copy link" color="#c4b6ff" Icon={Link2} onClick={() => share("copy")} />
+                {/* the pseudo-QR */}
+                <div
+                  className="grid size-104 shrink-0 gap-0 rounded-10 bg-white p-7"
+                  style={{ gridTemplateColumns: "repeat(13,1fr)", gridTemplateRows: "repeat(13,1fr)" }}>
+                  {cells.map((on, i) => (
+                    <span key={i} style={{ background: on ? "#0b0e17" : "#fff" }} />
+                  ))}
+                </div>
               </div>
+            </div>
 
-              {mine && (
-                <button
-                  type="button"
-                  onClick={() => setImporting(true)}
-                  className="glass mt-20 w-full rounded-md px-11 py-8 text-12 leading-120 font-medium text-[#dbe4ff] trans-base hover:bg-white/10">
-                  Import a card
-                </button>
-              )}
-            </>
-          )}
-        </div>
+            {/* share row */}
+            <p className="mt-20 text-10 leading-120 font-bold tracking-wide text-white/40 uppercase">Share</p>
+            <div className="mt-8 grid grid-cols-4 gap-8">
+              <ShareBtn label="Telegram" color="#29a9ea" Icon={TelegramLogo} onClick={() => share("telegram")} />
+              <ShareBtn label="X" color="#e7e9ea" Icon={XLogo} onClick={() => share("x")} />
+              <ShareBtn label="WhatsApp" color="#25d366" Icon={WhatsAppLogo} onClick={() => share("whatsapp")} />
+              <ShareBtn label="Copy link" color="#c4b6ff" Icon={Link2} onClick={() => share("copy")} />
+            </div>
+
+            {mine && (
+              <button
+                type="button"
+                onClick={() => setImporting(true)}
+                className="glass mt-20 w-full rounded-md px-11 py-8 text-12 leading-120 font-medium text-[#dbe4ff] trans-base hover:bg-white/10">
+                Import a card
+              </button>
+            )}
+          </>
+        )}
       </div>
-    </div>
+    </WindowShell>
   )
 }
 

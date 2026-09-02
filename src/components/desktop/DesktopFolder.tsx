@@ -3,7 +3,9 @@
 import Image from "next/image"
 
 import { ICON_W } from "@/const/desktop-layout"
-import { clearCoinHover, setCoinCursor, setCoinHover } from "@/stores/coin"
+import { coinHoverProps } from "@/stores/coin"
+
+import { BaseRenameInput } from "@/components/base/BaseRenameInput"
 
 import { cn } from "@/lib/utils"
 
@@ -38,25 +40,6 @@ export function DesktopFolder({
   onDoubleClick,
   onContextMenu
 }: Props) {
-  // events
-  const onEnter = (e: React.PointerEvent) => {
-    setCoinCursor(e.clientX, e.clientY)
-    setCoinHover(id)
-  }
-  const onLeave = () => clearCoinHover(id)
-  const onMove = (e: React.PointerEvent) => setCoinCursor(e.clientX, e.clientY)
-
-  // events
-  const commit = (el: HTMLInputElement) => {
-    const name = el.value.trim()
-    if (name && name !== label) onRename?.(name)
-    else onRenameCancel?.()
-  }
-  const onRenameKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") commit(e.currentTarget)
-    if (e.key === "Escape") onRenameCancel?.()
-  }
-
   return (
     <div
       data-drop={dropKey}
@@ -69,7 +52,7 @@ export function DesktopFolder({
         target && "bg-white/10 outline-1 outline-dashed outline-white/40",
         (over || selected) && "bg-white/20 outline-1 outline-dashed outline-white"
       )}>
-      <div className="grid h-48 shrink-0 place-items-center" onPointerEnter={onEnter} onPointerLeave={onLeave} onPointerMove={onMove}>
+      <div className="grid h-48 shrink-0 place-items-center" {...coinHoverProps(id)}>
         <Image
           src="/images/folder.png"
           alt={`${label} folder`}
@@ -83,16 +66,7 @@ export function DesktopFolder({
 
       <div className="flex w-full flex-col items-center gap-4">
         {renaming ? (
-          <input
-            defaultValue={label}
-            autoFocus
-            onFocus={(e) => e.currentTarget.select()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onKeyDown={onRenameKey}
-            onBlur={(e) => commit(e.currentTarget)}
-            className="w-full rounded-sm border border-white/40 bg-surface px-4 py-2 text-center text-12 text-foreground outline-none"
-            aria-label="Rename folder"
-          />
+          <BaseRenameInput value={label} ariaLabel="Rename folder" className="border-white/40" onCommit={onRename} onCancel={onRenameCancel} />
         ) : (
           <p className="w-full truncate text-center text-12 font-medium leading-120 tracking-tight text-white">{over ? "Drop" : label}</p>
         )}

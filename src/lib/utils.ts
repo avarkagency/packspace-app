@@ -38,6 +38,9 @@ export function desktopLabel(obj: DesktopObj) {
   return obj.class === "asset" ? `${units(obj.balance)} ${obj.symbol}` : obj.label
 }
 
+/** The label form: just enough of the address to recognise it, no tail. */
+export const addrStub = (addr: string) => `${addr.slice(0, 6)}...`
+
 export function shortAddr(addr: string, lead = 6, tail = 4) {
   if (addr.length <= lead + tail) return addr
   return `${addr.slice(0, lead)}…${addr.slice(-tail)}`

@@ -45,7 +45,7 @@ src/data/       the fixture sets (assets, people, packs, apps, approvals, folder
 src/hooks/      the desk's own hooks (useDesktop*)
 src/shaders/    <name>/{vertex,fragment}.glsl, imported as raw strings
 src/lib/        rules + helpers (asset-ops, chain, wallets, widgets, inspect, market, sound,
-                utils, object-art, coin-geometry, nft-geometry)
+                utils, drag-loop, receipt, object-art, coin-geometry, nft-geometry)
 src/stores/     mutable module singletons (desk, coin, drag, chrome-keepout, clip-planes)
 src/types/      objects.ts — the whole domain model
 ```
@@ -73,8 +73,10 @@ All feature code is `src/components/desktop/`, one folder per cluster:
   `Object` shadows the JS global in its own module and in every file that imports it.
 - **`window/`** — the modals, one file per action: `WindowSend`, `WindowTransfer`, `WindowHandoff`,
   `WindowSplit`, `WindowCombine`, `WindowMove`, `WindowUnpack`, `WindowPackBuilder`, `WindowFolder`,
-  `WindowCard`, `WindowContact`, `WindowDelete`, `WindowReceipt`, `WindowReceipts`. There is no shared
-  frame any more — each paints its own chrome.
+  `WindowCard`, `WindowContact`, `WindowDelete`, `WindowReceipt`, `WindowReceipts`. `WindowShell` is the
+  furniture they share — the backdrop, the corner dismiss and the glass card — and `WindowHeading` the
+  title / pill / rule each opens with. Everything inside the card is still the window's own; the shell
+  takes only what was byte-identical across all of them.
 - **`panel/`** — the right-docked `PanelInspector` and `PanelApprovals`.
 - **`widget/`** — `Widget` is the top-right bento itself; `WidgetBalance` and `WidgetNft` are its tiles.
 - **`fx/`** — the shader effects, reusable across the desk: `FxConfetti`, `FxRainbowBorder`.
@@ -101,6 +103,9 @@ been lifted out is everything that stands on its own:
 - **`hooks/useDesktopSettlement`** — what happens when a transfer settles: `consumeAssets` (shared) plus
   Send's and Handoff's own receipts.
 - **`hooks/useDesktopMarquee`** — the sweep-select and the ids it holds.
+- **`lib/drag-loop.ts`** — `dragLoop`, the window-listener pointer drag every hand-rolled gesture runs on
+  (the pack and folder tiles, the folder window's own move and resize): a travel threshold so a press that
+  never moved stays a click, deltas from the press point, both listeners torn down on release.
 - **`hooks/useDesktopToast` / `useDesktopFlash` / `useDesktopPulse`** — the three transient cues. Each
   owns its own timer and clears it on unmount, so no caller has to remember to.
 - **`const/desktop-config.ts`** (wallpapers, the stock bento, the split keep-out) and

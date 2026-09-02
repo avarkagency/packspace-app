@@ -15,9 +15,10 @@ import { WIDGET_TYPES, type WidgetInstance, type WidgetType, packWidgets } from 
 import { WidgetBalance } from "./WidgetBalance"
 import { WidgetNft } from "./WidgetNft"
 
-const COL_W = 160
+// the bento's own grid — deliberately not the desk's COL_W / ROW_H
+const CELL_W = 160
+const CELL_H = 160
 const GAP = 8
-const ROW_H = 160
 
 type Props = {
   widgets: WidgetInstance[]
@@ -193,7 +194,7 @@ export function Widget({ widgets, setWidgets, assets, wallet, onAdd, onKeepoutCh
           setMenu({ x: e.clientX, y: e.clientY, id: null })
         }}
         className="fixed top-48 right-8 z-[100] grid"
-        style={{ gridTemplateColumns: `repeat(2, ${COL_W}px)`, gridAutoRows: `minmax(${ROW_H}px, max-content)`, gap: GAP }}>
+        style={{ gridTemplateColumns: `repeat(2, ${CELL_W}px)`, gridAutoRows: `minmax(${CELL_H}px, max-content)`, gap: GAP }}>
         {/* while dragging, the grid's empty cells show as faint guides, with the drop target lit. The cells
             under the dragged widget itself are skipped — it still sits there, and a 2-column widget must not
             read as two split slots. */}
