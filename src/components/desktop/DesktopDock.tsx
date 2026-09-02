@@ -64,13 +64,9 @@ export function DesktopDock({ carriedAsset = false, onOpen }: { carriedAsset?: b
 
 type TileProps = {
   item: NavItem
-  /** Present while this tile can take the drop happening right now. */
   dropKey?: string
-  /** The coin in hand could land here. */
   target?: boolean
-  /** ...and is currently over it. */
   over?: boolean
-  /** Some object is in hand — the tooltip stands down; the drag label speaks for the cursor. */
   dragging?: boolean
   onOpen?: (id: string) => void
 }

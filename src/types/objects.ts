@@ -27,7 +27,6 @@ export type AssetObj = ObjBase & {
   /** Held balance in native units. */
   balance: number
   usd: number
-  /** Colour signature so a coin ≠ a coin at a glance. */
   color: string
   /** Commodity assets convert 1-tap to USDC in My Assets (spec §3.7). */
   convertible?: boolean

@@ -36,22 +36,15 @@ const DOWN = "#ef5a44"
 
 type Props = {
   obj: AssetObj
-  /** Present when this card can take a drop right now — i.e. it's a valid merge target. */
   dropKey?: string
-  /** Something unrelated is in hand — recede so the objects that *can* take it stand out. */
   dimmed?: boolean
-  /** The coin in hand could land here. */
   target?: boolean
-  /** ...and is currently over it. */
   over?: boolean
-  /** Its right-click menu is open, or the marquee swept it up. */
   selected?: boolean
-  /** Freshly made by a split — flares yellow, then fades. */
   flash?: boolean
   onPointerDown?: (e: React.PointerEvent) => void
   onDoubleClick?: () => void
   onContextMenu?: (e: React.MouseEvent) => void
-  /** Back to the icon — the same thing the right-click menu's "Show as icon" does. */
   onCollapse?: () => void
 }
 

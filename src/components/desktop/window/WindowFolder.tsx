@@ -35,21 +35,16 @@ type Props = {
   /** The folder's drop key — the whole window takes drops, not just the desk icon. */
   dropKey: string
   onClose: () => void
-  /** Any press on the window brings it to the front of the other folder windows. */
   onFocus: () => void
   /** A press on a tile: the object, plus the picked set it belongs to (itself alone otherwise) —
    *  the workspace turns it into a pull-out drag or a group carry. */
   onItemPointerDown: (obj: DesktopObj, group: DesktopObj[]) => (e: React.PointerEvent) => void
-  /** A right-click on a tile — the same menu the object would get on the desk. */
   onItemContextMenu: (obj: DesktopObj) => (e: React.MouseEvent) => void
-  /** The halves of the freshest split — tiles in here flare yellow just like the desk icons. */
   flashIds: ReadonlySet<string>
   /** A tile's drop key while something in hand could merge into it — same rule as the desk icons,
    *  so split portions recombine without ever leaving the folder. */
   itemDropKey: (obj: DesktopObj) => string | undefined
-  /** Something unrelated is in hand — recede so the tiles that CAN take it stand out. */
   itemDimmed: (obj: DesktopObj) => boolean
-  /** The drop zone currently under the cursor, for the tile hover treatment. */
   overKey: string | null
 }
 
@@ -274,7 +269,6 @@ function FolderGridItem({
   obj: DesktopObj
   picked: boolean
   flash: boolean
-  /** Present when the coin in hand could merge into this tile — the tile is a live drop zone. */
   dropKey?: string
   dimmed: boolean
   over: boolean

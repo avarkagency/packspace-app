@@ -45,9 +45,7 @@ type Props = {
    *  riding its own slot — but it takes every other drag behaviour: the z lift over the resting desk,
    *  the clip bypass, the spin and the scale. */
   carried: boolean
-  /** Whether any object is mid-drag — the resting ones go inert while one is in hand. */
   anyDragging: boolean
-  /** Recede: something unrelated is in hand. Matches the cell's own fade. */
   dimmed: boolean
   reduced: boolean
 }

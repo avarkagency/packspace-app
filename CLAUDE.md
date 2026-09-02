@@ -23,7 +23,8 @@ lucide-react · cuelume (synthesized Web Audio) · @outpacelabs/avatars.**
 
 No drei, no postprocessing, no leva, no r3f-perf, and therefore **no `patches/` or `postinstall`** —
 that's a deliberate divergence from the siblings, not an omission. The 3D layer here is one thin
-ortho canvas, not a scene.
+ortho canvas, not a scene. `raw-loader` is present for the same reason it is in the siblings: the
+shaders (below).
 
 ## Run
 
@@ -42,6 +43,7 @@ src/components/ base/ (the Base* primitives) + desktop/ (all feature code)
 src/const/      constants + layout maths (desktop-layout, desktop-config, pane, app-config)
 src/data/       the fixture sets (assets, people, packs, apps, approvals, folders, colors, objects)
 src/hooks/      the desk's own hooks (useDesktop*) + usePrefersReducedMotion
+src/shaders/    <name>/{vertex,fragment}.glsl, imported as raw strings
 src/lib/        rules + helpers (asset-ops, chain, wallets, widgets, inspect, market, sound,
                 utils, object-art, coin-geometry, nft-geometry)
 src/stores/     mutable module singletons (desk, coin, drag, chrome-keepout, clip-planes)
@@ -103,6 +105,30 @@ been lifted out is everything that stands on its own:
   owns its own timer and clears it on unmount, so no caller has to remember to.
 - **`const/desktop-config.ts`** (wallpapers, the stock bento, the split keep-out) and
   **`data/folders.ts`** (the folders the desk starts with) hold the seeds.
+
+## Shaders
+
+**GLSL lives in `src/shaders/<name>/{vertex,fragment}.glsl`, never inline in a component** — the same
+layout as gacha. They are imported as raw strings through a `raw-loader` rule in `next.config.ts`
+(`turbopack.rules`), typed by `src/shaders/glsl.d.ts`:
+
+```ts
+import FRAG from "@/shaders/rainbow-border/fragment.glsl"
+import VERT from "@/shaders/rainbow-border/vertex.glsl"
+```
+
+Two of them today, both raw WebGL overlays rather than R3F materials: `rainbow-border` (the Inspector's
+iridescent edge glow) and `confetti` (the settled-receipt celebration).
+
+**A TS value a shader needs is prepended as a `#define`, not interpolated into the source.** `confetti`
+does this with `COUNT`, which sizes its uniform arrays and bounds its fragment loop:
+
+```ts
+const FRAG = `#define COUNT ${COUNT}\n${FRAG_SRC}`
+```
+
+That keeps the `.glsl` file a real, editable shader (no `${}` holes) while the compiler still folds the
+value as a constant. It is the same trick gacha's `CastleParticles` uses for its `MOTE_*` constants.
 
 ## Key systems
 

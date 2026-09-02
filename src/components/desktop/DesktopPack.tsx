@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils"
 
 type Props = {
   pack: PackObj
-  /** Just minted by the builder — pulses a ring until the flash clears. */
   pulse?: boolean
   selected?: boolean
   onPointerDown?: (e: React.PointerEvent) => void

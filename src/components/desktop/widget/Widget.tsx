@@ -32,7 +32,6 @@ type Props = {
   widgets: WidgetInstance[]
   setWidgets: (updater: (ws: WidgetInstance[]) => WidgetInstance[]) => void
   assets: AssetObj[]
-  /** Whose desk this grid belongs to. Each wallet keeps its own arrangement — see Desktop. */
   wallet: Wallet
   onAdd: (type: WidgetType) => void
   /** Report the grid's live keep-out box (px in from the top-right corner) so the desk clamps icons off it. */

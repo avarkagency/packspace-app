@@ -21,7 +21,6 @@ export type WalletSpec = {
   label: string
   provider: string
   address: string
-  /** The wallet's mark, wherever it's named — the balance widget, the split pane label, the Move window. */
   image: string
   evmOnly: boolean
 }

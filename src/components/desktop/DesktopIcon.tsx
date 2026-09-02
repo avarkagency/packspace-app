@@ -29,15 +29,10 @@ type Props = {
   label: string
   /** Present when this icon can take a drop right now — wallets always, assets only as merge targets. */
   dropKey?: string
-  /** Something unrelated is in hand — recede so the icons that *can* take it stand out. */
   dimmed?: boolean
-  /** The coin in hand could land here. */
   target?: boolean
-  /** ...and is currently over it. */
   over?: boolean
-  /** This icon's right-click menu is open — it wears the drop-hover treatment while it is. */
   selected?: boolean
-  /** Freshly made by a split — both halves flare yellow, then it fades. */
   flash?: boolean
   /** Some object is in hand. The badges normally float above the canvas ("in front of the 3D object"),
    *  but while one flies they duck underneath it — a badge must never sit on top of the coin being

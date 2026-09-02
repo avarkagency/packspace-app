@@ -15,19 +15,13 @@ import { cn } from "@/lib/utils"
 // than a scene-drawn coin — a folder is furniture, not currency.
 
 type Props = {
-  /** The folder's id — hovering it drives the same cursor-trailing readout the coins use, keyed here. */
   id: string
   label: string
   count: number
-  /** Present while this folder can take the drop happening right now. */
   dropKey?: string
-  /** The object in hand could be filed here. */
   target?: boolean
-  /** ...and is currently over it. */
   over?: boolean
-  /** Swept up by the marquee — wears the same dashed dress as any selected icon. */
   selected?: boolean
-  /** The label is being edited in place — new folders arrive already renaming. */
   renaming?: boolean
   onRename?: (name: string) => void
   onRenameCancel?: () => void

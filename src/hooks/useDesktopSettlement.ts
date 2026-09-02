@@ -25,7 +25,6 @@ type Args = {
   setPositions: Dispatch<SetStateAction<Record<string, Pos> | null>>
   setFolders: Dispatch<SetStateAction<FolderSpec[]>>
   onSettle: (receipt: Receipt) => void
-  /** Marks what a settlement produced, so the eye finds it among identical neighbours. */
   flash: (ids: Iterable<string>) => void
 }
 

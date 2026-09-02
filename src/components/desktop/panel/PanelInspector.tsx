@@ -71,7 +71,6 @@ type Props = {
   /** Filed in a folder — its coin has no desk position, so it drops straight into the card rather than flying. */
   foldered: boolean
   onSelect: (id: string) => void
-  /** The desktop wallpaper's CSS, so the takeover shows the same background. */
   wallpaper: string
   onAction: (kind: string) => void
   onClose: () => void

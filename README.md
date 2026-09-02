@@ -236,6 +236,9 @@ success never sounds like a cancel. Mute persists across reloads.
 - `src/const/pane.ts` — the pane maths behind split view. `src/const/desktop-layout.ts` — the desk's
   footprints, its stock arrangement and the placement/collision maths. `src/const/desktop-config.ts` —
   wallpapers, the stock widget bento, the split keep-out. `src/const/app-config.ts` — session fixtures.
+- `src/shaders/<name>/{vertex,fragment}.glsl` — the GLSL, imported as raw strings via the `raw-loader`
+  rule in `next.config.ts`. Never inline in a component; a TS value a shader needs is prepended as a
+  `#define` rather than interpolated into the source.
 - `src/hooks/useDesktop*.ts` — the desk's own hooks: `Drag`, `Marquee`, `Surfaces` (everything that can
   be open, and the sound it makes), `Settlement` (what a Send or Trade actually does), and the three
   transient cues `Toast`, `Flash`, `Pulse`.

@@ -36,7 +36,6 @@ type Slot = { key: string; asset: AssetObj; amount: number }
 
 type Props = {
   inventory: AssetObj[]
-  /** Optional asset the builder opened seeded with (dropped onto the Pack Builder tile). */
   seed?: AssetObj
   onClose: () => void
   onCreate: (draft: PackDraft) => void
