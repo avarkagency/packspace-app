@@ -7,8 +7,8 @@ import type { AssetObj } from "@/types/objects"
 import { Minimize2 } from "lucide-react"
 
 import { BaseChangeTag } from "@/components/base/BaseChangeTag"
-import { chainImage } from "@/components/canvas/ObjectVisual"
-import { ObjectArt } from "@/components/shell/ObjectArt"
+import { ObjectArt } from "@/components/desktop/object/ObjectArt"
+import { chainImage } from "@/components/desktop/object/ObjectVisual"
 
 import { chainTag } from "@/lib/chain"
 import { assetMarket } from "@/lib/market"

@@ -2,7 +2,7 @@
 
 # PackSpace — the visual wallet as a desktop (prototype)
 
-One route: **`/`** → `src/app/page.tsx` → `<DesktopWorkspace/>`. A wallet rendered as a **desktop OS**:
+One route: **`/`** → `src/app/page.tsx` → `<Desktop/>`. A wallet rendered as a **desktop OS**:
 every holding, contact, pack and folder is an icon on a wallpaper, and everything you can do is done to
 the object itself — drag it onto a contact to send it, drop it onto a matching portion to combine,
 right-click it for its own menu. There are no lists and no forms you navigate to; windows are modals
@@ -38,28 +38,43 @@ ortho canvas, not a scene.
 
 ```
 src/app/        route + globals.css
-src/components/ base/ canvas/ desktop/ panels/ shell/ widgets/ windows/ workspace/
+src/components/ base/ (the Base* primitives) + desktop/ (all feature code)
 src/const/      pure constants + layout maths (app-config, pane)
 src/data/       the fixture sets (assets, people, packs, apps, approvals, colors, objects)
 src/hooks/      useDesktopDrag, usePrefersReducedMotion
-src/lib/        rules + helpers (asset-ops, chain, wallets, widgets, inspect, market, sound, utils)
-src/stores/     mutable module singletons (coin, drag, chrome-keepout)
+src/lib/        rules + helpers (asset-ops, chain, wallets, widgets, inspect, market, sound,
+                utils, object-art, coin-geometry, nft-geometry)
+src/stores/     mutable module singletons (coin, drag, chrome-keepout, clip-planes)
 src/types/      objects.ts — the whole domain model
 ```
 
-- **`workspace/DesktopWorkspace.tsx`** is the entry point and the only stateful component of size. It
-  owns every object's position, the window stack, the menus, selection, and the split view.
-  `workspace/SplitPanes.tsx` is split view's furniture only (wallpapers, pane labels, divider).
-- **`desktop/`** — what sits ON the desk: `DesktopIcon`, `DesktopFolder`, `DesktopPack`,
-  `DesktopDetailCard` (an icon expanded in place), plus the chrome `DesktopBar`, `DesktopDock` and the
-  context menu `DesktopMenu`.
-- **`windows/`** — the modals, one file per action (`SendWindow`, `TransferWindow`, `HandoffWindow`,
-  `SplitWindow`, `CombineWindow`, `MoveWindow`, `UnpackWindow`, `PackBuilderWindow`, `FolderWindow`,
-  `CardWindow`, `ContactWindow`, `DeleteWindow`, `ReceiptWindow`, `ReceiptsListWindow`), all inside the
-  shared frame `Window.tsx`.
-- **`canvas/`** — the R3F layer (below). **`panels/`** — the right-docked Inspector and Approval Radar.
-  **`shell/`** — floating chrome that isn't the desk: hover readout, toast, search palette, avatars.
-  **`widgets/`** — the top-right bento. **`base/`** — the `Base*` primitives.
+**Every component file carries its folder's name, and the folder's entry point IS the folder's name** —
+the same rule as gacha's `home/Home.tsx`, `grid/Grid.tsx`, `castle/Castle.tsx`. So the pattern reads
+`Parent`, `ParentChild`, `ParentChildItem`. Folders are singular. **No non-`.tsx` file lives under
+`components/`**: geometry and art factories go to `lib/`, mutable singletons to `stores/`, pure
+constants to `const/`.
+
+All feature code is `src/components/desktop/`, one folder per cluster:
+
+- **`Desktop.tsx`** — the entry point and the only stateful component of size. It owns every object's
+  position, the window stack, the menus, selection, and the split view. Every other `Desktop*.tsx` at
+  that level is a piece of its chrome: `DesktopBar`, `DesktopDock`, `DesktopIcon`, `DesktopFolder`,
+  `DesktopPack`, `DesktopDetailCard` (an icon expanded in place), `DesktopMenu` (the context menu),
+  `DesktopSearch` (the ⌘K palette), `DesktopHover` (the cursor readout), `DesktopToast`, and
+  `DesktopPanes` (split view's furniture only — wallpapers, pane labels, divider).
+- **`object/`** — everything that draws an object, in both worlds. `ObjectScene` is the R3F entry (the
+  canvas + camera + clip rig) and mounts `ObjectMesh` and `ObjectNavIcon`; `ObjectMark`, `ObjectArt` and
+  `ObjectAvatar` are its flat DOM twins for where the canvas doesn't reach; `ObjectVisual` is the
+  icon/colour mapping every tint reads through.
+  **`ObjectScene` deliberately keeps its suffix** rather than becoming `Object.tsx` — a component named
+  `Object` shadows the JS global in its own module and in every file that imports it.
+- **`window/`** — the modals, one file per action: `WindowSend`, `WindowTransfer`, `WindowHandoff`,
+  `WindowSplit`, `WindowCombine`, `WindowMove`, `WindowUnpack`, `WindowPackBuilder`, `WindowFolder`,
+  `WindowCard`, `WindowContact`, `WindowDelete`, `WindowReceipt`, `WindowReceipts`. There is no shared
+  frame any more — each paints its own chrome.
+- **`panel/`** — the right-docked `PanelInspector` and `PanelApprovals`.
+- **`widget/`** — `Widget` is the top-right bento itself; `WidgetBalance` and `WidgetNft` are its tiles.
+- **`fx/`** — the shader effects, reusable across the desk: `FxConfetti`, `FxRainbowBorder`.
 
 ## Key systems
 
@@ -76,16 +91,17 @@ src/types/      objects.ts — the whole domain model
   Phase 2) — `moveBlockMessage` is the single place that rule lives. An absent `wallet` on an object
   reads as Openfort, so the stock fixtures need no migration.
 - **Placement** (`clampPos` / `isFree` / `nearestFreeSpot` / `nearestFreeGroupOffset` in
-  `DesktopWorkspace`). A drop lands where it was released, then walks outward in rings to the nearest
+  `Desktop.tsx`). A drop lands where it was released, then walks outward in rings to the nearest
   clear spot. Only objects on the **same wallet's desk** can clash. A carried multi-selection resolves
   as one shared offset, so a formation keeps its shape rather than exploding.
 - **The chrome keep-out** (`stores/chrome-keepout.ts`). The top-right widget bento reports its live box;
   `clampPos` reads it so an icon can never park underneath the search bar or the bento and become
   unreachable. Mutable module state on purpose — the clamp is called from every drag frame and must not
   go through React.
-- **The 3D layer** (`canvas/ObjectScene.tsx`) is deliberately thin. The DOM keeps layout, hit-testing
-  and labels; the canvas only *draws* an object into the box each icon reserves, via `stores/coin.ts`
-  (each card registers its screen box, the frame loop reads them back). One ortho camera, 1 unit = 1px.
+- **The 3D layer** (`desktop/object/ObjectScene.tsx`) is deliberately thin. The DOM keeps layout,
+  hit-testing and labels; the canvas only *draws* an object into the box each icon reserves, via
+  `stores/coin.ts` (each card registers its screen box, the frame loop reads them back). One ortho
+  camera, 1 unit = 1px.
   The canvas is `pointer-events-none`, above the desktop so a dragged object flies over the wallet icons
   intact, and below the modals at z-200+. Loaded through `dynamic(..., { ssr: false })` — WebGL can't
   render on the server and the coin faces are drawn to a 2D canvas at material-build time.
@@ -119,8 +135,12 @@ Approvals) — deliberate, not dead weight to prune.
 - **Imports are `@/`-absolute across folders**, `./` only within one. Matches both siblings; the
   `importOrder` groups in `.prettierrc.json` key off `^@/components/`, `^@/lib/`, `^@/data/`, so a
   `../` import also lands in the wrong prettier group.
+- **A new component's name starts with its folder's**, and nothing but the folder's entry point is the
+  bare folder name — a file in `window/` is `Window<Thing>`, in `widget/` `Widget<Thing>`. Don't add a
+  non-`.tsx` file under `components/`; it belongs in `lib/`, `stores/` or `const/`.
 - **`type`, never `interface`.** Components are named exports; there are no default exports outside
-  `src/app/`.
+  `src/app/`. Export only what another file imports — a helper used solely inside its own module stays
+  file-local.
 - **React Compiler lint is strict**: no mutating hook returns/props, no `setState` synchronously in
   effects, no reading `ref.current` in render. Shared mutable state lives in `src/stores/*`.
 - **The `* { border-color }` rule in `globals.css` must stay inside `@layer base`.** Unlayered it beats

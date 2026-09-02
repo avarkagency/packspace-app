@@ -35,12 +35,6 @@ export function blockSendMessage(asset: AssetObj, contact: PersonObj): string {
   return `${contact.label} is a ${word}-only address — it can't receive ${asset.label} (${asset.chain ?? "Base"}). Send it to a Project G wallet or a matching ${word} address.`
 }
 
-/** The Transaction Interpreter's "Network" value — what the recipient side of a Send looks like. */
-export function networkLine(asset: AssetObj, contact: PersonObj): string {
-  const chain = asset.chain ?? "Base"
-  return isProjectG(contact) ? `${chain} · to a multichain wallet` : `${chain} · same chain`
-}
-
 /** The receipt's chain-aware Route row. */
 export function routeLine(asset: AssetObj, contact: PersonObj): string {
   const chain = asset.chain ?? "Base"
@@ -49,12 +43,12 @@ export function routeLine(asset: AssetObj, contact: PersonObj): string {
 
 /** The chain-family tag pill shown in the hover readout's Network row. Assets tag by their chain;
  *  Project G contacts read MULTI; external contacts tag by their chain; unknown addresses get none. */
-export const FAMILY_TAG: Record<ChainFamily, { label: string; color: string }> = {
+const FAMILY_TAG: Record<ChainFamily, { label: string; color: string }> = {
   evm: { label: "EVM", color: "#7d9bff" },
   solana: { label: "SOL", color: "#31d0a5" },
   bitcoin: { label: "BTC", color: "#f7a13a" }
 }
-export const MULTI_TAG = { label: "MULTI", color: "#c4b6ff" }
+const MULTI_TAG = { label: "MULTI", color: "#c4b6ff" }
 
 export function chainTag(obj: AssetObj | PersonObj): { label: string; color: string } | null {
   if (obj.class === "asset") return FAMILY_TAG[chainFamily(obj.chain)]

@@ -45,7 +45,7 @@ Frontend only — no backend, no chain, dummy data throughout.
 | **Pack Builder / Unpack** | Bundle holdings into a pack object and take them back out again. |
 
 > **Handoff is "Trade" to the user.** The rename covers what's read — the zone, the modal title, the
-> receipt's action — while the internals stay `handoff`: the drop key, `HandoffWindow`, and the dApp of
+> receipt's action — while the internals stay `handoff`: the drop key, `WindowHandoff`, and the dApp of
 > that name in the fixtures (a separate product). The spec calls the machine Handoff (§3.5.2), so the two
 > names coexist deliberately rather than by drift.
 
@@ -85,9 +85,9 @@ is identical whatever it looks like, so `ObjectMesh` owns all of that and the sh
 meshes hang off the size group at the end. Built: **coin** (tokens, stablecoins, stacks, packs) and
 **nft** (a polaroid — rounded white card, slight depth, the art inset behind a fine white border).
 
-**Artwork** (`object-art.ts`) is keyed by symbol and loaded once per symbol, shared across every object
-holding it — split portions must not each decode their own copy. A symbol with no entry keeps the face
-the coin draws for itself, so the fallback is a live path, not dead code.
+**Artwork** (`lib/object-art.ts`) is keyed by symbol and loaded once per symbol, shared across every
+object holding it — split portions must not each decode their own copy. A symbol with no entry keeps the
+face the coin draws for itself, so the fallback is a live path, not dead code.
 
 - **A coin's rim takes its colour from the art**, sampled from the image's top-left 2×2 (a token mark
   sits on a flat field, so that corner *is* the field). Guessing a tint instead leaves the coin reading
@@ -188,8 +188,8 @@ same gesture and is swallowed, and a window closing within 200ms of a settle spa
 success never sounds like a cancel. Mute persists across reloads.
 
 > "Desktop feel, dApp reality" (spec §3.1 / DEV2: never fake an OS) — this is a workspace's look, not an
-> OS's. `BALANCE_DELTA` and the 24h moves in `data/assets.ts` are invented: the design shows change
-> figures, and nothing here models price history.
+> OS's. The 24h moves in `data/assets.ts` are invented: the design shows change figures, and nothing
+> here models price history.
 
 ## Run
 
@@ -230,21 +230,29 @@ success never sounds like a cancel. Mute persists across reloads.
   (`asset:` `wallet:` `folder:` `nav:`).
 - `src/lib/wallets.ts` — the two wallets and the EVM-only rule. `src/lib/chain.ts` — the multichain (not
   cross-chain) compatibility model. `src/lib/inspect.ts` — the Inspector's local explanations and facts.
-- `src/stores/{drag,coin,chrome-keepout}.ts` — the out-of-React stores (drag state; coin screen geometry;
-  the top-right chrome's keep-out box).
+- `src/stores/{drag,coin,chrome-keepout,clip-planes}.ts` — the out-of-React singletons (drag state; coin
+  screen geometry; the top-right chrome's keep-out box; the shared clip planes).
 - `src/const/pane.ts` — the pane maths behind split view. `src/const/app-config.ts` — session fixtures.
-- `src/components/workspace/` — `DesktopWorkspace` (the whole desk) and `SplitPanes` (split view's
-  furniture).
-- `src/components/desktop/` — `DesktopIcon`, `DesktopFolder`, `DesktopPack`, `DesktopDetailCard`,
-  `DesktopBar`, `DesktopDock`, `DesktopMenu`.
-- `src/components/windows/` — `Window` (the modal shell) + one file per action.
-- `src/components/panels/` — `FullscreenInspector`, `ApprovalRadarPanel`.
-- `src/components/shell/` — `SearchPalette`, `ObjectHoverInfo`, `DesktopToast`, `ContactAvatar`,
-  `ObjectArt`. `src/components/widgets/` — the top-right bento.
-- `src/components/canvas/` — `ObjectScene` (canvas + camera + clip rig), `ObjectMesh` (one object: all
-  the shared behaviour, plus a body per shape), `{coin,nft}-geometry.ts`, `object-art.ts` (artwork +
-  base-colour sampling), `clip-planes.ts`, `ObjectVisual.tsx` (icon / colour mapping — `objectTint()` is
-  the single funnel every tint reads through).
+- `src/lib/{coin,nft}-geometry.ts` — geometry, textures and materials per shape. `src/lib/object-art.ts`
+  — the artwork registry + base-colour sampling.
+
+All feature components live under `src/components/desktop/`, and **every file carries its folder's
+name** (`Parent`, `ParentChild`, `ParentChildItem`), with the folder's entry point named for the folder
+itself:
+
+- `Desktop.tsx` — the whole desk. Beside it, its chrome: `DesktopBar`, `DesktopDock`, `DesktopIcon`,
+  `DesktopFolder`, `DesktopPack`, `DesktopDetailCard`, `DesktopMenu`, `DesktopSearch`, `DesktopHover`,
+  `DesktopToast`, `DesktopPanes` (split view's furniture).
+- `object/` — `ObjectScene` (canvas + camera + clip rig), `ObjectMesh` (one object: all the shared
+  behaviour, plus a body per shape), `ObjectNavIcon`, and the flat DOM twins `ObjectMark`, `ObjectArt`,
+  `ObjectAvatar`, plus `ObjectVisual` (icon / colour mapping — `objectTint()` is the single funnel every
+  tint reads through). `ObjectScene` keeps its suffix on purpose: a component named `Object` would
+  shadow the JS global.
+- `window/` — one file per action, `WindowSend` through `WindowUnpack`. No shared frame; each paints its
+  own chrome.
+- `panel/` — `PanelInspector`, `PanelApprovals`. `widget/` — `Widget` (the bento) + `WidgetBalance`,
+  `WidgetNft`. `fx/` — `FxConfetti`, `FxRainbowBorder`.
+- `src/components/base/` — the `Base*` primitives, the only components outside `desktop/`.
 - `public/images/{tokens,nfts,chains,contacts,nav-icons}/` — artwork and network marks.
 
 ## Spec fidelity notes
@@ -271,4 +279,4 @@ success never sounds like a cancel. Mute persists across reloads.
 - Fixture sets for **Contacts, Activity, dApps and Approvals pages** exist (`data/apps.ts`,
   `data/packs.ts`, `data/approvals.ts`) but those destinations aren't built — the nav items are
   placeholders. Out of scope this pass: cross-chain routing, River, real conversion in My Assets.
-  `HIGH_VALUE_USD` and the countdowns are placeholders (canon PS-Q, still open).
+  The Handoff countdowns are placeholders (canon PS-Q, still open).

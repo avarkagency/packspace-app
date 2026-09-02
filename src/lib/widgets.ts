@@ -21,8 +21,6 @@ export const WIDGET_TYPES: { type: WidgetType; label: string; defaultSpan: 1 | 2
   { type: "nft", label: "NFT Collection", defaultSpan: 2 }
 ]
 
-export const widgetLabel = (type: WidgetType): string => WIDGET_TYPES.find((w) => w.type === type)?.label ?? type
-
 export type PlacedWidget = WidgetInstance & { row: number; column: 1 | 2 }
 
 /** Pack the ordered list into the 2-column grid. A 2-span widget takes the next fully-empty row; a

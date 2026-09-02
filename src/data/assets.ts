@@ -4,13 +4,9 @@ import { C } from "./colors"
 
 // Dummy data only — no backend, no chain (spec: "full fake product"). Values are illustrative.
 
-/** The headline's change figure. Invented, like everything else here — nothing in this prototype models
- *  price history, so it's a fixed fixture rather than anything derived from the holdings. */
-export const BALANCE_DELTA = { usd: -2.73, pct: -0.26 }
-
 /** 24h price change per token, in percent — the green/red tag inside an asset's price pill. Keyed by
- *  symbol, not holding: the USDC dust pile moves exactly as the main pile does. Invented fixtures,
- *  like BALANCE_DELTA. */
+ *  symbol, not holding: the USDC dust pile moves exactly as the main pile does. Invented, like everything
+ *  else here — nothing in this prototype models price history. */
 const CHANGE_24H: Record<string, number> = {
   ETH: 2.4,
   SOL: -1.8,
@@ -386,33 +382,5 @@ export const EOA_ASSETS: AssetObj[] = [
     color: "#7fc4e8",
     wallet: "eoa",
     address: "0xBd35…7c19"
-  }
-]
-
-// What the fake counterparty is willing to offer back inside a Handoff.
-export const COUNTERPARTY_OFFERS: AssetObj[] = [
-  {
-    id: "cp-zard",
-    class: "asset",
-    label: "Charizard PSA 10",
-    symbol: "ZARD",
-    kind: "nft",
-    balance: 1,
-    usd: 420,
-    chain: "Base",
-    color: "#fb923c",
-    address: "0xZARD…10"
-  },
-  {
-    id: "cp-eth",
-    class: "asset",
-    label: "Ethereum",
-    symbol: "ETH",
-    kind: "token",
-    balance: 0.15,
-    usd: 510,
-    chain: "Base",
-    color: C.eth,
-    address: "0x4200…0006"
   }
 ]

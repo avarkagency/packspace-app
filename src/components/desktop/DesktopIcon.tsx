@@ -8,7 +8,7 @@ import type { DesktopObj } from "@/types/objects"
 import { Check, History, ShieldX, TriangleAlert } from "lucide-react"
 
 import { BaseChangeTag } from "@/components/base/BaseChangeTag"
-import { chainImage, objectNameColor } from "@/components/canvas/ObjectVisual"
+import { chainImage, objectNameColor } from "@/components/desktop/object/ObjectVisual"
 
 import { cn, usd } from "@/lib/utils"
 

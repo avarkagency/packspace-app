@@ -8,7 +8,7 @@ import { type View, WALLETS, WALLET_ORDER } from "@/lib/wallets"
 
 // The desktop's top chrome. No longer a solid OS bar: the wallpaper runs to the top edge and the
 // chrome floats on it — identity and greeting on the left, the wallet/view toggles on the right. The
-// balance card that used to sit here is now the Balance widget in the top-right WidgetGrid, which owns
+// balance card that used to sit here is now the Balance widget in the top-right Widget, which owns
 // the desk's top-right keep-out box (see stores/chrome-keepout).
 //
 // The view control drives which wallet's desk is on screen: either one on its own, or both side by side

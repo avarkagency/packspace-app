@@ -21,12 +21,12 @@ export function canCombine(a: AssetObj, b: AssetObj | PackObj): b is AssetObj {
 
 /** Every asset icon is a potential merge target, so its drop key has to be distinguishable from the
  *  wallets' keys. */
-export const ASSET_DROP_PREFIX = "asset:"
+const ASSET_DROP_PREFIX = "asset:"
 export const assetDropKey = (id: string) => `${ASSET_DROP_PREFIX}${id}`
 export const assetDropId = (key: string) => (key.startsWith(ASSET_DROP_PREFIX) ? key.slice(ASSET_DROP_PREFIX.length) : null)
 
 /** A wallet icon takes any asset — the Send/Trade choice happens in the transfer modal after the drop. */
-export const WALLET_DROP_PREFIX = "wallet:"
+const WALLET_DROP_PREFIX = "wallet:"
 export const walletDropKey = (id: string) => `${WALLET_DROP_PREFIX}${id}`
 export const walletDropId = (key: string) => (key.startsWith(WALLET_DROP_PREFIX) ? key.slice(WALLET_DROP_PREFIX.length) : null)
 
@@ -38,6 +38,6 @@ export const folderDropId = (key: string) => (key.startsWith(FOLDER_DROP_PREFIX)
 
 /** The dock's leading tiles — an asset can be dropped onto those apps. Display-only today: the drop
  *  lands and the icon steps back off the shelf; the app interaction arrives with the dock features. */
-export const NAV_DROP_PREFIX = "nav:"
+const NAV_DROP_PREFIX = "nav:"
 export const navDropKey = (id: string) => `${NAV_DROP_PREFIX}${id}`
 export const navDropId = (key: string) => (key.startsWith(NAV_DROP_PREFIX) ? key.slice(NAV_DROP_PREFIX.length) : null)

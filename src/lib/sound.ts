@@ -100,12 +100,12 @@ export function cue(name: SoundName) {
   play(name)
 }
 
-export function isMuted() {
+function isMuted() {
   ensureInit()
   return muted
 }
 
-export function setMuted(next: boolean) {
+function setMuted(next: boolean) {
   ensureInit()
   if (muted === next) return
   muted = next

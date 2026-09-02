@@ -21,8 +21,6 @@ export const SPLIT_MAX = 0.8
 /** The divider's grab strip. Wider than the 4px rule it draws, so it's a comfortable pointer target. */
 export const DIVIDER_W = 16
 
-export const fullPane = (): Pane => ({ left: 0, top: 0, width: window.innerWidth, height: window.innerHeight })
-
 /** The box a wallet's objects occupy on screen. Outside split view every wallet owns the whole viewport
  *  (only one of them is being shown at a time, so they can't collide). */
 export function paneFor(view: View, wallet: Wallet, ratio: number, vw: number, vh: number): Pane {
@@ -37,9 +35,3 @@ export function walletAtX(view: View, ratio: number, vw: number, x: number): Wal
   if (view !== "split") return view
   return x < vw * ratio ? "openfort" : "eoa"
 }
-
-/** Pane-relative → viewport. */
-export const toViewport = (pane: Pane, x: number, y: number) => ({ x: pane.left + x, y: pane.top + y })
-
-/** Viewport → pane-relative. */
-export const toPane = (pane: Pane, x: number, y: number) => ({ x: x - pane.left, y: y - pane.top })

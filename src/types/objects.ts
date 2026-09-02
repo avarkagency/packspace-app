@@ -167,13 +167,6 @@ export type NavItem = {
 
 // ── Handoff / Send domain ────────────────────────────────────────────────────
 
-/** One placed line in a Handoff slot or a Send. */
-export type DealItem = {
-  key: string
-  asset: AssetObj
-  amount: number
-}
-
 export type Receipt = {
   id: string
   /** Move is the internal one — an object crossing between your own two wallets, not a transfer out. */
