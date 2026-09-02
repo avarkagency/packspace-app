@@ -53,7 +53,7 @@ type Props = {
 }
 
 export function ObjectMesh({ id, shape, tint, symbol, artSrc, finish, dragging, carried, anyDragging, dimmed, reduced }: Props) {
-  // refs — scale wraps spin so the two compose rather than fight; slide carries the screen position
+  // refs
   const slideRef = useRef<THREE.Group>(null!)
   const scaleRef = useRef<THREE.Group>(null!)
   const spinRef = useRef<THREE.Group>(null!)
@@ -69,20 +69,21 @@ export function ObjectMesh({ id, shape, tint, symbol, artSrc, finish, dragging, 
   /** Whether this coin held focus last frame — to catch the moment it gains focus (fly in, or snap). */
   const wasFocusedRef = useRef(false)
 
-  // data — this object's own plane array. The materials hold this reference for life and the frame loop
-  // copies either clip source into it, so swapping clip modes can never recompile the shader.
+  // data
+  // the materials hold this array reference for life and the frame loop copies either clip source into
+  // it, so swapping clip modes can never recompile the shader
   const planes = useMemo(() => makeObjectPlanes(), [])
   const materials = useMemo(
     () => (shape === "nft" ? makeNftMaterials(planes) : makeCoinMaterials(tint, symbol, planes, finish)),
     [shape, tint, symbol, planes, finish]
   )
 
-  // data — the textures this object drew for itself. Captured now, before any token art swaps in, so
-  // unmounting disposes only what it owns: the token texture is shared and cached, and disposing it
-  // here would blank the face of every other object holding the same symbol.
+  // data
+  // captured before any token art swaps in, so unmounting disposes only what this object owns — the
+  // token texture is shared and cached, and disposing it here would blank every other coin holding it
   const ownTextures = useMemo(() => materials.map((m) => m.map).filter((t): t is THREE.Texture => !!t), [materials])
 
-  // effects — the drawn faces are per-object canvases, so they leak unless disposed with the object
+  // effects
   useEffect(
     () => () => {
       ownTextures.forEach((t) => t.dispose())
@@ -91,9 +92,7 @@ export function ObjectMesh({ id, shape, tint, symbol, artSrc, finish, dragging, 
     [materials, ownTextures]
   )
 
-  // effects — real art replaces whatever the object drew for itself. A symbol with no art (the stack)
-  // simply keeps its drawn face; a dark coin never takes art — black is the whole point of it — unless it
-  // was handed an explicit face (a contact's avatar).
+  // effects
   useEffect(() => {
     if (finish === "dark" && !artSrc) return
     let live = true
@@ -125,8 +124,7 @@ export function ObjectMesh({ id, shape, tint, symbol, artSrc, finish, dragging, 
     }
   }, [shape, symbol, artSrc, materials, finish])
 
-  // frame — the DOM grid owns layout, so position comes from the measured card rect, not from 3D state.
-  // The ortho camera maps 1 world unit to 1 px with the origin at the viewport centre.
+  // frame
   useFrame((state, dt) => {
     const g = slideRef.current
 

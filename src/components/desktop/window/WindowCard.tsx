@@ -77,7 +77,7 @@ export function WindowCard({ contact, onImport, onClose }: Props) {
   const vchip = VCHIP[vKey]
   const cells = useMemo(() => qrCells(address + name), [address, name])
 
-  // events — real share intents
+  // events
   const share = (channel: "telegram" | "x" | "whatsapp" | "copy") => {
     const link = `https://packspace.xyz/c/${mine ? "you" : contact.id}`
     const label = mine ? "My PackSpace Card" : `${name}'s PackSpace Card`

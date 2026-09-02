@@ -72,7 +72,7 @@ export const DesktopIcon = memo(function DesktopIcon({
   // refs
   const slotRef = useRef<HTMLDivElement>(null)
 
-  // data — address-lifecycle flags, only ever set on a contact
+  // data
   const person = obj.class === "person" ? obj : null
   const retired = !!person?.retired
   const compromised = !!person?.compromised
@@ -89,7 +89,7 @@ export const DesktopIcon = memo(function DesktopIcon({
             ? { text: obj.whitelisted === false ? "Not in contacts" : "Unconfirmed", color: "#f7c86a" }
             : { text: obj.address ? `${obj.address.slice(0, 6)}...` : obj.handle }
 
-  // events — the cursor is seeded on enter so the hover readout can place itself before its first paint
+  // events
   const onEnter = (e: React.PointerEvent) => {
     setCoinCursor(e.clientX, e.clientY)
     setCoinHover(obj.id)
@@ -97,8 +97,7 @@ export const DesktopIcon = memo(function DesktopIcon({
   const onLeave = () => clearCoinHover(obj.id)
   const onMove = (e: React.PointerEvent) => setCoinCursor(e.clientX, e.clientY)
 
-  // events — rename commits on Enter/blur, abandons on Escape. The input never joins the drag machinery:
-  // a pointerdown inside it is text selection, not a pick-up.
+  // events
   const commit = (el: HTMLInputElement) => {
     const name = el.value.trim()
     if (name && name !== label) onRename?.(name)

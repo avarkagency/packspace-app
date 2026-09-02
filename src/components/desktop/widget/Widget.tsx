@@ -48,21 +48,19 @@ function renderWidget(w: WidgetInstance, assets: AssetObj[], wallet: Wallet) {
 type Drop = { kind: "swap"; overId: string } | { kind: "cell"; row: number; col: 1 | 2 }
 
 export function Widget({ widgets, setWidgets, assets, wallet, onAdd, onKeepoutChange }: Props) {
-  // refs — the grid box (for the column midline) and each rendered cell (for drop hit-testing)
+  // refs
   const gridRef = useRef<HTMLDivElement>(null)
   const cellRefs = useRef(new Map<string, HTMLElement>())
 
-  // state — the right-click menu carries a widget id (its own menu) or null (the empty-area add menu)
+  // state
   const [menu, setMenu] = useState<{ x: number; y: number; id: string | null } | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [drop, setDrop] = useState<Drop | null>(null)
 
-  // data — the ordered list resolved to grid placements
+  // data
   const placed = packWidgets(widgets)
 
-  // effects — report the grid's footprint as the desk's keep-out box whenever it resizes (a widget added,
-  // removed, or toggled between 1 and 2 columns). Measured from the viewport's top-right corner: how far
-  // in from the right edge, and how far down from the top, plus a little clearance.
+  // effects
   useEffect(() => {
     const el = gridRef.current
     if (!el || !onKeepoutChange) return
@@ -76,13 +74,12 @@ export function Widget({ widgets, setWidgets, assets, wallet, onAdd, onKeepoutCh
     return () => ro.disconnect()
   }, [onKeepoutChange])
 
-  // events — mutations. Resizing to 2 columns drops any column pin (it spans both anyway).
+  // events
   const toggleSize = (id: string) => setWidgets((ws) => ws.map((w) => (w.id === id ? { ...w, span: w.span === 1 ? 2 : 1, col: undefined } : w)))
   const setCol = (id: string, col: 1 | 2) => setWidgets((ws) => ws.map((w) => (w.id === id ? { ...w, col } : w)))
   const remove = (id: string) => setWidgets((ws) => ws.filter((w) => w.id !== id))
 
-  // events — swap two widgets' slots (their order and column pin), so dragging onto any part of another
-  // widget trades their places whichever direction the drag came from
+  // events
   const swap = (a: string, b: string) =>
     setWidgets((ws) => {
       const ia = ws.findIndex((w) => w.id === a)
@@ -94,9 +91,7 @@ export function Widget({ widgets, setWidgets, assets, wallet, onAdd, onKeepoutCh
       return next
     })
 
-  // events — drop a widget into an empty cell: land it in that row and column (a 2-span ignores the column
-  // and just takes the row). Insert it ahead of the first widget that currently sits in that row or below,
-  // so the greedy packer lands it on the target row without shuffling the rows above or below it.
+  // events
   const moveToCell = (id: string, row: number, col: 1 | 2) =>
     setWidgets((ws) => {
       const item = ws.find((w) => w.id === id)
@@ -109,7 +104,7 @@ export function Widget({ widgets, setWidgets, assets, wallet, onAdd, onKeepoutCh
       return rest
     })
 
-  // events — the vertical extent of each occupied row, so a drop into an empty cell knows which row it's in
+  // events
   const rowBands = () => {
     const bands = new Map<number, { top: number; bottom: number }>()
     for (const p of placed) {
@@ -121,8 +116,7 @@ export function Widget({ widgets, setWidgets, assets, wallet, onAdd, onKeepoutCh
     return bands
   }
 
-  // events — where a drag would land: over any part of another widget → swap; else the empty cell (row +
-  // column) under the cursor, or a fresh row just past the bottom edge
+  // events
   const targetAt = (x: number, y: number, dragging: string): Drop | null => {
     const g = gridRef.current?.getBoundingClientRect()
     if (!g || x < g.left - 12 || x > g.right + 12 || y < g.top - 12) return null
@@ -141,8 +135,7 @@ export function Widget({ widgets, setWidgets, assets, wallet, onAdd, onKeepoutCh
 
   const applyDrop = (id: string, t: Drop) => (t.kind === "swap" ? swap(id, t.overId) : moveToCell(id, t.row, t.col))
 
-  // events — a left-press arms a drag; past a small threshold it lifts, tracks a drop target, and reorders
-  // on release. Right-press is left to onContextMenu, so it never starts a drag.
+  // events
   const onCellPointerDown = (id: string) => (e: React.PointerEvent) => {
     if (e.button !== 0) return
     const start = { x: e.clientX, y: e.clientY }
@@ -170,14 +163,13 @@ export function Widget({ widgets, setWidgets, assets, wallet, onAdd, onKeepoutCh
     window.addEventListener("pointerup", onUp)
   }
 
-  // data — one of each type only, so "Add Widget ▸" offers just the types not already on the grid (and
-  // disappears once every type is placed). Shared by the per-widget menu and the empty-area menu.
+  // data
   const addable = WIDGET_TYPES.filter((t) => !widgets.some((w) => w.type === t.type))
   const addItem: DesktopMenuItem | null = addable.length
     ? { label: "Add Widget", icon: Plus, children: addable.map((t) => ({ label: t.label, onSelect: () => onAdd(t.type) })) }
     : null
 
-  // data — the right-click menu for one widget
+  // data
   const menuItems = (w: WidgetInstance): DesktopMenuItem[] => {
     const items: DesktopMenuItem[] = [
       w.span === 2

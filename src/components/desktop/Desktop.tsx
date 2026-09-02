@@ -143,14 +143,14 @@ export function Desktop() {
    *  desk (taken out), not if they're dropped straight back into a folder. */
   const pulledFromFolder = useRef(new Set<string>())
 
-  // state — which wallet's desk is on screen, and how the split view divides it
+  // state
   const [view, setView] = useState<View>("openfort")
   const [splitRatio, setSplitRatio] = useState(0.5)
   /** The viewport, tracked in state (not read ad-hoc) because the pane maths renders from it. Zero until
    *  the mount effect measures — the server has no window. */
   const [screen, setScreen] = useState({ w: 0, h: 0 })
 
-  // state — assets divide and recombine; wallets rename, edit and delete; positions are the desk itself
+  // state
   const [assets, setAssets] = useState<AssetObj[]>([...ASSETS, ...DUST_ASSETS, ...DUST_NFTS, ...EOA_ASSETS])
   const [contacts, setContacts] = useState<PersonObj[]>([...PEOPLE, ...EOA_PEOPLE])
   const [folders, setFolders] = useState<FolderSpec[]>(INITIAL_FOLDERS)
@@ -176,10 +176,10 @@ export function Desktop() {
   const [packs, setPacks] = useState<PackObj[]>([])
   const [approvals, setApprovals] = useState<Approval[]>(APPROVAL_RADAR)
 
-  // drag — one object in hand, or a carried multi-selection; the store treats both as "dragging"
+  // drag
   const { obj: dragged, carriedIds, over } = useDrag()
 
-  // data — the panes. One wallet on screen owns the whole viewport; split view halves it at the divider.
+  // data
   const shownWallets = visibleWallets(view)
   const isSplit = view === "split"
   const panes: Record<Wallet, Pane> = useMemo(
@@ -196,8 +196,7 @@ export function Desktop() {
   const toScreen = (wallet: Wallet, p: Pos): Pos => ({ x: panes[wallet].left + p.x, y: panes[wallet].top + p.y })
   const walletAt = (x: number): Wallet => walletAtX(view, splitRatio, screen.w, x)
 
-  // data — what's ON the desk is everything not filed in a folder AND held by a wallet currently shown;
-  // the flat lists keep everything, tagged with the wallet that holds it
+  // data
   const folderedIds = new Set(folders.flatMap((f) => f.contents))
   const onScreen = new Set(shownWallets)
   const allItems: DesktopObj[] = [...assets, ...contacts]
@@ -205,9 +204,8 @@ export function Desktop() {
   const deskFolders = folders.filter((f) => onScreen.has(f.wallet))
   const deskPacks = packs.filter((p) => onScreen.has(walletOf(p)))
 
-  // hooks — declared here rather than above the data block because each needs values derived from it.
-  // What the desk can have open (and the sound each surface makes), the transient notice, and the
-  // marquee selection.
+  // hooks
+  // declared here rather than above the data block because each needs values derived from it
   const {
     wins,
     open,
@@ -277,10 +275,7 @@ export function Desktop() {
     items: f.contents.map((cid) => allItems.find((o) => o.id === cid)).filter((o): o is DesktopObj => !!o)
   }))
 
-  // events — Pack Builder. Create consumes the chosen contents and spawns a sealed pack that pulses
-  // where it lands. Unpack releases the contents back onto the desk — fungibles merge into any matching
-  // holding, everything else lands as a fresh object. A pack press that never travels opens it; a
-  // travelling one repositions it.
+  // events
   const createPack = (draft: PackDraft, wallet: Wallet) => {
     cue("sparkle") // a settled transaction
     const deals = draft.contents
@@ -415,9 +410,7 @@ export function Desktop() {
     window.addEventListener("pointerup", onUp)
   }
 
-  // events — moving an object between your own two wallets: the split view's cross-divider drop. Not a
-  // Send — nothing leaves your custody — so it opens the Move window rather than the transfer flow, and
-  // MetaMask's EVM-only rule is checked before the window ever appears.
+  // events
   const startMove = (obj: DesktopObj, to: Wallet) => {
     const from = walletOf(obj)
     const blocked = moveBlockMessage(obj, to)
@@ -518,9 +511,7 @@ export function Desktop() {
     })
   }
 
-  // events — placement. Letting go IS the placement gesture; (x, y) is the cursor, which carried the
-  // coin's centre, so the icon lands with its slot centred there (pushed aside if something's already
-  // sitting there). A release in the OTHER wallet's pane isn't a placement at all — it's a move.
+  // events
   const moveObject = (obj: DesktopObj, x: number, y: number) => {
     const target = walletAt(x)
     const home = walletOf(obj)
@@ -534,9 +525,9 @@ export function Desktop() {
     setPositions((pos) => (pos ? { ...pos, [obj.id]: nearestFreeSpot(p, pos, obj.id) } : pos))
   }
 
-  // events — the detail card. Writing the module mirror and the state together is what keeps the layout
-  // maths honest: `clampPos` and friends run on the drag's hot path and read `detailCardIds` directly, so
-  // every change to the set has to go through here.
+  // events
+  // `clampPos` and friends run on the drag's hot path and read `detailCardIds` directly, so every
+  // change to the set has to write the module mirror and the state together, here.
   const applyCardIds = useCallback((next: ReadonlySet<string>) => {
     setDetailCards(next)
     setCardIds(next)
@@ -561,7 +552,7 @@ export function Desktop() {
     })
   }
 
-  // events — asset actions
+  // events
   const startSplit = (asset: AssetObj) => open({ kind: "split", asset, matchKey: `split-${asset.id}` })
   const startCombine = (a: AssetObj, b: AssetObj) =>
     // order-independent key, so dropping A on B and B on A raise the same window rather than two
@@ -643,7 +634,7 @@ export function Desktop() {
     })
   }
 
-  // events — wallet actions
+  // events
   const renameContact = (id: string, name: string) => {
     setContacts((list) => list.map((c) => (c.id === id ? { ...c, label: name } : c)))
     setRenamingId(null)
@@ -662,9 +653,7 @@ export function Desktop() {
     dismissWins((w) => w.kind === "contact" && w.contact.id === id)
   }
 
-  // events — drops. An asset on a wallet opens the transfer modal, which asks Send or Trade before the
-  // details; an asset on a matching portion recombines; a wallet on the trash asks before deleting —
-  // the gesture is too close to an ordinary move to be allowed to destroy anything on its own.
+  // events
   const onDrop = (obj: DesktopObj, dropKey: string) => {
     // this drop landed on a zone (a folder, a wallet, a dock app), not the bare desk — so it isn't
     // "taken out of the folder"; drop the pulled-out flag without the remove whisper
@@ -921,8 +910,7 @@ export function Desktop() {
     onPointerDown(obj)(e)
   }
 
-  // events — desk housekeeping (the desktop's own right-click menu). The last-used arrangement is
-  // remembered so a window resize can re-run it: an icon layout tuned to one width is wrong at another.
+  // events
   const cleanupKeyRef = useRef<"name" | "kind" | "value" | null>(null)
   // merged over the old map, not swapped in: defaultPositions only knows the stock objects, and a
   // wholesale replace would strand any user-made folders without a position. Foldered objects are
@@ -1017,7 +1005,7 @@ export function Desktop() {
     closeFolderWindow(id)
   }
 
-  // events — folder windows. Open on click, close from the window, focus (re-order to top) on press.
+  // events
   const openFolderWindow = (id: string) => {
     if (!folderWins.includes(id)) cue("bloom") // an already-open folder is only being focused, not opened
     setFolderWins((w) => (w.includes(id) ? [...w.filter((x) => x !== id), id] : [...w, id]))
@@ -1136,8 +1124,7 @@ export function Desktop() {
     })
   }
 
-  // events — Inspector & Approval Radar. Verifying / confirming / whitelisting are simple state flips;
-  // revoking removes the approval and its linked scam token from the desk.
+  // events
   const inspectableById = (id: string): Inspectable | null =>
     assets.find((a) => a.id === id) ?? contacts.find((c) => c.id === id) ?? packs.find((p) => p.id === id) ?? null
 
@@ -1181,13 +1168,12 @@ export function Desktop() {
   const confirmContact = (id: string) => setContacts((list) => list.map((c) => (c.id === id ? { ...c, trust: "confirmed" } : c)))
   const whitelistAddress = (id: string) => setContacts((list) => list.map((c) => (c.id === id ? { ...c, whitelisted: true } : c)))
 
-  // events — address lifecycle. Retired warns before a send; compromised blocks it. Clearing restores
-  // Active. The two flags are mutually exclusive.
+  // events
   const markRetired = (id: string) => setContacts((list) => list.map((c) => (c.id === id ? { ...c, retired: true, compromised: false } : c)))
   const markCompromised = (id: string) => setContacts((list) => list.map((c) => (c.id === id ? { ...c, compromised: true, retired: false } : c)))
   const clearFlags = (id: string) => setContacts((list) => list.map((c) => (c.id === id ? { ...c, retired: false, compromised: false } : c)))
 
-  // events — reset the demo to its pristine layout, balances, contacts, packs, approvals and receipts.
+  // events
   const resetDemo = () => {
     const startAssets = [...ASSETS, ...DUST_ASSETS, ...DUST_NFTS, ...EOA_ASSETS]
     const startPeople = [...PEOPLE, ...EOA_PEOPLE]
@@ -1247,8 +1233,7 @@ export function Desktop() {
     if (kind === "edit" && obj.class === "person") return open({ kind: "contact", contact: obj, matchKey: `contact-${obj.id}` })
   }
 
-  // events — PackSpace Card. Open your own or a contact's; importing a pasted link / @handle / 0x
-  // address mints an unconfirmed contact on the desk (a confirmation ping, in fiction).
+  // events
   const openCard = (contact?: PersonObj) => {
     cue("bloom")
     setCard({ contact })
@@ -1284,9 +1269,7 @@ export function Desktop() {
     })
   }
 
-  // events — right-click. Icons take their own menu; the desk itself takes housekeeping. Every object
-  // gets a menu now (an NFT can't split but can be inspected); the browser menu is suppressed either
-  // way — this is a desktop, not a document.
+  // events
   const onIconMenu = (obj: DesktopObj) => (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation() // the desk's own menu listens underneath
@@ -1356,9 +1339,7 @@ export function Desktop() {
     return items
   }
 
-  // events — right-clicking a search result opens that object's ordinary desktop menu at the cursor,
-  // raised over the palette (the menu's z-940 sits above the palette's z-210). Packs carry no desk menu,
-  // so a right-click on one does nothing here either — same as on the desk.
+  // events
   const onSearchItemMenu = (obj: SearchItem, e: React.MouseEvent) => {
     e.preventDefault()
     if (obj.class === "pack") return
@@ -1469,19 +1450,18 @@ export function Desktop() {
     ]
   }
 
-  // effects — the desktop is the surface the resting objects clip to
+  // effects
   useEffect(() => {
     if (!rootRef.current) return
     return registerCoinViewport(rootRef.current)
   }, [])
 
-  // effects — one document-wide listener that knocks (press) on every button click, except the
-  // opens/closes that already sound their own bloom/error
+  // effects
   useEffect(() => installPressCues(), [])
 
-  // effects — keep the module mirrors the layout maths reads in step with state. A layout effect, so it
-  // lands before the browser paints and long before any pointer handler could consult them. Declared
-  // ahead of everything that clamps so the ordering is never in question.
+  // effects
+  // a layout effect, so the mirrors land before the browser paints and long before any pointer handler
+  // could consult them. Declared ahead of everything that clamps so the ordering is never in question.
   useLayoutEffect(() => {
     setObjectWallets([
       ...assets.map((a): [string, Wallet] => [a.id, walletOf(a)]),
@@ -1492,8 +1472,7 @@ export function Desktop() {
     setPanes(panes)
   }, [assets, contacts, folders, packs, panes])
 
-  // effects — the top-right keep-out. The widget grid reports its own box while it's on screen; split
-  // view has no bento, so the clamp falls back to the box the floating search / view chrome occupies.
+  // effects
   useEffect(() => {
     if (!isSplit) return
     chromeKeepout.w = SPLIT_KEEPOUT.w
@@ -1501,9 +1480,7 @@ export function Desktop() {
     setKeepout({ ...SPLIT_KEEPOUT })
   }, [isSplit])
 
-  // effects — the starting arrangement needs the viewport's size, which the server doesn't have. Both
-  // wallets' desks are seeded at full width: that's the pane each gets in its own single-wallet view, and
-  // opening the split re-clamps them into the halves. Foldered objects take no slot.
+  // effects
   useEffect(() => {
     const w = window.innerWidth
     const h = window.innerHeight
@@ -1546,7 +1523,7 @@ export function Desktop() {
     })
   }, [])
 
-  // effects — the view switched: both desks changed shape, so everything comes back inside its own pane.
+  // effects
   //
   // Squeezing a full-width desk into half the screen is lossy — everything bunches up against the
   // divider, and simply widening the pane again won't spread it back out. So the full-screen arrangement
@@ -1581,15 +1558,15 @@ export function Desktop() {
     settleIntoPanes(true)
   }, [view, positions, settleIntoPanes])
 
-  // effects — the divider moved. Clamp live (cheap, and it reads as the icons being pushed along by the
-  // divider); the collision pass waits for the drag to end — see `onRatioCommit`.
+  // effects
+  // clamped live (cheap, and it reads as the icons being pushed along by the divider); the collision
+  // pass waits for the drag to end — see `onRatioCommit`.
   useEffect(() => {
     if (!isSplit) return
     settleIntoPanes(false)
   }, [splitRatio, isSplit, settleIntoPanes])
 
-  // effects — detail cards are a full-desk view: 280px of card doesn't fit a split pane. They collapse
-  // back to icons on the way in and are put back exactly as they were on the way out.
+  // effects
   const cardsBeforeSplitRef = useRef<ReadonlySet<string>>(new Set())
   const prevSplitRef = useRef(isSplit)
   useEffect(() => {
@@ -1604,11 +1581,9 @@ export function Desktop() {
     cardsBeforeSplitRef.current = new Set()
   }, [isSplit, cardIds, applyCardIds])
 
-  // effects — when the widget grid's keep-out changes (a widget added, resized, or removed), re-tidy the
-  // desk so the contact grid drops below (or reclaims space above) the new footprint as one uniform block
-  // rather than scattering. Skips the first run — the seeding effect above owns the initial layout, and it
-  // already reads the freshly-measured keep-out. Depends only on the box (not positions), so the relayout
-  // it triggers doesn't feed back into it.
+  // effects
+  // skips the first run — the seeding effect above owns the initial layout. Depends only on the box,
+  // not on positions, so the relayout it triggers doesn't feed back into it.
   const seededKeepoutRef = useRef(false)
   useEffect(() => {
     if (!seededKeepoutRef.current) {
@@ -1624,10 +1599,7 @@ export function Desktop() {
     relayoutRef.current()
   }, [keepout])
 
-  // effects — the detail card is a desktop-only view, so the set is pruned to what's actually on the desk:
-  // filing a card into a folder drops it back to an icon, and an object that leaves entirely (spent,
-  // revoked, combined away) takes its card with it. Every path that files or removes goes through here
-  // rather than each remembering to clear the flag itself.
+  // effects
   useEffect(() => {
     if (!cardIds.size) return
     const live = new Set([...cardIds].filter((id) => !folderedIds.has(id) && assets.some((a) => a.id === id)))
@@ -1636,9 +1608,9 @@ export function Desktop() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardIds, folders, assets, applyCardIds])
 
-  // effects — a resize re-runs the last clean-up (the plain one, or whichever "Clean Up By" was used
-  // last). The listener reads through a ref so it always sees the current assets and contacts without
-  // re-registering on every change.
+  // effects
+  // the listener reads through a ref so it always sees the current assets and contacts without
+  // re-registering on every change
   const relayoutRef = useRef(() => {})
   useEffect(() => {
     relayoutRef.current = () => (cleanupKeyRef.current ? cleanUpBy(cleanupKeyRef.current) : cleanUp())
@@ -1652,7 +1624,7 @@ export function Desktop() {
     return () => window.removeEventListener("resize", onResize)
   }, [])
 
-  // effects — ⌘K / Ctrl+K opens the search palette from anywhere on the desk
+  // effects
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -1664,10 +1636,10 @@ export function Desktop() {
     return () => window.removeEventListener("keydown", onKey)
   }, [toggleSearch])
 
-  // effects — Escape closes only the TOPMOST overlay, so a modal stacked over the Inspector (Split, Add
-  // to Pack, a contact's Card…) closes on its own without taking the Inspector down with it. The checks
-  // run highest-z first; the first open layer consumes the key and nothing beneath it is touched. The
-  // right-click menus own their own Escape (DesktopMenu) but are still guarded here so the key can't fall
+  // effects
+  // only the TOPMOST overlay closes, so a modal stacked over the Inspector closes on its own without
+  // taking the Inspector down with it: the checks run highest-z first and the first open layer consumes
+  // the key. The right-click menus own their own Escape but are still guarded here so it can't fall
   // through them to a layer below. Read through a ref so the one listener always sees current state.
   const escapeRef = useRef(() => {})
   useEffect(() => {
@@ -1697,12 +1669,11 @@ export function Desktop() {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
 
-  // effects — the dragged icon is positioned imperatively, and any re-render mid-drag (targets
-  // lighting, dimming) resets its wrapper to the stale state position. Re-pin it after every render,
-  // before paint, so the stale value never shows. And once nothing is in hand, write every wrapper
-  // back to its stored spot: React skips re-writing a style prop it considers unchanged, so a drop
-  // that resolves to the icon's existing position (a second drop pushed off the dock to the same
-  // clearance spot, say) would otherwise leave the wrapper wherever the drag left it.
+  // effects
+  // a re-render mid-drag resets the wrapper to the stale state position, so it is re-pinned after every
+  // render, before paint. And once nothing is in hand, every wrapper is written back to its stored spot:
+  // React skips re-writing a style prop it considers unchanged, so a drop that resolves to the icon's
+  // existing position would otherwise leave the wrapper wherever the drag left it.
   useLayoutEffect(() => {
     if (dragged) {
       placeNode(dragged.id, coinView.cursor.x, coinView.cursor.y)

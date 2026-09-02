@@ -6,9 +6,6 @@ import type { LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-// The modal action button. Primary is solid white (the one thing to press); secondary is the glass
-// sibling beside it. `sm` is the compact variant for tight rows. Icons ride left of the label.
-
 type BaseBtnProps = {
   variant?: "primary" | "secondary"
   size?: "md" | "sm"

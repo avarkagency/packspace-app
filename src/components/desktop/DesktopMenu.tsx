@@ -35,10 +35,10 @@ export function DesktopMenu({ x, y, items, onClose }: { x: number; y: number; it
   const ref = useRef<HTMLDivElement>(null)
   const subRef = useRef<HTMLDivElement>(null)
 
-  // state — which item's flyout is open, anchored to its row's measured box
+  // state
   const [sub, setSub] = useState<{ index: number; rect: DOMRect } | null>(null)
 
-  // effects — clamp inside the viewport before the first paint, flipping like any context menu would
+  // effects
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
@@ -47,8 +47,9 @@ export function DesktopMenu({ x, y, items, onClose }: { x: number; y: number; it
     el.style.transform = `translate(${Math.max(EDGE, px)}px, ${Math.max(EDGE, py)}px)`
   }, [x, y, items.length])
 
-  // effects — capture-phase, so a press anywhere that isn't the menu (or its portaled flyout) closes
-  // it before it does anything else
+  // effects
+  // capture-phase, so a press anywhere that isn't the menu (or its portaled flyout) closes it before it
+  // does anything else
   useEffect(() => {
     const onPress = (e: PointerEvent) => {
       const t = e.target as Node

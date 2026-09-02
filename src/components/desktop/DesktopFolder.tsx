@@ -51,8 +51,7 @@ export function DesktopFolder({
   onDoubleClick,
   onContextMenu
 }: Props) {
-  // events — the hover readout. The cursor is seeded on enter so the peek can place itself before its
-  // first paint; the workspace gates it away while anything's in hand, so filing never fights the peek.
+  // events
   const onEnter = (e: React.PointerEvent) => {
     setCoinCursor(e.clientX, e.clientY)
     setCoinHover(id)
@@ -60,8 +59,7 @@ export function DesktopFolder({
   const onLeave = () => clearCoinHover(id)
   const onMove = (e: React.PointerEvent) => setCoinCursor(e.clientX, e.clientY)
 
-  // events — rename commits on Enter/blur, abandons on Escape. The input never joins the drag
-  // machinery: a pointerdown inside it is text selection, not a pick-up.
+  // events
   const commit = (el: HTMLInputElement) => {
     const name = el.value.trim()
     if (name && name !== label) onRename?.(name)

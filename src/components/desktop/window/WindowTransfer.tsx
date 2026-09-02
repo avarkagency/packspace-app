@@ -49,8 +49,7 @@ export function WindowTransfer({ assets, inventory, to, z, onClose, onSend, onLa
   const [step, setStep] = useState<Step>("choose")
   const [height, setHeight] = useState<number | null>(null)
 
-  // data — a lone fungible token carries an editable amount; the header and confirm panel both read it,
-  // so the "Send 2,500 USDC to Mum" line updates as the amount is changed
+  // data
   const lead = assets[0]
   const single = assets.length === 1 ? assets[0] : null
   const editable = !!single && single.kind !== "nft"
@@ -66,8 +65,7 @@ export function WindowTransfer({ assets, inventory, to, z, onClose, onSend, onLa
         ? "This address isn't on your whitelist. You've never transacted with it — verify who owns it first."
         : null
 
-  // effects — the frame grows/shrinks to wrap whatever the current step renders, including a body's own
-  // internal stage changes (Send's amount → confirm), so it's a live measurement, not a per-step one
+  // effects
   useEffect(() => {
     const el = bodyRef.current
     if (!el) return

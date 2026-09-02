@@ -1,18 +1,13 @@
 "use client"
 
-// The glass slider — a styled track (white fill up to the value, a white thumb) with an invisible native
-// range input laid over it for the actual interaction. Shared by Split, Send and Handoff so every slider
-// in the app reads the same. An optional label rides inside the track (e.g. "Split 50%" or an amount).
-
 type Props = {
   min?: number
   max: number
   step: number
   value: number
-  onChange: (v: number) => void
-  /** Text shown inside the track, left-aligned. */
   label?: string
   ariaLabel: string
+  onChange: (v: number) => void
 }
 
 export function BaseSlider({ min = 0, max, step, value, onChange, label, ariaLabel }: Props) {

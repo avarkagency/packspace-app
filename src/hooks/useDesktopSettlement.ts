@@ -57,8 +57,7 @@ export function useDesktopSettlement({ setAssets, setPositions, setFolders, onSe
     [setAssets, setFolders, setPositions]
   )
 
-  // events — a settled Send: consume the assets and file a receipt with the chain-aware Route row.
-  // One-way, no counterparty confirmation.
+  // events
   const applySend = useCallback(
     (deals: SendDeal[], to: PersonObj) => {
       cue("sparkle") // a settled transaction
@@ -81,8 +80,7 @@ export function useDesktopSettlement({ setAssets, setPositions, setFolders, onSe
     [consumeAssets, onSettle]
   )
 
-  // events — a settled Handoff: consume what you gave, spawn the assets you received (which land on the
-  // desk and pulse briefly like a fresh split), and file a Trade receipt noting both signatures.
+  // events
   const applyHandoff = useCallback(
     (give: GiveSlot[], receive: HandoffReceive[], to: PersonObj) => {
       cue("sparkle") // a settled transaction

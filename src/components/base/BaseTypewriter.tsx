@@ -6,21 +6,15 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
 
-// Reveals the text one character at a time, left to right — a plain typewriter of the real letters. The
-// layout is reserved up front (unrevealed characters are hidden with `visibility`, not removed) so the
-// text appears in place rather than reflowing, and each word is a nowrap unit so a line break never
-// splits one mid-word.
-
-const TYPE_STEP = 0.03 // seconds per character
-const MAX_TOTAL = 1.8 // cap, so a long paragraph doesn't crawl
+const TYPE_STEP = 0.03
+const MAX_TOTAL = 1.8
 
 export function BaseTypewriter({ text, className = "" }: { text: string; className?: string }) {
   // refs
   const rootRef = useRef<HTMLSpanElement>(null)
   const charsRef = useRef<HTMLSpanElement[]>([])
 
-  // data — characters, grouped into words (runs of non-space) with each word's starting index so the char
-  // spans still key off the original position
+  // data
   const chars = useMemo(() => Array.from(text), [text])
   const words = useMemo(() => {
     const out: { start: number; chars: string[] }[] = []

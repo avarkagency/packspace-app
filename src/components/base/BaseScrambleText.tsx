@@ -12,12 +12,6 @@ type BaseScrambleTextProps = {
   className?: string
 }
 
-// Resolves text out of noise, a character at a time. Each glyph is its own span so only textContent
-// changes as it runs — no layout, no re-render.
-//
-// It plays on mount rather than on a trigger prop: every caller here shows it when something appears,
-// and `key`ing the element is how you replay it.
-
 const FPS = 30
 const GLYPHS = ["?", "_", "/", "*", "^", "X"] as const
 
@@ -33,7 +27,7 @@ export function BaseScrambleText({ text, duration = 0.3, className = "" }: BaseS
   // data
   const chars = useMemo(() => Array.from(text), [text])
 
-  // hooks — the timeline runs outside CSS, so the reduced-motion query can't reach it from globals.css
+  // hooks
   const reduced = usePrefersReducedMotion()
 
   useGSAP(

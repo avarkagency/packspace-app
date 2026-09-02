@@ -30,8 +30,7 @@ type Props = {
 }
 
 export function DesktopPanes({ panes, wallpapers, ratio, onRatioChange, onRatioCommit }: Props) {
-  // events — the divider. Dragging it re-proportions the two panes live; the workspace re-clamps every
-  // icon off the back of the ratio change, so nothing is left stranded under the other half.
+  // events
   const onDividerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return
     e.preventDefault()

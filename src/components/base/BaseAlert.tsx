@@ -6,9 +6,6 @@ import type { LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-// The modal's status strip — one line, centred, tinted by what it's telling you: positive (the trusted
-// contact green), warning, or negative. The icon is optional and rides left of the message.
-
 type BaseAlertVariant = "positive" | "negative" | "warning"
 
 type BaseAlertProps = {

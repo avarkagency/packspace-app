@@ -15,7 +15,7 @@ export function ObjectNavIcon({ id, src }: { id: string; src: string }) {
   // refs
   const meshRef = useRef<THREE.Mesh>(null!)
 
-  // data — the tile artwork. The PNGs carry their own rounded corners in alpha.
+  // data
   const texture = useMemo(() => {
     const t = new THREE.TextureLoader().load(src)
     t.colorSpace = THREE.SRGBColorSpace
@@ -25,7 +25,7 @@ export function ObjectNavIcon({ id, src }: { id: string; src: string }) {
   // effects
   useEffect(() => () => texture.dispose(), [texture])
 
-  // frame — the DOM owns layout; the plane just sits on the measured rect (ortho: 1 unit = 1 px)
+  // frame
   useFrame((state) => {
     const rect = coinView.rects.get(id)
     const m = meshRef.current

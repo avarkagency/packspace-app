@@ -68,7 +68,7 @@ export const DesktopDetailCard = memo(function DesktopDetailCard({
   onContextMenu,
   onCollapse
 }: Props) {
-  // data — the same deterministic fixture the AI Inspector's price card draws, so the two agree
+  // data
   const market = useMemo(() => assetMarket(obj), [obj])
   const delta = dayChange(obj.symbol)
   const tag = chainTag(obj)

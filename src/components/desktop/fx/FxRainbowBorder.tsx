@@ -166,12 +166,12 @@ export function FxRainbowBorder({ className = "", active = true }: Props) {
   // hooks
   const reduced = usePrefersReducedMotion()
 
-  // effects — mirror the latest `active` into the ref the frame loop reads (never written during render)
+  // effects
   useEffect(() => {
     activeRef.current = active
   }, [active])
 
-  // effects — own the WebGL context for the component's life; rebuild if reduced-motion flips
+  // effects
   useEffect(() => {
     if (reduced) return
     const canvas = canvasRef.current

@@ -86,7 +86,7 @@ function ObjectEnvironment() {
 }
 
 export function ObjectScene({ items, nav = [] }: { items: DesktopObj[]; nav?: NavItem[] }) {
-  // drag — a single object in hand, or a carried multi-selection; either counts as "dragging"
+  // drag
   const { obj: dragged, carriedIds } = useDrag()
   const draggedAsset = dragged?.class === "asset" ? dragged : null
   const anyDragging = !!dragged || !!carriedIds

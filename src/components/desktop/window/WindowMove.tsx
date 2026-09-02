@@ -35,7 +35,7 @@ type Props = {
 }
 
 export function WindowMove({ asset, from, to, existing, z, onClose, onMove }: Props) {
-  // data — only a fungible balance can move in part; a one-of-one moves whole
+  // data
   const divisible = asset.kind !== "nft" && asset.balance > 0
   const max = asset.balance
 

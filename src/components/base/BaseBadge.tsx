@@ -2,9 +2,6 @@ import type { ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
 
-// The small status pill — a hairline outline in the tone's own colour, no fill. Sits inline beside a
-// label or a value; the tone carries the meaning, so it never needs an icon.
-
 type BaseBadgeTone = "muted" | "accent" | "success" | "warning" | "danger" | "violet"
 
 type BaseBadgeProps = {

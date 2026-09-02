@@ -88,14 +88,12 @@ export function DesktopHover({ items, folders = [] }: { items: DesktopObj[]; fol
   const hoverId = useCoinHover()
   const { obj: dragging, carriedIds } = useDrag()
 
-  // data — the readout stands down while anything is in hand, one object or a carried selection. A
-  // hovered id is an object or, failing that, a folder — both ride the same cursor-trailing panel.
+  // data
   const obj = hoverId ? items.find((o) => o.id === hoverId) : null
   const folder = hoverId && !obj ? folders.find((f) => f.id === hoverId) : null
   const show = (!!obj || !!folder) && !dragging && !carriedIds
 
-  // effects — measure and aim before the first paint. On the way in it snaps to the cursor; after that
-  // the frame loop below eases it, so moving between objects trails rather than teleports.
+  // effects
   useLayoutEffect(() => {
     const el = ref.current
     if (!el || !show) {

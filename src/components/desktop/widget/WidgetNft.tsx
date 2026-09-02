@@ -43,7 +43,7 @@ function coverStyle(offset: number, card: number): { transform: string; zIndex: 
 }
 
 export function WidgetNft({ assets, span }: { assets: AssetObj[]; span: 1 | 2 }) {
-  // refs — did the last stage press turn into a scrub? A moved press mustn't also count as a card click.
+  // refs
   const movedRef = useRef(false)
 
   // state
@@ -56,8 +56,9 @@ export function WidgetNft({ assets, span }: { assets: AssetObj[]; span: 1 | 2 })
   const delta = current ? dayChange(current.symbol) : undefined
   const { card, step } = metrics(span)
 
-  // events — drag across the strip to scrub. Stops the press reaching the grid cell, so scrubbing the
-  // gallery never starts a widget rearrange (the info row below is the drag handle for that).
+  // events
+  // stops the press reaching the grid cell, so scrubbing the gallery never starts a widget rearrange
+  // (the info row below is the drag handle for that)
   const onStagePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation()
     movedRef.current = false

@@ -37,7 +37,7 @@ export function dropTileAt(x: number, y: number): NavItem | undefined {
 }
 
 export function DesktopDock({ carriedAsset = false, onOpen }: { carriedAsset?: boolean; onOpen?: (id: string) => void }) {
-  // drag — the leading tiles light up as targets while an asset is in hand, alone or in a carried set
+  // drag
   const { obj: dragged, carriedIds, over } = useDrag()
   const draggedAsset = dragged?.class === "asset" ? dragged : null
 
@@ -82,7 +82,7 @@ function DockTile({ item, dropKey, target = false, over = false, dragging = fals
   // state
   const [hovered, setHovered] = useState(false)
 
-  // effects — the icon's box, drawn by the canvas overlay exactly like a coin's
+  // effects
   useEffect(() => {
     if (!slotRef.current) return
     return registerCoinSlot(item.id, slotRef.current)

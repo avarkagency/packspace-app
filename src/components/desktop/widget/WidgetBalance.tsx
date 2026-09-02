@@ -58,13 +58,13 @@ function slices(assets: AssetObj[]) {
 }
 
 export function WidgetBalance({ assets, span, wallet }: { assets: AssetObj[]; span: 1 | 2; wallet: Wallet }) {
-  // state — the hovered slice and its on-screen box, for the one-column bar tooltip
+  // state
   const [hovered, setHovered] = useState<{ row: Slice; rect: DOMRect } | null>(null)
 
   // data
   const { total, rows } = slices(assets)
 
-  // data — the tooltip shows only in the one-column form
+  // data
   const tip = span === 1 ? hovered : null
 
   return (

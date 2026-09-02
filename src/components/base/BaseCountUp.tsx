@@ -6,9 +6,6 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
 
-// A number that ticks up from zero to its value on mount, formatted every frame. Imperative (writes
-// textContent) so the count costs no re-renders. `delay` lines it up with a card's entrance.
-
 export function BaseCountUp({
   value,
   format,

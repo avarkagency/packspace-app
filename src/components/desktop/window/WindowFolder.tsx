@@ -75,13 +75,13 @@ export function WindowFolder({
   const frameRef = useRef<Frame | null>(null)
   const pressRef = useRef({ x: 0, y: 0 })
 
-  // state — the tiles picked for a multi-pull
+  // state
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set())
 
   // data
   const pickedItems = items.filter((o) => picked.has(o.id))
 
-  // events — frame plumbing
+  // events
   const apply = () => {
     const el = ref.current
     const f = frameRef.current
@@ -113,7 +113,7 @@ export function WindowFolder({
     apply()
   }
 
-  // events — move by the header
+  // events
   const onHeaderPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return
     e.preventDefault()
@@ -136,7 +136,7 @@ export function WindowFolder({
     window.addEventListener("pointerup", onUp)
   }
 
-  // events — resize by the bottom corners; the grid re-flows on its own (auto-fill columns)
+  // events
   const onResizePointerDown = (e: React.PointerEvent, corner: "sw" | "se") => {
     if (e.button !== 0) return
     e.preventDefault()
@@ -169,8 +169,7 @@ export function WindowFolder({
     window.addEventListener("pointerup", onUp)
   }
 
-  // events — tiles. A press hands the workspace the object (and its picked company) for a pull-out;
-  // a click that never travelled toggles the pick instead.
+  // events
   const tilePointerDown = (o: DesktopObj) => (e: React.PointerEvent) => {
     pressRef.current = { x: e.clientX, y: e.clientY }
     const group = picked.has(o.id) && pickedItems.length > 1 ? pickedItems : [o]
@@ -186,9 +185,10 @@ export function WindowFolder({
     })
   }
 
-  // effects — spawn centred; afterwards, re-apply the imperative frame on every render (a focus
-  // re-render passing a new z must never snap the window elsewhere). Positioned by left/top, never
-  // transform: the panel-in entrance animates transform, and the two would fight.
+  // effects
+  // the frame is re-applied on every render (a focus re-render passing a new z must never snap the
+  // window elsewhere). Positioned by left/top, never transform: the panel-in entrance animates
+  // transform, and the two would fight.
   useLayoutEffect(() => {
     if (!frameRef.current) {
       frameRef.current = { x: 0, y: 0, w: DEFAULT_W, h: null }

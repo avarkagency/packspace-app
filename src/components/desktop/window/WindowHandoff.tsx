@@ -48,7 +48,7 @@ const REQUEST_BACK: HandoffReceive = { label: "USD Coin", symbol: "USDC", amount
 type Phase = "connecting" | "failed" | "active" | "settled"
 
 export function WindowHandoff({ seeds, inventory, to, onClose, onLaunch }: Props) {
-  // refs — every simulated counterparty step is a timer; they all clear on edit and on unmount
+  // refs
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
   const clearTimers = () => {
     timers.current.forEach(clearTimeout)
@@ -82,7 +82,7 @@ export function WindowHandoff({ seeds, inventory, to, onClose, onLaunch }: Props
     [inventory, give] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
-  // events — any change to the terms breaks both locks (the deal is no longer the one they saw)
+  // events
   const resetNegotiation = () => {
     clearTimers()
     setYouLocked(false)
@@ -150,14 +150,13 @@ export function WindowHandoff({ seeds, inventory, to, onClose, onLaunch }: Props
     onClose()
   }
 
-  // effects — connection handshake: reach the counterparty, then open (or fail)
+  // effects
   useEffect(() => {
     const t = setTimeout(() => setPhase(reachable ? "active" : "failed"), T_CONNECT)
     return () => clearTimeout(t)
   }, [reachable])
 
-  // effects — counterparty simulation. Each stage arms the next; editing resets the flags, which unwinds
-  // these cleanly through their cleanups.
+  // effects
   useEffect(() => {
     if (phase !== "active" || !youLocked || themLocked) return
     const t = setTimeout(() => setThemLocked(true), T_LOCK)

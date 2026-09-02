@@ -78,10 +78,10 @@ type Props = {
 }
 
 export function PanelInspector({ obj, objects, coinPresent, foldered, wallpaper, onAction, onSelect, onClose }: Props) {
-  // refs — the invisible box in the art card the desk coin flies into
+  // refs
   const artRef = useRef<HTMLDivElement>(null)
 
-  // state — the copy button flashes a tick (the summary manages its own reveal, keyed per object)
+  // state
   const [copied, setCopied] = useState(false)
 
   // data
@@ -96,9 +96,7 @@ export function PanelInspector({ obj, objects, coinPresent, foldered, wallpaper,
   const warnActions = facts.safety ? facts.actions.filter((a) => WARNING_ACTION_KINDS.has(a.kind)) : []
   const mainActions = facts.actions.filter((a) => !warnActions.includes(a))
 
-  // effects — pull the coin into the art card while open; on navigation it swaps in place (stores/coin
-  // handles the instant drop-in). A filed object drops straight in (no desk position to fly from). Packs
-  // have no coin, so we just clear focus and the art card shows a mark.
+  // effects
   useEffect(() => {
     const el = artRef.current
     if (coinPresent && el) setCoinFocus(obj.id, el, foldered)
@@ -106,8 +104,7 @@ export function PanelInspector({ obj, objects, coinPresent, foldered, wallpaper,
   }, [obj.id, coinPresent, foldered])
   useEffect(() => () => clearCoinFocus(), [])
 
-  // effects — ← / → step to the previous / next inspectable object (wrapping), the same jump a list click
-  // would make. Ignored while typing in a field (e.g. the Edit modal on top).
+  // effects
   useEffect(() => {
     if (objects.length < 2) return
     const onKey = (e: KeyboardEvent) => {

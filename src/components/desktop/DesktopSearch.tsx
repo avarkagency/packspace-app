@@ -73,7 +73,7 @@ type Props = {
 }
 
 export function DesktopSearch({ items, onSelect, onItemContextMenu, onClose }: Props) {
-  // refs — the input (autofocused) and the active row (kept scrolled into view)
+  // refs
   const inputRef = useRef<HTMLInputElement>(null)
   const activeRef = useRef<HTMLButtonElement>(null)
 
@@ -84,8 +84,7 @@ export function DesktopSearch({ items, onSelect, onItemContextMenu, onClose }: P
   // effect) so the first paint after a keystroke already has the right row active
   const [lastQuery, setLastQuery] = useState(query)
 
-  // data — the flat, ranked, grouped result list. Flat order is the render order, so `active` indexes
-  // straight into it for keyboard navigation across group boundaries.
+  // data
   const q = query.trim().toLowerCase()
   const results = useMemo(() => {
     const scored = items.map((obj) => ({ obj, r: rank(obj, q) })).filter((x): x is { obj: SearchItem; r: number } => x.r !== null)
@@ -125,7 +124,7 @@ export function DesktopSearch({ items, onSelect, onItemContextMenu, onClose }: P
     }
   }
 
-  // effects — land in the input, and keep the active row scrolled into view as it moves
+  // effects
   useEffect(() => {
     inputRef.current?.focus()
   }, [])

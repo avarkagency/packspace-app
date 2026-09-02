@@ -8,11 +8,6 @@ import gsap from "gsap"
 
 import { cn } from "@/lib/utils"
 
-// The 24h price-change tag worn inside an asset's price pill — green up, red down. The caller decides
-// whether a tag is due at all (lib/data's dayChange returns undefined for flat movers), so this only ever
-// renders a real move. `big` is the larger Inspector size; `countUp` ticks the number up on mount (its
-// colour is fixed to the final sign, so it never flips green↔red on the way).
-
 const fmt = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`
 
 export function BaseChangeTag({ pct, big = false, countUp = false, delay = 0 }: { pct: number; big?: boolean; countUp?: boolean; delay?: number }) {

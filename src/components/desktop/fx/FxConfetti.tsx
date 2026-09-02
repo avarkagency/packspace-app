@@ -4,21 +4,6 @@ import { useEffect, useRef } from "react"
 
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 
-// A confetti fountain, ported from Matthew Ready's Shadertoy shader (CC BY-NC-SA 3.0 AU,
-// https://www.shadertoy.com/view/MsdGDX). It rises behind the settled proof card in celebration.
-//
-// The original evaluates every confetti's physics (exp / pow / sin) inside the per-pixel loop — but a
-// confetti's position, colour and rotation depend only on time and its index, never on the pixel. So
-// that work is hoisted to the CPU here: each frame the 80 confetti are computed once in JS and handed
-// to the shader as uniforms, leaving the fragment shader only the cheap per-pixel geometry (a distance
-// test and a rotated-quad test). That's what lets it render at full retina density without the cost
-// that made the brute-force version choke on large screens.
-//
-// It's transparent: the black backdrop is dropped out — alpha is the confetti's own brightness, output
-// premultiplied — so only the paper and its glow show through. Pure movement, so it removes itself
-// under reduced motion.
-
-// --- tunables, mirrored between the CPU physics and the shader constants ---
 const N_POPS = 5
 const N_CONFETTI = 16
 const COUNT = N_POPS * N_CONFETTI // 80
@@ -33,7 +18,6 @@ const HUE_VARIANCE = 0.2
 const SIZE = 6.0
 const CONFETTI_ROTATE_TIME_SCALE = 2.0
 
-// --- Matthew Ready's helpers, ported from GLSL to JS verbatim (GLSL mod/fract semantics preserved) ---
 const mod = (x: number, m: number) => x - m * Math.floor(x / m)
 const fract = (x: number) => x - Math.floor(x)
 const rand = (x: number, y: number) => fract(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453)
@@ -52,8 +36,6 @@ function yposition(time: number, angle: number, v: number, term: number) {
   return ((v * term) / GRAVITY) * (1.0 - Math.exp((-GRAVITY * time) / term)) * Math.sin(angle) - term * time
 }
 
-// rotate(...) * size — returns the rotated quad's half-diagonals packed as (a.xy, a.z, b.x), exactly
-// the four components the shader reads as offsets.xy / offsets.zw.
 function rotateScaled(phi: number, theta: number, psi: number): [number, number, number, number] {
   const cosPhi = Math.cos(phi),
     sinPhi = Math.sin(phi)
@@ -70,8 +52,6 @@ function rotateScaled(phi: number, theta: number, psi: number): [number, number,
   return [(r00 - r10) * SIZE, (r01 - r11) * SIZE, (r02 - r12) * SIZE, (r00 + r10) * SIZE]
 }
 
-/** Fill the per-frame uniform arrays: every confetti's location (in the shader's 800×450 space), its
- *  rotated-quad offsets, and its colour. This is the whole of the shader's old per-pixel math, run once. */
 function computeFrame(now: number, loc: Float32Array, mat: Float32Array, col: Float32Array) {
   let t = (now * CONFETTI_ROTATE_TIME_SCALE) / 5.0 + 1.3
   const m0 = rotateScaled(t * 8.0, Math.sin(t) * 0.5, t / 4.0)
@@ -86,9 +66,6 @@ function computeFrame(now: number, loc: Float32Array, mat: Float32Array, col: Fl
   for (let i = 0; i < N_POPS; i++) {
     const sampleTime = now - i * TIME_BETWEEN_POPS
     const popTime = getPopTime(sampleTime, now)
-    // (now - popTime) is the burst's absolute start time. A negative one would have begun before the
-    // shader loaded — park its confetti off-screen so the fountain opens EMPTY and fills in, lane by
-    // lane, over the first few seconds instead of appearing mid-explosion. Steady state is untouched.
     if (now - popTime < 0) {
       for (let j = 0; j < N_CONFETTI; j++, k++) {
         loc[k * 2] = 1e9
@@ -205,8 +182,6 @@ void main() {
 }
 `
 
-/** The fragment shader is cheap now, so the buffer follows the display: full device density, capped only
- *  so a 5K/6K panel doesn't allocate an absurd buffer. This is what fixes the large-screen softness. */
 const MAX_DIM = 3840
 const MAX_DPR = 2
 
@@ -223,7 +198,6 @@ function compile(gl: WebGLRenderingContext, type: number, src: string) {
 }
 
 type Props = {
-  /** Positioning is the caller's — e.g. "absolute inset-0". The canvas fills whatever box it's given. */
   className?: string
 }
 
@@ -234,7 +208,7 @@ export function FxConfetti({ className = "" }: Props) {
   // hooks
   const reduced = usePrefersReducedMotion()
 
-  // effects — own the WebGL context for the component's life; rebuild if reduced-motion flips
+  // effects
   useEffect(() => {
     if (reduced) return
     const canvas = canvasRef.current

@@ -36,14 +36,14 @@ type Props = {
 const FEE = { amount: "0.001 ETH", usd: "$0.08" }
 
 export function WindowSend({ assets, to, amount, setAmount, onClose, onSend }: Props) {
-  // data — a lone fungible token can have its amount edited; NFTs and multi-asset drops send in full
+  // data
   const single = assets.length === 1 ? assets[0] : null
   const editable = !!single && single.kind !== "nft"
 
   // state
   const [stage, setStage] = useState<"amount" | "confirm">(editable ? "amount" : "confirm")
 
-  // data — chain compatibility: an external single-chain address can't receive the wrong family
+  // data
   const incompatible = assets.find((a) => !canReceive(a, to))
   const trusted = to.trust !== "unconfirmed"
   const setAmt = (v: number) => setAmount(round4(Math.min(single!.balance, Math.max(0, v))))

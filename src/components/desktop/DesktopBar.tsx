@@ -6,17 +6,6 @@ import { cue, toggleMuted, useMuted } from "@/lib/sound"
 import { cn } from "@/lib/utils"
 import { type View, WALLETS, WALLET_ORDER } from "@/lib/wallets"
 
-// The desktop's top chrome. No longer a solid OS bar: the wallpaper runs to the top edge and the
-// chrome floats on it — identity and greeting on the left, the wallet/view toggles on the right. The
-// balance card that used to sit here is now the Balance widget in the top-right Widget, which owns
-// the desk's top-right keep-out box (see stores/chrome-keepout).
-//
-// The view control drives which wallet's desk is on screen: either one on its own, or both side by side
-// in Split View. In split the greeting stands down — each pane carries its own wallet label up there,
-// and the two would collide.
-
-/** The view tabs — exactly one is ever active. Each wallet, then both at once. Text only: the switcher
- *  is chrome, and the label already says which wallet it is. */
 const VIEW_TABS: { view: View; label: string }[] = [
   ...WALLET_ORDER.map((w) => ({ view: w as View, label: WALLETS[w].label })),
   { view: "split", label: "Split View" }
@@ -29,10 +18,10 @@ type Props = {
 }
 
 export function DesktopBar({ onSearch, view, onViewChange }: Props) {
-  // hooks — the desktop's sound preference (persisted), for the mute toggle beside search
+  // hooks
   const muted = useMuted()
 
-  // events — flip mute; turning sound back on gives itself a click, so the toggle is never silent
+  // events
   const onToggleSound = () => {
     toggleMuted()
     if (muted) cue("toggle")
@@ -40,10 +29,6 @@ export function DesktopBar({ onSearch, view, onViewChange }: Props) {
 
   return (
     <>
-      {/* identity + greeting — deliberately UNDER everything on the desk. No z-index on purpose: the
-          bar renders first, so the icon layer, the canvas (z-50) and the badges all paint over it, and
-          an object dragged across the corner flies over the words like paper over a desk blotter.
-          Stands down in split view, where the pane labels own that corner. */}
       {view !== "split" && (
         <div className="pointer-events-none fixed top-56 left-32 flex flex-col">
           <div className="flex items-center gap-6">
