@@ -1,5 +1,6 @@
 import { createElement } from "react"
 
+import type { CanvasObj, Chain } from "@/types/objects"
 import {
   Archive,
   Box,
@@ -20,8 +21,6 @@ import {
   User,
   Vault
 } from "lucide-react"
-
-import type { CanvasObj, Chain } from "@/lib/types"
 
 // Each object class renders instantly distinct (spec §3.1): distinct icon + colour + silhouette.
 
@@ -50,8 +49,7 @@ const CONTACT_IMAGE: Record<string, string> = {
 /** The face an address wears. Takes the contact rather than a bare id so a copy of it — the same person
  *  in the other wallet's address book, which needs its own object id — keeps the original's avatar
  *  through `avatarKey` instead of dropping to the default. */
-export const contactImage = (contact: { id: string; avatarKey?: string }) =>
-  CONTACT_IMAGE[contact.avatarKey ?? contact.id] ?? "/images/contacts/default.jpg"
+export const contactImage = (contact: { id: string; avatarKey?: string }) => CONTACT_IMAGE[contact.avatarKey ?? contact.id] ?? "/images/contacts/default.jpg"
 
 const APP_ICON: Record<string, LucideIcon> = {
   gacha: Ticket,

@@ -2,12 +2,12 @@
 
 import { useState } from "react"
 
+import type { PackContent, PackObj } from "@/types/objects"
 import { Lock, PackageOpen, X } from "lucide-react"
 
-import type { PackContent, PackObj } from "@/lib/types"
-import { units } from "@/lib/utils"
+import { BaseBtn } from "@/components/base/BaseBtn"
 
-import { BaseBtn } from "../base/BaseBtn"
+import { units } from "@/lib/utils"
 
 // Unpack — open a Pack and claim its contents back onto the desk. A password-locked pack gates behind
 // the passphrase; a randomized pack reveals one of its possible contents. Fungibles merge back into any

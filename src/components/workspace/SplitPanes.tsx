@@ -2,9 +2,9 @@
 
 import Image from "next/image"
 
+import { DIVIDER_W, type Pane, SPLIT_MAX, SPLIT_MIN } from "@/const/pane"
 import { GripVertical } from "lucide-react"
 
-import { DIVIDER_W, type Pane, SPLIT_MAX, SPLIT_MIN } from "@/lib/pane"
 import { shortAddr } from "@/lib/utils"
 import { WALLETS, type Wallet } from "@/lib/wallets"
 

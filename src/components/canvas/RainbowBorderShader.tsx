@@ -264,5 +264,12 @@ export function RainbowBorderShader({ className = "", active = true }: Props) {
 
   if (reduced) return null
 
-  return <canvas ref={canvasRef} aria-hidden className={`pointer-events-none ${className}`} style={{ width: "100%", height: "100%", mixBlendMode: "plus-lighter" }} />
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden
+      className={`pointer-events-none ${className}`}
+      style={{ width: "100%", height: "100%", mixBlendMode: "plus-lighter" }}
+    />
+  )
 }

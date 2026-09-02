@@ -3,17 +3,20 @@
 import Image from "next/image"
 import { useEffect, useLayoutEffect, useRef } from "react"
 
+import { coinView, useCoinHover } from "@/stores/coin"
+import { useDrag } from "@/stores/drag"
+import type { DesktopObj } from "@/types/objects"
+
+import { BaseChangeTag } from "@/components/base/BaseChangeTag"
+import { BaseScrambleText } from "@/components/base/BaseScrambleText"
+import { chainImage, objectKindLabel, objectTint } from "@/components/canvas/ObjectVisual"
+import { artImage } from "@/components/canvas/object-art"
+
 import { chainTag } from "@/lib/chain"
-import { coinView, useCoinHover } from "@/lib/coin-store"
-import { dayChange } from "@/lib/data"
-import { useDrag } from "@/lib/drag-store"
-import type { DesktopObj } from "@/lib/types"
 import { cn, shortAddr, usd } from "@/lib/utils"
 
-import { BaseChangeTag } from "../base/BaseChangeTag"
-import { BaseScrambleText } from "../base/BaseScrambleText"
-import { artImage } from "../canvas/object-art"
-import { chainImage, objectKindLabel, objectTint } from "../canvas/objectVisual"
+import { dayChange } from "@/data/assets"
+
 import { ContactAvatar } from "./ContactAvatar"
 
 // The readout that rides with the cursor while an object is hovered. It carries only what the icon
@@ -213,7 +216,7 @@ function FolderPeek({ folder }: { folder: FolderPreview }) {
                 <span className="truncate text-11 font-medium text-white/85">{item.label}</span>
               </span>
               <span className="tnum shrink-0 text-11 text-white/60">
-                {item.class === "asset" ? usd(item.usd, { cents: false }) : (item.address ? shortAddr(item.address) : item.handle)}
+                {item.class === "asset" ? usd(item.usd, { cents: false }) : item.address ? shortAddr(item.address) : item.handle}
               </span>
             </li>
           ))}

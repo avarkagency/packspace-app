@@ -3,17 +3,17 @@
 import Image from "next/image"
 import { useState } from "react"
 
+import type { AssetObj, PersonObj } from "@/types/objects"
 import { Ban, ChevronLeft, Send, ShieldCheck, TriangleAlert } from "lucide-react"
 
-import { blockSendMessage, canReceive, chainWord } from "@/lib/chain"
-import type { AssetObj, PersonObj } from "@/lib/types"
-import { round4, units, usd } from "@/lib/utils"
+import { BaseAlert } from "@/components/base/BaseAlert"
+import { BaseBtn } from "@/components/base/BaseBtn"
+import { BaseSlider } from "@/components/base/BaseSlider"
+import { chainImage } from "@/components/canvas/ObjectVisual"
+import { ContactAvatar } from "@/components/shell/ContactAvatar"
 
-import { BaseAlert } from "../base/BaseAlert"
-import { BaseBtn } from "../base/BaseBtn"
-import { BaseSlider } from "../base/BaseSlider"
-import { chainImage } from "../canvas/objectVisual"
-import { ContactAvatar } from "../shell/ContactAvatar"
+import { blockSendMessage, canReceive, chainWord } from "@/lib/chain"
+import { round4, units, usd } from "@/lib/utils"
 
 // The Send confirm step — renders inside TransferWindow's frame, below the shared header and asset list.
 // A one-way give: an amount stage (fungibles only) then the confirm screen. Confirm deducts the balance
@@ -95,7 +95,14 @@ export function SendWindow({ assets, to, amount, setAmount, onClose, onSend }: P
             ALL
           </button>
         </div>
-        <BaseSlider max={single.balance} step={single.balance / 100} value={amount} onChange={setAmt} label={`${units(amount)} ${single.symbol}`} ariaLabel="Amount" />
+        <BaseSlider
+          max={single.balance}
+          step={single.balance / 100}
+          value={amount}
+          onChange={setAmt}
+          label={`${units(amount)} ${single.symbol}`}
+          ariaLabel="Amount"
+        />
         <div className="flex justify-between text-12 text-white/50">
           <span className="tnum">
             Balance {units(single.balance)} {single.symbol}
@@ -141,7 +148,14 @@ export function SendWindow({ assets, to, amount, setAmount, onClose, onSend }: P
           <dt className="text-14 leading-120 tracking-tight text-white/80">Network</dt>
           <dd className="flex items-center gap-6 text-14 leading-120 tracking-tight text-white">
             {to.chain && (
-              <Image src={chainImage(to.chain)} alt="" width={24} height={24} unoptimized className="size-24 shrink-0 rounded-full border border-white object-cover" />
+              <Image
+                src={chainImage(to.chain)}
+                alt=""
+                width={24}
+                height={24}
+                unoptimized
+                className="size-24 shrink-0 rounded-full border border-white object-cover"
+              />
             )}
             {to.chain ?? "—"}
           </dd>

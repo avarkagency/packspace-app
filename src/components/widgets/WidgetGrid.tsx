@@ -2,15 +2,16 @@
 
 import { useEffect, useRef, useState } from "react"
 
+import type { AssetObj } from "@/types/objects"
 import { Columns2, Maximize2, Minimize2, Plus, Trash2 } from "lucide-react"
 
+import { DesktopMenu, type DesktopMenuItem } from "@/components/desktop/DesktopMenu"
+
 import { cue } from "@/lib/sound"
-import type { AssetObj } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import type { Wallet } from "@/lib/wallets"
 import { WIDGET_TYPES, type WidgetInstance, type WidgetType, packWidgets } from "@/lib/widgets"
 
-import { DesktopMenu, type DesktopMenuItem } from "../desktop/DesktopMenu"
 import { BalanceWidget } from "./BalanceWidget"
 import { NftWidget } from "./NftWidget"
 

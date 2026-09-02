@@ -6,7 +6,7 @@ import { useSyncExternalStore } from "react"
 // truth for layout, hit-testing and labels; the canvas only draws. Each card registers the box its coin
 // should fill, and the frame loop reads those boxes back out.
 //
-// Lives outside React for the same reason as drag-store: the frame loop reads this every tick and must
+// Lives outside React for the same reason as stores/drag: the frame loop reads this every tick and must
 // never cause a render. Hover is the one thing React can opt into, via useCoinHover — the frame loop
 // still reads `coinView.hoverId` straight off the object and subscribes to nothing.
 

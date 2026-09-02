@@ -3,15 +3,16 @@
 import Image from "next/image"
 import { useLayoutEffect, useRef, useState } from "react"
 
+import type { DesktopObj } from "@/types/objects"
 import { Check, TriangleAlert, X } from "lucide-react"
 
-import { dayChange } from "@/lib/data"
-import type { DesktopObj } from "@/lib/types"
+import { BaseChangeTag } from "@/components/base/BaseChangeTag"
+import { chainImage } from "@/components/canvas/ObjectVisual"
+import { ObjectArt } from "@/components/shell/ObjectArt"
+
 import { cn, desktopLabel, usd } from "@/lib/utils"
 
-import { BaseChangeTag } from "../base/BaseChangeTag"
-import { chainImage } from "../canvas/objectVisual"
-import { ObjectArt } from "../shell/ObjectArt"
+import { dayChange } from "@/data/assets"
 
 // A folder open on the desk. A window, not a modal: no backdrop, no blur — the desktop stays visible
 // and interactive around it. It spawns centred, moves by its header (double-click the header to send
@@ -326,9 +327,7 @@ function FolderGridItem({
       </span>
 
       <span className="flex w-full flex-col items-center gap-4">
-        <p className="tnum w-full truncate text-center text-12 font-medium leading-120 tracking-tight text-white">
-          {over ? "Combine" : desktopLabel(obj)}
-        </p>
+        <p className="tnum w-full truncate text-center text-12 font-medium leading-120 tracking-tight text-white">{over ? "Combine" : desktopLabel(obj)}</p>
         <span
           className={cn(
             "tnum flex max-w-full items-center gap-4 rounded-full bg-white/20 py-2 pl-6 text-10 leading-120 text-white/90",

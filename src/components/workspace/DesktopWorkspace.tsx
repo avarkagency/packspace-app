@@ -3,7 +3,62 @@
 import dynamic from "next/dynamic"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 
-import { ArrowDownUp, BadgeCheck, Ban, CreditCard, FolderPlus, History, Image as ImageIcon, LayoutGrid, Maximize2, Minimize2, Pencil, Plus, Scissors, Search, ShieldCheck, ShieldX, SquarePen, Trash2, UserPlus } from "lucide-react"
+import { CONNECTED_NETWORK } from "@/const/app-config"
+import { type Pane, paneFor, walletAtX } from "@/const/pane"
+import { useDesktopDrag } from "@/hooks/useDesktopDrag"
+import { chromeKeepout } from "@/stores/chrome-keepout"
+import { coinView, registerCoinViewport, setCoinHover } from "@/stores/coin"
+import { endDrag, setOver, startGroupDrag, useDrag } from "@/stores/drag"
+import type { Approval, AssetObj, DesktopObj, PackObj, PersonObj, Receipt } from "@/types/objects"
+import {
+  ArrowDownUp,
+  BadgeCheck,
+  Ban,
+  CreditCard,
+  FolderPlus,
+  History,
+  Image as ImageIcon,
+  LayoutGrid,
+  Maximize2,
+  Minimize2,
+  Pencil,
+  Plus,
+  Scissors,
+  Search,
+  ShieldCheck,
+  ShieldX,
+  SquarePen,
+  Trash2,
+  UserPlus
+} from "lucide-react"
+
+import { DesktopBar } from "@/components/desktop/DesktopBar"
+import { CARD_H, CARD_W, DesktopDetailCard } from "@/components/desktop/DesktopDetailCard"
+import { DOCK_GAP, DOCK_H, DOCK_W, DesktopDock, dropTileAt } from "@/components/desktop/DesktopDock"
+import { DesktopFolder } from "@/components/desktop/DesktopFolder"
+import { DesktopIcon, ICON_PAD, ICON_SLOT, ICON_W } from "@/components/desktop/DesktopIcon"
+import { DesktopMenu, type DesktopMenuItem } from "@/components/desktop/DesktopMenu"
+import { DesktopPack } from "@/components/desktop/DesktopPack"
+import { ApprovalRadarPanel } from "@/components/panels/ApprovalRadarPanel"
+import { FullscreenInspector } from "@/components/panels/FullscreenInspector"
+import { DesktopToast, type ToastTone } from "@/components/shell/DesktopToast"
+import { ObjectHoverInfo } from "@/components/shell/ObjectHoverInfo"
+import { type SearchItem, SearchPalette } from "@/components/shell/SearchPalette"
+import { WidgetGrid } from "@/components/widgets/WidgetGrid"
+import { CardWindow } from "@/components/windows/CardWindow"
+import { CombineWindow } from "@/components/windows/CombineWindow"
+import { ContactWindow } from "@/components/windows/ContactWindow"
+import { DeleteWindow } from "@/components/windows/DeleteWindow"
+import { FolderWindow } from "@/components/windows/FolderWindow"
+import type { GiveSlot, HandoffReceive } from "@/components/windows/HandoffWindow"
+import { MoveWindow } from "@/components/windows/MoveWindow"
+import { PackBuilderWindow, type PackDraft } from "@/components/windows/PackBuilderWindow"
+import { ReceiptWindow } from "@/components/windows/ReceiptWindow"
+import { ReceiptsListWindow } from "@/components/windows/ReceiptsListWindow"
+import type { SendDeal } from "@/components/windows/SendWindow"
+import { SplitWindow } from "@/components/windows/SplitWindow"
+import { TransferWindow } from "@/components/windows/TransferWindow"
+import { UnpackWindow } from "@/components/windows/UnpackWindow"
 
 import {
   assetDropId,
@@ -19,46 +74,17 @@ import {
   walletDropKey
 } from "@/lib/asset-ops"
 import { isProjectG, routeLine } from "@/lib/chain"
-import { chromeKeepout } from "@/lib/chrome-keepout"
-import { coinView, registerCoinViewport, setCoinHover } from "@/lib/coin-store"
-import { APPROVAL_RADAR, ASSETS, CONNECTED_NETWORK, DUST_ASSETS, DUST_NFTS, EOA_ASSETS, EOA_PEOPLE, NAV_ITEMS, PEOPLE } from "@/lib/data"
-import { endDrag, setOver, startGroupDrag, useDrag } from "@/lib/drag-store"
-import { type Pane, paneFor, walletAtX } from "@/lib/pane"
-import { cue, installPressCues } from "@/lib/sound"
 import type { Inspectable } from "@/lib/inspect"
-import type { Approval, AssetObj, DesktopObj, PackObj, PersonObj, Receipt } from "@/lib/types"
+import { cue, installPressCues } from "@/lib/sound"
 import { cn, desktopLabel, fakeHash, round4, units } from "@/lib/utils"
-import { WALLET_ORDER, type View, type Wallet, moveBlockMessage, visibleWallets, walletLabel, walletOf } from "@/lib/wallets"
+import { type View, WALLET_ORDER, type Wallet, moveBlockMessage, visibleWallets, walletLabel, walletOf } from "@/lib/wallets"
 import { WIDGET_TYPES, type WidgetInstance, type WidgetType } from "@/lib/widgets"
 
-import { DesktopBar } from "../desktop/DesktopBar"
-import { CARD_H, CARD_W, DesktopDetailCard } from "../desktop/DesktopDetailCard"
-import { DOCK_GAP, DOCK_H, DOCK_W, DesktopDock, dropTileAt } from "../desktop/DesktopDock"
-import { DesktopFolder } from "../desktop/DesktopFolder"
-import { DesktopIcon, ICON_PAD, ICON_SLOT, ICON_W } from "../desktop/DesktopIcon"
-import { DesktopMenu, type DesktopMenuItem } from "../desktop/DesktopMenu"
-import { DesktopPack } from "../desktop/DesktopPack"
-import type { GiveSlot, HandoffReceive } from "../windows/HandoffWindow"
-import { PackBuilderWindow, type PackDraft } from "../windows/PackBuilderWindow"
-import type { SendDeal } from "../windows/SendWindow"
-import { UnpackWindow } from "../windows/UnpackWindow"
-import { WidgetGrid } from "../widgets/WidgetGrid"
-import { useDesktopDrag } from "../desktop/useDesktopDrag"
-import { ApprovalRadarPanel } from "../panels/ApprovalRadarPanel"
-import { FullscreenInspector } from "../panels/FullscreenInspector"
-import { DesktopToast, type ToastTone } from "../shell/DesktopToast"
-import { ObjectHoverInfo } from "../shell/ObjectHoverInfo"
-import { SearchPalette, type SearchItem } from "../shell/SearchPalette"
-import { CardWindow } from "../windows/CardWindow"
-import { CombineWindow } from "../windows/CombineWindow"
-import { ContactWindow } from "../windows/ContactWindow"
-import { DeleteWindow } from "../windows/DeleteWindow"
-import { FolderWindow } from "../windows/FolderWindow"
-import { MoveWindow } from "../windows/MoveWindow"
-import { ReceiptWindow } from "../windows/ReceiptWindow"
-import { ReceiptsListWindow } from "../windows/ReceiptsListWindow"
-import { SplitWindow } from "../windows/SplitWindow"
-import { TransferWindow } from "../windows/TransferWindow"
+import { APPROVAL_RADAR } from "@/data/approvals"
+import { NAV_ITEMS } from "@/data/apps"
+import { ASSETS, DUST_ASSETS, DUST_NFTS, EOA_ASSETS } from "@/data/assets"
+import { EOA_PEOPLE, PEOPLE } from "@/data/people"
+
 import { LABEL_H, LABEL_TOP, SplitPanes } from "./SplitPanes"
 
 // The desktop. Floating chrome over the wallpaper — greeting and balance card up top, the app dock
@@ -71,7 +97,7 @@ import { LABEL_H, LABEL_TOP, SplitPanes } from "./SplitPanes"
 // Change Wallpaper, Clean Up, Clean Up By.
 
 // WebGL can't render on the server, and the coin faces are drawn to a 2D canvas at material-build time.
-const ObjectScene = dynamic(() => import("../canvas/ObjectScene").then((m) => m.ObjectScene), { ssr: false })
+const ObjectScene = dynamic(() => import("@/components/canvas/ObjectScene").then((m) => m.ObjectScene), { ssr: false })
 
 type WinBody =
   | { kind: "transfer"; assets: AssetObj[]; to: PersonObj }
@@ -126,7 +152,7 @@ const INITIAL_FOLDERS: FolderSpec[] = [
   { id: "folder-other-nfts", label: "Other NFTs", wallet: "openfort", contents: DUST_NFTS.map((a) => a.id) }
 ]
 
-/** Lay out one wallet's desk inside its own pane. Coordinates come out pane-relative (see lib/pane), so
+/** Lay out one wallet's desk inside its own pane. Coordinates come out pane-relative (see const/pane), so
  *  the same numbers describe a full-screen desk and a half-screen one. */
 function defaultPositions(assets: AssetObj[], contacts: PersonObj[], folderIds: string[], pane: Pane, top: number): Record<string, Pos> {
   const pos: Record<string, Pos> = {}
@@ -859,11 +885,8 @@ export function DesktopWorkspace() {
       if (whole && !mergeIntoId) return list.map((a) => (a.id === asset.id ? { ...a, wallet: to } : a))
 
       const kept = round4(asset.balance - amount)
-      const withSource = list
-        .map((a) => (a.id === asset.id ? { ...a, balance: kept, usd: kept * rate } : a))
-        .filter((a) => a.id !== asset.id || kept > 0)
-      if (mergeIntoId)
-        return withSource.map((a) => (a.id === mergeIntoId ? { ...a, balance: round4(a.balance + amount), usd: a.usd + amount * rate } : a))
+      const withSource = list.map((a) => (a.id === asset.id ? { ...a, balance: kept, usd: kept * rate } : a)).filter((a) => a.id !== asset.id || kept > 0)
+      if (mergeIntoId) return withSource.map((a) => (a.id === mergeIntoId ? { ...a, balance: round4(a.balance + amount), usd: a.usd + amount * rate } : a))
       const i = withSource.findIndex((a) => a.id === asset.id)
       const moved: AssetObj = { ...asset, id: landedId, wallet: to, balance: amount, usd: amount * rate, derived: true }
       return i < 0 ? [...withSource, moved] : [...withSource.slice(0, i + 1), moved, ...withSource.slice(i + 1)]
@@ -1100,8 +1123,7 @@ export function DesktopWorkspace() {
         // a filed tile takes the drop too — the coin files itself in beside its target first, so
         // cancelling the combine leaves it in the folder rather than stranded under the window
         const home = folders.find((f) => f.contents.includes(target.id))
-        if (home)
-          setFolders((list) => list.map((f) => (f.id === home.id && !f.contents.includes(obj.id) ? { ...f, contents: [...f.contents, obj.id] } : f)))
+        if (home) setFolders((list) => list.map((f) => (f.id === home.id && !f.contents.includes(obj.id) ? { ...f, contents: [...f.contents, obj.id] } : f)))
         startCombine(obj, target)
       }
     }
@@ -1769,13 +1791,20 @@ export function DesktopWorkspace() {
     if (!unknown) {
       items.push({ label: "Rename", icon: Pencil, separator: true, onSelect: () => setRenamingId(obj.id) })
       items.push({ label: "Edit", icon: SquarePen, onSelect: () => open({ kind: "contact", contact: obj, matchKey: `contact-${obj.id}` }) })
-      if (!flagged && obj.trust === "unconfirmed") items.push({ label: "Confirm contact", icon: BadgeCheck, separator: true, onSelect: () => confirmContact(obj.id) })
+      if (!flagged && obj.trust === "unconfirmed")
+        items.push({ label: "Confirm contact", icon: BadgeCheck, separator: true, onSelect: () => confirmContact(obj.id) })
       if (flagged) items.push({ label: "Clear flag · set Active", icon: BadgeCheck, separator: true, onSelect: () => clearFlags(obj.id) })
       if (!obj.retired) items.push({ label: "Mark as Retired", icon: History, onSelect: () => markRetired(obj.id) })
       if (!obj.compromised) items.push({ label: "Mark as Compromised", icon: ShieldX, danger: true, onSelect: () => markCompromised(obj.id) })
     }
     // same confirm as the trash — permanent is permanent, whichever gesture asked
-    items.push({ label: "Delete", icon: Trash2, danger: true, separator: true, onSelect: () => open({ kind: "delete-contact", contact: obj, matchKey: `delete-${obj.id}` }) })
+    items.push({
+      label: "Delete",
+      icon: Trash2,
+      danger: true,
+      separator: true,
+      onSelect: () => open({ kind: "delete-contact", contact: obj, matchKey: `delete-${obj.id}` })
+    })
     return items
   }
 
@@ -1854,7 +1883,13 @@ export function DesktopWorkspace() {
       { label: "New Contact", icon: UserPlus, onSelect: () => addContact(at, wallet) },
       { label: "New Folder", icon: FolderPlus, onSelect: () => addFolder(at, wallet) },
       ...(addable.length
-        ? [{ label: "Add Widget", icon: Plus, children: addable.map((t) => ({ label: t.label, onSelect: () => addWidget(t.type, wallet) })) } as DesktopMenuItem]
+        ? [
+            {
+              label: "Add Widget",
+              icon: Plus,
+              children: addable.map((t) => ({ label: t.label, onSelect: () => addWidget(t.type, wallet) }))
+            } as DesktopMenuItem
+          ]
         : []),
       {
         label: "Change Wallpaper",
@@ -2152,7 +2187,13 @@ export function DesktopWorkspace() {
           still sitting under every icon, coin and badge. In split view the two panes bring their own,
           divided at the divider. */}
       {isSplit ? (
-        <SplitPanes panes={panes} wallpapers={{ openfort: wallpapers.openfort.css, eoa: wallpapers.eoa.css }} ratio={splitRatio} onRatioChange={setSplitRatio} onRatioCommit={() => settleIntoPanes(true)} />
+        <SplitPanes
+          panes={panes}
+          wallpapers={{ openfort: wallpapers.openfort.css, eoa: wallpapers.eoa.css }}
+          ratio={splitRatio}
+          onRatioChange={setSplitRatio}
+          onRatioCommit={() => settleIntoPanes(true)}
+        />
       ) : (
         <div aria-hidden className="fixed inset-0" style={{ background: wallpapers[activeWallet].css }} />
       )}
@@ -2446,9 +2487,7 @@ export function DesktopWorkspace() {
       )}
       {unpacking && <UnpackWindow pack={unpacking} onClose={closeUnpack} onUnpack={unpackPack} />}
       {card && <CardWindow contact={card.contact} onImport={importContact} onClose={closeCard} />}
-      {receiptsOpen && (
-        <ReceiptsListWindow receipts={receipts} onOpen={(r) => open({ kind: "receipt", receipt: r, matchKey: r.id })} onClose={closeReceipts} />
-      )}
+      {receiptsOpen && <ReceiptsListWindow receipts={receipts} onOpen={(r) => open({ kind: "receipt", receipt: r, matchKey: r.id })} onClose={closeReceipts} />}
 
       {/* the Approval Radar stays a right-docked panel; the AI Inspector is a full-screen bento takeover */}
       {rightPanel?.kind === "radar" && <ApprovalRadarPanel approvals={approvals} onRevoke={revokeApprovalEntry} onClose={closePanel} />}

@@ -2,11 +2,12 @@
 
 import Image from "next/image"
 
-import type { DesktopObj } from "@/lib/types"
+import type { DesktopObj } from "@/types/objects"
 
-import { ObjectMark } from "../canvas/ObjectMark"
-import { artImage } from "../canvas/object-art"
-import { objectTint } from "../canvas/objectVisual"
+import { ObjectMark } from "@/components/canvas/ObjectMark"
+import { objectTint } from "@/components/canvas/ObjectVisual"
+import { artImage } from "@/components/canvas/object-art"
+
 import { ContactAvatar } from "./ContactAvatar"
 
 // The flat DOM twin of an object's 3D art — borderless round coin art for tokens, a 2px-bordered rounded

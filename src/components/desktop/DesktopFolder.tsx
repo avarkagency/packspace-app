@@ -2,7 +2,8 @@
 
 import Image from "next/image"
 
-import { clearCoinHover, setCoinCursor, setCoinHover } from "@/lib/coin-store"
+import { clearCoinHover, setCoinCursor, setCoinHover } from "@/stores/coin"
+
 import { cn } from "@/lib/utils"
 
 import { ICON_W } from "./DesktopIcon"

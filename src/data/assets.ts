@@ -1,21 +1,8 @@
-import type { AppObj, Approval, ApprovalObj, AssetObj, CampaignObj, Chain, NavItem, PackObj, PersonObj, VaultObj } from "./types"
+import type { AssetObj } from "@/types/objects"
+
+import { C } from "./colors"
 
 // Dummy data only — no backend, no chain (spec: "full fake product"). Values are illustrative.
-
-// Token colour signatures (data-driven, per doctrine — chrome stays monochrome-cyan).
-const C = {
-  usdc: "#2775ca",
-  eth: "#627eeb",
-  usdt: "#1ba27a",
-  sol: "#14f195",
-  bnb: "#f1b90c",
-  // the polaroids take their colour from their own artwork; these only feed the chrome that still reads
-  // objectTint() — the drag label and the coins' fallback faces
-  bayc: "#f0a03c",
-  azuki: "#e5474b",
-  doodles: "#5db4f0",
-  stack: "#f472b6"
-}
 
 /** The headline's change figure. Invented, like everything else here — nothing in this prototype models
  *  price history, so it's a fixed fixture rather than anything derived from the holdings. */
@@ -51,21 +38,6 @@ export function dayChange(symbol: string): number | undefined {
   const pct = CHANGE_24H[symbol]
   return pct === undefined || Math.abs(pct) < 0.05 ? undefined : pct
 }
-
-/** You. The address is held in full rather than pre-truncated, because it seeds your avatar as well as
- *  being displayed — the same rule every contact follows. */
-export const WALLET = { label: "You", address: "0x7Afd3C81b9E24f05a6D7c8B1e0F9a2D3c4B5e63D" }
-
-/** Your own PackSpace Card identity — a Project G multichain wallet. */
-export const ME = {
-  name: "You",
-  handle: "@you.pack",
-  address: WALLET.address,
-  chains: ["Base", "Ethereum", "Solana", "Bitcoin"] as Chain[]
-}
-
-/** The session's network, shown in the top bar. A fixture — nothing here actually connects. */
-export const CONNECTED_NETWORK: Chain = "Base"
 
 // Ordered as the desk lays them out: columns of five filled top-to-bottom, so this reads column one
 // (ETH → 100 USDC) then column two (BNB → BAYC); the Other Tokens folder takes the slot after BAYC.
@@ -201,97 +173,6 @@ export const ASSETS: AssetObj[] = [
     approval: { spender: "claim-rewards.io", unlimited: true, verified: false },
     address: "0x00c0ffee…5ca3"
   }
-]
-
-// Laid out three across, two rows, anchored under the balance card. The two bare addresses are
-// counterparties you've transacted with but never saved — their icons wear the warning treatment.
-export const PEOPLE: PersonObj[] = [
-  {
-    id: "p-mum",
-    class: "person",
-    label: "Mum",
-    handle: "@mum.base",
-    trust: "mutual",
-    hue: 152,
-    chain: "Base",
-    platform: "g",
-    online: true,
-    whitelisted: true,
-    address: "0x43A6f2C81b9E24f05a6D7c8B1e0F9a2D3c4B5e10"
-  },
-  {
-    id: "p-john",
-    class: "person",
-    label: "John MetaMask",
-    handle: "@john.eth",
-    trust: "verified",
-    hue: 32,
-    chain: "Ethereum",
-    platform: "external",
-    whitelisted: true,
-    address: "0xe02C4b1A7c0D5e6F8a3B2c1D0e9F8a7b6C5d4Aa1"
-  },
-  {
-    id: "p-4f47",
-    class: "person",
-    label: "0x4F47…",
-    handle: "unconfirmed",
-    trust: "unconfirmed",
-    hue: 210,
-    chain: "Base",
-    platform: "external",
-    whitelisted: false,
-    address: "0x4F47b2C81b9E24f05a6D7c8B1e0F9a2D3c4B5c77"
-  },
-  {
-    id: "p-98a3",
-    class: "person",
-    label: "0x98a3…",
-    handle: "unconfirmed",
-    trust: "unconfirmed",
-    hue: 260,
-    chain: "Ethereum",
-    platform: "external",
-    whitelisted: false,
-    address: "0x98a3f2C81b9E24f05a6D7c8B1e0F9a2D3c4B5b19"
-  },
-  {
-    id: "p-binance",
-    class: "person",
-    label: "Binance Wallet",
-    handle: "@binance",
-    trust: "confirmed",
-    hue: 44,
-    chain: "BNB",
-    platform: "external",
-    online: true,
-    whitelisted: true,
-    address: "0xfb39a2C81b9E24f05a6D7c8B1e0F9a2D3c4B5d02"
-  },
-  {
-    id: "p-uniswap",
-    class: "person",
-    label: "Uniswap",
-    handle: "@uniswap",
-    trust: "verified",
-    hue: 320,
-    chain: "Ethereum",
-    platform: "external",
-    whitelisted: true,
-    address: "0x9179a2C81b9E24f05a6D7c8B1e0F9a2D3c4B448d"
-  }
-]
-
-/** The bottom dock, left to right. Labels surface as hover tooltips; the icons themselves are drawn by
- *  the 3D scene so desktop objects can be dropped onto the first two (Pack Builder and Inspector). */
-export const NAV_ITEMS: NavItem[] = [
-  { id: "nav-builder", label: "Pack Builder", icon: "/images/nav-icons/1.png" },
-  { id: "nav-inspector", label: "Inspector", icon: "/images/nav-icons/2.png" },
-  { id: "nav-approvals", label: "Approvals", icon: "/images/nav-icons/3.png" },
-  { id: "nav-cards", label: "Cards", icon: "/images/nav-icons/4.png" },
-  { id: "nav-receipts", label: "Receipts", icon: "/images/nav-icons/5.png" },
-  { id: "nav-training", label: "Training", icon: "/images/nav-icons/6.png" },
-  { id: "nav-reset", label: "Reset Demo", icon: "/images/nav-icons/7.png" }
 ]
 
 /** The dust — the long tail of low-value balances. These live inside the Other Tokens folder rather
@@ -508,105 +389,6 @@ export const EOA_ASSETS: AssetObj[] = [
   }
 ]
 
-export const EOA_PEOPLE: PersonObj[] = [
-  {
-    id: "e-jane",
-    class: "person",
-    label: "Jane",
-    handle: "@jane.pack",
-    trust: "unconfirmed",
-    hue: 288,
-    chain: "Base",
-    platform: "g",
-    online: true,
-    whitelisted: true,
-    wallet: "eoa",
-    address: "0x5D1a7c81b9E24f05a6D7c8B1e0F9a2D3c4B57c40"
-  },
-  {
-    id: "e-0x91fa",
-    class: "person",
-    label: "0x91Fa…",
-    handle: "unconfirmed",
-    trust: "unconfirmed",
-    hue: 18,
-    chain: "Base",
-    platform: "external",
-    whitelisted: false,
-    wallet: "eoa",
-    address: "0x91Fa6b3C0d8E5a2F7b1C4d9E0a6B3c8D5e2F1c72"
-  }
-]
-
-export const PACKS: PackObj[] = [
-  {
-    id: "k-chase",
-    class: "pack",
-    label: "Chase Pack",
-    packClass: "product",
-    contents: "3 graded slabs",
-    sealed: true,
-    usd: 640,
-    color: "#22d3ee",
-    chain: "Base"
-  },
-  {
-    id: "k-grail",
-    class: "pack",
-    label: "Grail Box",
-    packClass: "randomized",
-    contents: "1 chance reveal",
-    sealed: true,
-    usd: 120,
-    color: "#f472b6",
-    chain: "Base"
-  },
-  {
-    id: "k-gift",
-    class: "pack",
-    label: "Gift — Charizard",
-    packClass: "product",
-    contents: "1 card, sealed",
-    sealed: true,
-    usd: 410,
-    color: "#a78bfa",
-    chain: "Base"
-  }
-]
-
-// The furnished dApp launcher set (spec §3.13). First run is never an empty canvas.
-// href = the integration surface named in the brief (§3.15) — linked, not built here.
-export const APPS: AppObj[] = [
-  { id: "app-gacha", class: "app", label: "Gacha Labs", appKind: "gacha", machine: "campaign machine", href: "https://gachalabs.example", color: "#f472b6" },
-  { id: "app-bag", class: "app", label: "BAG", appKind: "bag", machine: "dispenser", href: "https://bag.example", color: "#f59e0b" },
-  { id: "app-aboyz", class: "app", label: "Aboyz", appKind: "aboyz", machine: "pack ripper", href: "http://localhost:3000", color: "#22d3ee" },
-  { id: "app-market", class: "app", label: "PackMarket", appKind: "packmarket", machine: "shop counter", href: "https://packmarket.example", color: "#2dd4bf" },
-  { id: "app-handoff", class: "app", label: "Handoff", appKind: "handoff", machine: "trade table", href: "#", color: "#22d3ee" },
-  { id: "app-lspot", class: "app", label: "LSPOT", appKind: "lspot", machine: "vault (display-only)", href: "https://lspot.example", color: "#34d399" },
-  { id: "app-radar", class: "app", label: "Approval Radar", appKind: "approval-radar", machine: "scanner", href: "#", color: "#f59e0b" },
-  { id: "app-builder", class: "app", label: "Pack Builder", appKind: "pack-builder", machine: "packing machine", href: "#", color: "#a78bfa" }
-]
-
-export const VAULTS: VaultObj[] = [{ id: "v-lspot", class: "vault", label: "LSPOT Vault", usd: 5000, note: "display-only", color: "#34d399", chain: "Base" }]
-
-export const CAMPAIGNS: CampaignObj[] = [
-  { id: "c-neon", class: "campaign", label: "Neon Charizard Drop", note: "live · deploy to roll", color: "#f472b6", chain: "Base" }
-]
-
-export const APPROVALS: ApprovalObj[] = [
-  { id: "ap-market", class: "approval", label: "PackMarket", app: "PackMarket", scope: "Broad", color: "#f59e0b" },
-  { id: "ap-unknown", class: "approval", label: "Unknown Contract", app: "0x00…risk", scope: "Critical", color: "#f43f5e" }
-]
-
-/** The standing approvals the Approval Radar shows. The scam entry links to the $REWARD token on the
- *  desk — revoking it removes both the approval and the token. */
-export const APPROVAL_RADAR: Approval[] = [
-  { id: "ap-uni", spender: "Uniswap", verified: true, assetName: "USD Coin", symbol: "USDC", glyph: "$", color: "#2775ca", unlimited: true, chain: "Base", wallet: "Openfort", risk: "watch" },
-  { id: "ap-aave", spender: "Aave", verified: true, assetName: "Ethereum", symbol: "ETH", glyph: "Ξ", color: "#627eeb", unlimited: false, allowance: "2.0", chain: "Ethereum", wallet: "Openfort", risk: "ok" },
-  { id: "ap-scam", spender: "claim-rewards.io", verified: false, assetName: "$REWARD", symbol: "REWARD", glyph: "!", color: "#71717a", unlimited: true, chain: "Base", wallet: "Openfort", risk: "danger", assetId: "a-reward" },
-  { id: "ap-aero", spender: "Aerodrome", verified: true, assetName: "USD Coin", symbol: "USDC", glyph: "$", color: "#2775ca", unlimited: false, allowance: "640", chain: "Base", wallet: "MetaMask", risk: "ok" }
-]
-
 // What the fake counterparty is willing to offer back inside a Handoff.
 export const COUNTERPARTY_OFFERS: AssetObj[] = [
   {
@@ -634,12 +416,3 @@ export const COUNTERPARTY_OFFERS: AssetObj[] = [
     address: "0x4200…0006"
   }
 ]
-
-// Threshold above which a Handoff/Send demands type-to-confirm (spec §3.5.2; value is PS-Q1, open).
-export const HIGH_VALUE_USD = 500
-
-export const ALL_OBJECTS = [...ASSETS, ...PEOPLE, ...PACKS, ...APPS, ...VAULTS, ...CAMPAIGNS, ...APPROVALS]
-
-export function objectById(id: string) {
-  return ALL_OBJECTS.find((o) => o.id === id)
-}

@@ -3,12 +3,14 @@
 import Image from "next/image"
 import { useRef, useState } from "react"
 
-import { dayChange } from "@/lib/data"
-import type { AssetObj } from "@/lib/types"
+import type { AssetObj } from "@/types/objects"
+
+import { BaseChangeTag } from "@/components/base/BaseChangeTag"
+import { artImage } from "@/components/canvas/object-art"
+
 import { cn, desktopLabel, usd } from "@/lib/utils"
 
-import { BaseChangeTag } from "../base/BaseChangeTag"
-import { artImage } from "../canvas/object-art"
+import { dayChange } from "@/data/assets"
 
 // The NFT Collection widget — a Cover Flow gallery of the wallet's NFTs. The centred one faces forward;
 // the rest turn away and recede with perspective the further they sit from centre, stacking behind each
@@ -75,10 +77,7 @@ export function NftWidget({ assets, span }: { assets: AssetObj[]; span: 1 | 2 })
     window.addEventListener("pointerup", onUp)
   }
 
-  if (nfts.length === 0)
-    return (
-      <div className="glass grid h-full place-items-center rounded-16 text-11 leading-120 text-white/40">No NFTs</div>
-    )
+  if (nfts.length === 0) return <div className="glass grid h-full place-items-center rounded-16 text-11 leading-120 text-white/40">No NFTs</div>
 
   return (
     <div className="glass flex h-full flex-col overflow-hidden rounded-16">
@@ -142,7 +141,11 @@ export function NftWidget({ assets, span }: { assets: AssetObj[]; span: 1 | 2 })
       {current && (
         <div className="flex items-center justify-between gap-8 px-16 pb-16 pt-2">
           <p className="tnum truncate text-12 font-medium leading-120 text-white">{desktopLabel(current)}</p>
-          <span className={cn("tnum flex shrink-0 items-center gap-4 rounded-full bg-white/20 py-2 pl-6 text-10 leading-120 text-white/90", delta !== undefined ? "pr-2" : "pr-6")}>
+          <span
+            className={cn(
+              "tnum flex shrink-0 items-center gap-4 rounded-full bg-white/20 py-2 pl-6 text-10 leading-120 text-white/90",
+              delta !== undefined ? "pr-2" : "pr-6"
+            )}>
             {usd(current.usd, { cents: false })}
             {delta !== undefined && <BaseChangeTag pct={delta} />}
           </span>

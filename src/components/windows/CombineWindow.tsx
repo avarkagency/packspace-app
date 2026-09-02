@@ -1,12 +1,12 @@
 "use client"
 
+import type { AssetObj } from "@/types/objects"
 import { Combine, Plus, X } from "lucide-react"
 
-import type { AssetObj } from "@/lib/types"
-import { units, usd } from "@/lib/utils"
+import { BaseBtn } from "@/components/base/BaseBtn"
+import { ObjectMark } from "@/components/canvas/ObjectMark"
 
-import { BaseBtn } from "../base/BaseBtn"
-import { ObjectMark } from "../canvas/ObjectMark"
+import { units, usd } from "@/lib/utils"
 
 // The inverse of Split: pours two portions of one token back into a single object. Object-level only —
 // nothing settles, no chain semantics are implied, the holding is unchanged either way.

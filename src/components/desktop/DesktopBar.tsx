@@ -4,12 +4,12 @@ import { Search, Volume2, VolumeX } from "lucide-react"
 
 import { cue, toggleMuted, useMuted } from "@/lib/sound"
 import { cn } from "@/lib/utils"
-import { WALLETS, WALLET_ORDER, type View } from "@/lib/wallets"
+import { type View, WALLETS, WALLET_ORDER } from "@/lib/wallets"
 
 // The desktop's top chrome. No longer a solid OS bar: the wallpaper runs to the top edge and the
 // chrome floats on it — identity and greeting on the left, the wallet/view toggles on the right. The
 // balance card that used to sit here is now the Balance widget in the top-right WidgetGrid, which owns
-// the desk's top-right keep-out box (see lib/chrome-keepout).
+// the desk's top-right keep-out box (see stores/chrome-keepout).
 //
 // The view control drives which wallet's desk is on screen: either one on its own, or both side by side
 // in Split View. In split the greeting stands down — each pane carries its own wallet label up there,
@@ -59,7 +59,11 @@ export function DesktopBar({ onSearch, view, onViewChange }: Props) {
 
       {/* sound + search + view toggles */}
       <div className="fixed top-8 right-8 z-[100] flex items-center gap-8">
-        <button type="button" aria-label="Search" onClick={onSearch} className="glass grid size-32 place-items-center rounded-full trans-base hover:bg-white/20">
+        <button
+          type="button"
+          aria-label="Search"
+          onClick={onSearch}
+          className="glass grid size-32 place-items-center rounded-full trans-base hover:bg-white/20">
           <Search className="size-12 text-white" strokeWidth={2.5} />
         </button>
         <button

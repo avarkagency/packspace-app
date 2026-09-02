@@ -3,9 +3,8 @@
 import { useEffect, useMemo, useRef } from "react"
 
 import * as THREE from "three"
+import { coinView } from "@/stores/coin"
 import { useFrame } from "@react-three/fiber"
-
-import { coinView } from "@/lib/coin-store"
 
 import { clipPlanes, makeObjectPlanes, noClipPlanes } from "./clip-planes"
 import { COIN_HALF_THICKNESS, type CoinFinish, coinFaceGeometry, coinRimGeometry, makeCoinMaterials } from "./coin-geometry"

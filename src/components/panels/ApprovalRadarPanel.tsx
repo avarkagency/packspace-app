@@ -2,13 +2,12 @@
 
 import Image from "next/image"
 
+import type { Approval, RiskLevel } from "@/types/objects"
 import { Ban, ShieldCheck, ShieldQuestion, X } from "lucide-react"
 
-import type { Approval, RiskLevel } from "@/lib/types"
-
-import { BaseBtn } from "../base/BaseBtn"
-import { artImage } from "../canvas/object-art"
-import { chainImage } from "../canvas/objectVisual"
+import { BaseBtn } from "@/components/base/BaseBtn"
+import { chainImage } from "@/components/canvas/ObjectVisual"
+import { artImage } from "@/components/canvas/object-art"
 
 // Approval Radar — a large modal listing every standing token approval as a row: who can spend, which
 // token, how much (Unlimited flagged red), and the network. Rows are divided by a hairline. The risk
@@ -101,7 +100,9 @@ export function ApprovalRadarPanel({ approvals, onRevoke, onClose }: Props) {
                   <div className="flex justify-end">
                     <span
                       className="tnum rounded-7 px-8 py-2 text-11 leading-120 font-bold"
-                      style={a.unlimited ? { color: "#ffc4b4", background: "rgba(255,90,60,0.16)" } : { color: "#cfe0ff", background: "rgba(255,255,255,0.1)" }}>
+                      style={
+                        a.unlimited ? { color: "#ffc4b4", background: "rgba(255,90,60,0.16)" } : { color: "#cfe0ff", background: "rgba(255,255,255,0.1)" }
+                      }>
                       {a.unlimited ? "Unlimited" : `${a.allowance} ${a.symbol}`}
                     </span>
                   </div>

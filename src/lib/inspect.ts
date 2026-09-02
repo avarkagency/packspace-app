@@ -2,8 +2,9 @@
 // structured facts (type chip, detail rows, safety note, contextual actions) for any inspectable object.
 // Ported from the prototype's localExplain / inspectFacts. The panel renders these; the workspace wires
 // the actions to real handlers.
+import type { AssetObj, PackObj, PersonObj } from "@/types/objects"
+
 import { isProjectG } from "./chain"
-import type { AssetObj, PackObj, PersonObj } from "./types"
 import { units, usd } from "./utils"
 
 export type Inspectable = AssetObj | PersonObj | PackObj
@@ -24,7 +25,8 @@ const RED = "#ff8a6a"
 /** A short, calm, plain-English explanation — the local fallback when there's no model call. */
 export function localExplain(obj: Inspectable): string {
   if (obj.class === "asset") {
-    if (obj.kind === "nft") return `${obj.label} is a 1-of-1 collectible held in your ${WALLET_LABEL}. Drag it onto a contact to Send or Handoff it, or add it to a Pack.`
+    if (obj.kind === "nft")
+      return `${obj.label} is a 1-of-1 collectible held in your ${WALLET_LABEL}. Drag it onto a contact to Send or Handoff it, or add it to a Pack.`
     if (obj.verified === false) {
       const appr = obj.approval ? " and it holds an unlimited approval to an unverified contract" : ""
       const revoke = obj.approval ? ", revoke the approval," : ""
@@ -156,7 +158,12 @@ function contactFacts(c: PersonObj): InspectFacts {
         ["Chain", `${c.chain ?? "Base"} only`]
       ]
   // standing then trust lead the list, so the read-out needs no reassurance banner beside it
-  const rows: [string, string][] = [["Standing", typeLabel], ["Trust", trust], ...detail, ["Status", c.compromised ? "Compromised" : c.retired ? "Retired" : "Active"]]
+  const rows: [string, string][] = [
+    ["Standing", typeLabel],
+    ["Trust", trust],
+    ...detail,
+    ["Status", c.compromised ? "Compromised" : c.retired ? "Retired" : "Active"]
+  ]
 
   // only the warnings keep a banner now; a verified / confirmed contact just reads its trust in the list
   const safety = c.compromised

@@ -2,10 +2,10 @@
 
 import Image from "next/image"
 
-import type { AssetObj } from "@/lib/types"
+import type { AssetObj } from "@/types/objects"
 
+import { ObjectIcon, objectTint } from "./ObjectVisual"
 import { artImage } from "./object-art"
-import { ObjectIcon, objectTint } from "./objectVisual"
 
 // An object's own mark, for a modal header — the same identity the coin carries on its face, so the panel
 // and the thing it's acting on agree.

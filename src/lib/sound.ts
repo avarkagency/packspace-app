@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react"
 
-import { play, setEnabled, type SoundName } from "cuelume"
+import { type SoundName, play, setEnabled } from "cuelume"
 
 // The desktop's sound layer, over cuelume (synthesized Web Audio, no files). Three roles play here:
 //   • bloom  — a modal or panel opening

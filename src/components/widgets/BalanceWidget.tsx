@@ -2,9 +2,10 @@
 
 import Image from "next/image"
 import { useLayoutEffect, useRef, useState } from "react"
+
+import type { AssetObj } from "@/types/objects"
 import { createPortal } from "react-dom"
 
-import type { AssetObj } from "@/lib/types"
 import { cn, shortAddr, usd } from "@/lib/utils"
 import { WALLETS, type Wallet } from "@/lib/wallets"
 

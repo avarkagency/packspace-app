@@ -2,16 +2,17 @@
 
 import { useEffect, useRef, useState } from "react"
 
+import type { AssetObj, PersonObj } from "@/types/objects"
 import { ArrowRightLeft, ChevronLeft, Send, ShieldX, TriangleAlert, X } from "lucide-react"
 
-import type { AssetObj, PersonObj } from "@/lib/types"
+import { BaseBtn } from "@/components/base/BaseBtn"
+import { ObjectMark } from "@/components/canvas/ObjectMark"
+import { ContactAvatar } from "@/components/shell/ContactAvatar"
+
 import { cn, shortAddr, units, usd } from "@/lib/utils"
 
-import { BaseBtn } from "../base/BaseBtn"
-import { ObjectMark } from "../canvas/ObjectMark"
-import { ContactAvatar } from "../shell/ContactAvatar"
-import { HandoffWindow, type GiveSlot, type HandoffReceive } from "./HandoffWindow"
-import { SendWindow, type SendDeal } from "./SendWindow"
+import { type GiveSlot, type HandoffReceive, HandoffWindow } from "./HandoffWindow"
+import { type SendDeal, SendWindow } from "./SendWindow"
 
 // The modal a wallet drop opens — for one asset or several: a multi-select dropped onto a contact
 // cascades into this single window rather than a stack of one-asset modals. The desk behind falls out
@@ -58,7 +59,13 @@ export function TransferWindow({ assets, inventory, to, z, onClose, onSend, onLa
   const what = assets.length > 1 ? `${assets.length}x assets` : editable ? `${units(amount)} ${single!.symbol}` : `${units(lead.balance)} ${lead.symbol}`
   // a compromised recipient blocks the whole flow; retired / unknown warn but let it through
   const blocked = !!to.compromised
-  const warn = blocked ? "This address is flagged COMPROMISED. Transfers are blocked to protect you — clear the flag first if you're certain." : to.retired ? "This address is marked Retired and may no longer be monitored. Double-check before sending." : to.whitelisted === false ? "This address isn't on your whitelist. You've never transacted with it — verify who owns it first." : null
+  const warn = blocked
+    ? "This address is flagged COMPROMISED. Transfers are blocked to protect you — clear the flag first if you're certain."
+    : to.retired
+      ? "This address is marked Retired and may no longer be monitored. Double-check before sending."
+      : to.whitelisted === false
+        ? "This address isn't on your whitelist. You've never transacted with it — verify who owns it first."
+        : null
 
   // effects — the frame grows/shrinks to wrap whatever the current step renders, including a body's own
   // internal stage changes (Send's amount → confirm), so it's a live measurement, not a per-step one

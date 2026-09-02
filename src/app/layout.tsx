@@ -10,7 +10,7 @@ const inter = Inter({ variable: "--font-inter", subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "PackSpace — visual wallet workspace",
-  description: "An object workspace for the Project G ecosystem. Prototype: dashboard + Send + Handoff."
+  description: "The wallet as a desktop — every holding, contact and pack an object you act on directly. A Project G prototype."
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

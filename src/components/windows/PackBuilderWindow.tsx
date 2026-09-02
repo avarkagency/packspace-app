@@ -2,14 +2,14 @@
 
 import { useState } from "react"
 
+import type { AssetObj, PackContent } from "@/types/objects"
 import { Package, Plus, X } from "lucide-react"
 
-import type { AssetObj, PackContent } from "@/lib/types"
-import { cn, round4, units } from "@/lib/utils"
+import { BaseBtn } from "@/components/base/BaseBtn"
+import { BaseSlider } from "@/components/base/BaseSlider"
+import { ObjectMark } from "@/components/canvas/ObjectMark"
 
-import { BaseBtn } from "../base/BaseBtn"
-import { BaseSlider } from "../base/BaseSlider"
-import { ObjectMark } from "../canvas/ObjectMark"
+import { cn, round4, units } from "@/lib/utils"
 
 // Pack Builder — bundle assets and NFTs into a single Pack object. Tap holdings from the rail into a
 // 3×3 tray (an amount picker for fungibles), name it, pick its class / token standard / lock, then

@@ -1,7 +1,6 @@
+import type { DesktopObj } from "@/types/objects"
 import { type ClassValue, clsx } from "clsx"
 import { extendTailwindMerge } from "tailwind-merge"
-
-import type { DesktopObj } from "./types"
 
 // Our font sizes are raw pixel names (text-14). tailwind-merge's stock config only recognises t-shirt
 // sizes there, so it reads `text-14` as a *colour* — and then drops it as a conflict the moment a real

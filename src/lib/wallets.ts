@@ -7,8 +7,9 @@
 // The asymmetry that drives most of the rules: Openfort is a Project G smart account and multichain, so
 // it holds anything. MetaMask is an EOA on EVM only — a Solana token or a Bitcoin address simply cannot
 // live there, and moving one across the divider is blocked rather than bridged (bridging is Phase 2).
+import type { AssetObj, DesktopObj, PersonObj } from "@/types/objects"
+
 import { chainFamily, chainWord, isProjectG } from "./chain"
-import type { AssetObj, DesktopObj, PersonObj } from "./types"
 
 export type Wallet = "openfort" | "eoa"
 

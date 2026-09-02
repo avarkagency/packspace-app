@@ -4,18 +4,18 @@ import { useEffect, useMemo } from "react"
 
 import * as THREE from "three"
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
+import { coinView, measureCoins, useCoinFocus } from "@/stores/coin"
+import { useDrag } from "@/stores/drag"
+import type { DesktopObj, NavItem } from "@/types/objects"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
 
 import { isSameToken } from "@/lib/asset-ops"
-import { coinView, measureCoins, useCoinFocus } from "@/lib/coin-store"
-import { useDrag } from "@/lib/drag-store"
-import type { DesktopObj, NavItem } from "@/lib/types"
 
 import { NavIconMesh } from "./NavIconMesh"
 import { ObjectMesh, type ObjectShape } from "./ObjectMesh"
+import { contactImage, objectTint } from "./ObjectVisual"
 import { clipPlanes } from "./clip-planes"
-import { contactImage, objectTint } from "./objectVisual"
 
 // The 3D layer over the desktop. Deliberately thin: the DOM keeps layout, hit-testing and the labels,
 // and this only draws an object into the box each desktop icon reserves. That keeps the existing

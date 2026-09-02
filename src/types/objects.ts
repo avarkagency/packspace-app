@@ -1,7 +1,7 @@
 // PackSpace object system (spec §3.3). Everything important is an object; each class must be
 // instantly distinguishable. This prototype models the classes needed for the dashboard +
 // Send + Handoff; the rest are present on the canvas as launcher / display objects.
-import type { Wallet } from "./wallets"
+import type { Wallet } from "@/lib/wallets"
 
 export type Chain = "Base" | "Ethereum" | "Solana" | "BNB" | "Bitcoin"
 

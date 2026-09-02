@@ -2,10 +2,11 @@
 
 import { useRef } from "react"
 
+import { setCoinCursor, setCoinHover } from "@/stores/coin"
+import { endDrag, setOver, startDrag } from "@/stores/drag"
+import type { DesktopObj } from "@/types/objects"
+
 import { FOLDER_DROP_PREFIX } from "@/lib/asset-ops"
-import { setCoinCursor, setCoinHover } from "@/lib/coin-store"
-import { endDrag, setOver, startDrag } from "@/lib/drag-store"
-import type { DesktopObj } from "@/lib/types"
 
 // Pointer-driven drag for every desktop object. Starts after a small threshold (so a stray press
 // doesn't lift the coin), and resolves on up:

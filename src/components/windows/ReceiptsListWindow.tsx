@@ -1,11 +1,12 @@
 "use client"
 
+import type { Receipt } from "@/types/objects"
 import { ReceiptText, X } from "lucide-react"
 
-import type { Receipt } from "@/lib/types"
+import { BaseBtn } from "@/components/base/BaseBtn"
+
 import { shortAddr } from "@/lib/utils"
 
-import { BaseBtn } from "../base/BaseBtn"
 import { RECEIPT_STYLE } from "./ReceiptWindow"
 
 // The Receipts history — every settled Send / Handoff / Move, newest first. Click one to open its proof
@@ -50,7 +51,9 @@ export function ReceiptsListWindow({ receipts, onOpen, onClose }: Props) {
                       type="button"
                       onClick={() => onOpen(r)}
                       className="flex w-full items-center gap-12 rounded-md border border-white/10 bg-white/5 p-12 text-left trans-base hover:bg-white/10">
-                      <span className="grid size-32 shrink-0 place-items-center rounded-10" style={{ background: `${color}22`, border: `1px solid ${color}55`, color }}>
+                      <span
+                        className="grid size-32 shrink-0 place-items-center rounded-10"
+                        style={{ background: `${color}22`, border: `1px solid ${color}55`, color }}>
                         <Icon className="size-16" />
                       </span>
                       <span className="min-w-0 flex-1">

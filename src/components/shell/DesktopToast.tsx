@@ -2,7 +2,7 @@
 
 import { CircleAlert, CircleCheck, TriangleAlert } from "lucide-react"
 
-import { DOCK_GAP, DOCK_H, DOCK_W } from "../desktop/DesktopDock"
+import { DOCK_GAP, DOCK_H, DOCK_W } from "@/components/desktop/DesktopDock"
 
 // The desk's transient notice — the one place the workspace speaks in words. Sits just above the dock,
 // says what happened (or why something didn't), and takes itself away.
@@ -26,9 +26,7 @@ export function DesktopToast({ tone, children }: { tone: ToastTone; children: Re
   const { Icon, tint, ring, icon } = TONE[tone]
 
   return (
-    <div
-      className="pointer-events-none fixed inset-x-0 z-[180] flex justify-center px-24"
-      style={{ bottom: DOCK_GAP + DOCK_H + DOCK_CLEARANCE }}>
+    <div className="pointer-events-none fixed inset-x-0 z-[180] flex justify-center px-24" style={{ bottom: DOCK_GAP + DOCK_H + DOCK_CLEARANCE }}>
       {/* sized to the dock it sits above, so the two read as one stack of chrome rather than two
           unrelated bars — it must never be wider than the shelf under it */}
       <div className={`glass panel-in relative max-w-full overflow-hidden rounded-12 ring-1 ${ring}`} style={{ width: DOCK_W }}>

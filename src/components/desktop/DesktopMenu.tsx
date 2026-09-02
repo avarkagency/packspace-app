@@ -1,9 +1,9 @@
 "use client"
 
 import { Fragment, createElement, useEffect, useLayoutEffect, useRef, useState } from "react"
-import { createPortal } from "react-dom"
 
 import { Check, ChevronRight, type LucideIcon } from "lucide-react"
+import { createPortal } from "react-dom"
 
 import { cn } from "@/lib/utils"
 
@@ -99,8 +99,7 @@ export function DesktopMenu({ x, y, items, onClose }: { x: number; y: number; it
         {items.map((it, i) => (
           <Fragment key={it.label}>
             {it.separator && <div className="mx-8 my-4 border-t border-white/10" aria-hidden />}
-            <div
-              onPointerEnter={(e) => setSub(it.children ? { index: i, rect: e.currentTarget.getBoundingClientRect() } : null)}>
+            <div onPointerEnter={(e) => setSub(it.children ? { index: i, rect: e.currentTarget.getBoundingClientRect() } : null)}>
               <button
                 onClick={() => pick(it)}
                 className={cn(

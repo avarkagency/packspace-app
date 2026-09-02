@@ -3,21 +3,37 @@
 import Image from "next/image"
 import { useEffect, useMemo, useRef, useState } from "react"
 
-import { Ban, Check, Copy, CreditCard, ExternalLink, type LucideIcon, Package, PackageOpen, Scissors, Sparkles, SquarePen, TriangleAlert, UserCheck, UserPlus, X } from "lucide-react"
+import { clearCoinFocus, setCoinFocus } from "@/stores/coin"
+import {
+  Ban,
+  Check,
+  Copy,
+  CreditCard,
+  ExternalLink,
+  type LucideIcon,
+  Package,
+  PackageOpen,
+  Scissors,
+  Sparkles,
+  SquarePen,
+  TriangleAlert,
+  UserCheck,
+  UserPlus,
+  X
+} from "lucide-react"
 
-import { clearCoinFocus, setCoinFocus } from "@/lib/coin-store"
+import { BaseBtn } from "@/components/base/BaseBtn"
+import { BaseChangeTag } from "@/components/base/BaseChangeTag"
+import { BaseCountUp } from "@/components/base/BaseCountUp"
+import { BaseTypewriter } from "@/components/base/BaseTypewriter"
+import { ObjectMark } from "@/components/canvas/ObjectMark"
+import { chainImage } from "@/components/canvas/ObjectVisual"
+import { RainbowBorderShader } from "@/components/canvas/RainbowBorderShader"
+import { ContactAvatar } from "@/components/shell/ContactAvatar"
+
 import { type InspectAction, type Inspectable, inspectFacts, localExplain } from "@/lib/inspect"
 import { assetMarket } from "@/lib/market"
 import { cn, shortAddr, usd } from "@/lib/utils"
-
-import { BaseBtn } from "../base/BaseBtn"
-import { BaseChangeTag } from "../base/BaseChangeTag"
-import { BaseCountUp } from "../base/BaseCountUp"
-import { BaseTypewriter } from "../base/BaseTypewriter"
-import { RainbowBorderShader } from "../canvas/RainbowBorderShader"
-import { ObjectMark } from "../canvas/ObjectMark"
-import { chainImage } from "../canvas/objectVisual"
-import { ContactAvatar } from "../shell/ContactAvatar"
 
 // The AI Object Inspector as a full-screen takeover (design: Figma "Frame 5"). The whole viewport becomes
 // the wallpaper again, the rainbow edge-glow radiates over it, and the object's read-out is laid out as a
@@ -80,7 +96,7 @@ export function FullscreenInspector({ obj, objects, coinPresent, foldered, wallp
   const warnActions = facts.safety ? facts.actions.filter((a) => WARNING_ACTION_KINDS.has(a.kind)) : []
   const mainActions = facts.actions.filter((a) => !warnActions.includes(a))
 
-  // effects — pull the coin into the art card while open; on navigation it swaps in place (coin-store
+  // effects — pull the coin into the art card while open; on navigation it swaps in place (stores/coin
   // handles the instant drop-in). A filed object drops straight in (no desk position to fly from). Packs
   // have no coin, so we just clear focus and the art card shows a mark.
   useEffect(() => {
@@ -147,7 +163,9 @@ export function FullscreenInspector({ obj, objects, coinPresent, foldered, wallp
       <div className="absolute inset-0 grid place-items-center p-24">
         <div className="grid gap-8" style={{ gridTemplateColumns: "repeat(3, 300px)", gridTemplateRows: "repeat(2, 300px)" }}>
           {/* art — the desk coin flies into the invisible target; a ghost of the symbol overflows behind */}
-          <div className={cn(card, "bento-in relative flex items-center justify-center overflow-hidden")} style={{ gridColumn: 1, gridRow: 1, animationDelay: "60ms" }}>
+          <div
+            className={cn(card, "bento-in relative flex items-center justify-center overflow-hidden")}
+            style={{ gridColumn: 1, gridRow: 1, animationDelay: "60ms" }}>
             {isAsset && (
               <span
                 aria-hidden
@@ -183,7 +201,12 @@ export function FullscreenInspector({ obj, objects, coinPresent, foldered, wallp
             <div className={cn(card, "bento-in flex flex-col")} style={{ gridColumn: 1, gridRow: 2, animationDelay: "280ms" }}>
               <p className="text-11 leading-120 text-white/60">{obj.symbol} / USD</p>
               <div className="mt-2 flex items-center gap-8">
-                <BaseCountUp value={market.unit} format={(n) => usd(n, { cents: false })} delay={0.32} className="tnum text-24 font-light leading-120 tracking-tight text-white" />
+                <BaseCountUp
+                  value={market.unit}
+                  format={(n) => usd(n, { cents: false })}
+                  delay={0.32}
+                  className="tnum text-24 font-light leading-120 tracking-tight text-white"
+                />
                 <BaseChangeTag pct={market.change} big countUp delay={0.32} />
               </div>
               {/* keyed per object so the left-to-right wipe replays on every navigation */}
@@ -226,7 +249,11 @@ export function FullscreenInspector({ obj, objects, coinPresent, foldered, wallp
                   <dt className="text-12 leading-120 text-white/50">Contract address</dt>
                   <dd className="flex min-w-0 items-center gap-6 text-12 leading-120 font-medium text-white">
                     <span className="tnum truncate">{shortAddr(obj.address)}</span>
-                    <button type="button" onClick={copyAddress} aria-label="Copy address" className="grid size-16 shrink-0 place-items-center rounded-4 text-white/60 trans-base hover:bg-white/10 hover:text-white">
+                    <button
+                      type="button"
+                      onClick={copyAddress}
+                      aria-label="Copy address"
+                      className="grid size-16 shrink-0 place-items-center rounded-4 text-white/60 trans-base hover:bg-white/10 hover:text-white">
                       {copied ? <Check className="size-12 text-[#13e192]" /> : <Copy className="size-12" />}
                     </button>
                   </dd>
@@ -256,7 +283,9 @@ export function FullscreenInspector({ obj, objects, coinPresent, foldered, wallp
                 style={{ animationDelay: "440ms", borderColor: `${facts.safety.color}aa`, background: `${facts.safety.color}22` }}>
                 <div className="flex items-start gap-8">
                   <TriangleAlert className="mt-px size-16 shrink-0" style={{ color: facts.safety.color }} />
-                  <p className="text-13 leading-140 font-medium" style={{ color: facts.safety.color }}>{facts.safety.text}</p>
+                  <p className="text-13 leading-140 font-medium" style={{ color: facts.safety.color }}>
+                    {facts.safety.text}
+                  </p>
                 </div>
                 {warnActions.length > 0 && <div className="flex flex-col gap-8">{warnActions.map((a, i) => actionBtn(a, i === 0))}</div>}
               </div>
@@ -336,7 +365,12 @@ function Highlight({ obj, market, facts }: { obj: Inspectable; market: ReturnTyp
       <>
         <p className="text-11 leading-120 text-white/60">Holding</p>
         <div className="mt-6 flex items-center gap-8">
-          <BaseCountUp value={obj.usd} format={(n) => usd(n, { cents: false })} delay={0.5} className="tnum text-32 font-light leading-120 tracking-tight text-white" />
+          <BaseCountUp
+            value={obj.usd}
+            format={(n) => usd(n, { cents: false })}
+            delay={0.5}
+            className="tnum text-32 font-light leading-120 tracking-tight text-white"
+          />
           {market && <BaseChangeTag pct={market.change} big countUp delay={0.5} />}
         </div>
       </>
@@ -394,7 +428,11 @@ function Sparkline({ prices, color }: { prices: number[]; color: string }) {
       {hover !== null && (
         <>
           <div aria-hidden className="pointer-events-none absolute inset-y-0 w-px bg-white/25" style={{ left: `${hx}%` }} />
-          <div aria-hidden className="pointer-events-none absolute size-8 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white" style={{ left: `${hx}%`, top: `${hyPct}%`, background: color }} />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute size-8 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
+            style={{ left: `${hx}%`, top: `${hyPct}%`, background: color }}
+          />
           <div
             className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-8 border border-white/10 bg-black/70 px-6 py-3 text-10 leading-120 whitespace-nowrap text-white backdrop-blur-md"
             style={{ left: `${Math.max(12, Math.min(88, hx))}%`, top: `${hyPct}%`, marginTop: -10 }}>

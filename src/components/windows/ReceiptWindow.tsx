@@ -1,12 +1,12 @@
 "use client"
 
+import type { Receipt } from "@/types/objects"
 import { ArrowRightLeft, ArrowUpRight, BadgeCheck, WalletCards, X } from "lucide-react"
 
-import type { Receipt } from "@/lib/types"
-import { cn, shortAddr } from "@/lib/utils"
+import { BaseBtn } from "@/components/base/BaseBtn"
+import { ConfettiShader } from "@/components/canvas/ConfettiShader"
 
-import { BaseBtn } from "../base/BaseBtn"
-import { ConfettiShader } from "../canvas/ConfettiShader"
+import { cn, shortAddr } from "@/lib/utils"
 
 // Every settled Send/Handoff/Move yields a receipt / proof card (spec §3.5.6, §3.11). Wears the same
 // glass frame as its sibling modals — blurred desk, floating close, one panel — with the action's own
@@ -50,9 +50,7 @@ export function ReceiptWindow({ receipt, z, onClose }: { receipt: Receipt; z: nu
       <div className="glass panel-in relative overflow-hidden rounded-16" style={{ width: 420 }}>
         <div className="p-28">
           <div className="flex items-center gap-12">
-            <span
-              className="grid size-40 shrink-0 place-items-center rounded-12"
-              style={{ background: `${color}22`, border: `1px solid ${color}55`, color }}>
+            <span className="grid size-40 shrink-0 place-items-center rounded-12" style={{ background: `${color}22`, border: `1px solid ${color}55`, color }}>
               <Icon className="size-20" />
             </span>
             <div className="min-w-0">
@@ -75,7 +73,9 @@ export function ReceiptWindow({ receipt, z, onClose }: { receipt: Receipt; z: nu
             ))}
           </dl>
 
-          <p className="mt-20 text-11 leading-140 text-white/50">The receipt is the record, not a claims process — the protocol doesn&apos;t adjudicate disputes.</p>
+          <p className="mt-20 text-11 leading-140 text-white/50">
+            The receipt is the record, not a claims process — the protocol doesn&apos;t adjudicate disputes.
+          </p>
 
           <BaseBtn className="mt-24 w-full" onClick={onClose}>
             Done

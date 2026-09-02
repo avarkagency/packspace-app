@@ -2,12 +2,11 @@
 
 import { useState } from "react"
 
+import type { PersonObj } from "@/types/objects"
 import { Check, X } from "lucide-react"
 
-import type { PersonObj } from "@/lib/types"
-
-import { BaseBtn } from "../base/BaseBtn"
-import { ContactAvatar } from "../shell/ContactAvatar"
+import { BaseBtn } from "@/components/base/BaseBtn"
+import { ContactAvatar } from "@/components/shell/ContactAvatar"
 
 // Edit a wallet (contact) object — name, handle, address — or fill in a brand-new one. In create mode
 // the contact is only a draft: nothing lands on the desk unless it's saved, so closing the window

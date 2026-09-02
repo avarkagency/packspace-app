@@ -3,17 +3,18 @@
 import Image from "next/image"
 import { memo, useMemo } from "react"
 
+import type { AssetObj } from "@/types/objects"
 import { Minimize2 } from "lucide-react"
 
+import { BaseChangeTag } from "@/components/base/BaseChangeTag"
+import { chainImage } from "@/components/canvas/ObjectVisual"
+import { ObjectArt } from "@/components/shell/ObjectArt"
+
 import { chainTag } from "@/lib/chain"
-import { dayChange } from "@/lib/data"
 import { assetMarket } from "@/lib/market"
-import type { AssetObj } from "@/lib/types"
 import { cn, units, usd } from "@/lib/utils"
 
-import { BaseChangeTag } from "../base/BaseChangeTag"
-import { chainImage } from "../canvas/objectVisual"
-import { ObjectArt } from "../shell/ObjectArt"
+import { dayChange } from "@/data/assets"
 
 // A holding shown at length instead of as an icon: the object's art up in the header beside its name,
 // then a four-tile bento of the numbers the icon can only hint at. It's the same desktop object underneath —

@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 
+import type { AssetObj, PackObj, PersonObj } from "@/types/objects"
 import { CornerDownLeft, Search, X } from "lucide-react"
 
-import type { AssetObj, PackObj, PersonObj } from "@/lib/types"
+import { ObjectMark } from "@/components/canvas/ObjectMark"
+import { objectNameColor } from "@/components/canvas/ObjectVisual"
+
 import { cn, shortAddr, units, usd } from "@/lib/utils"
 
-import { ObjectMark } from "../canvas/ObjectMark"
-import { objectNameColor } from "../canvas/objectVisual"
 import { ContactAvatar } from "./ContactAvatar"
 
 // The command-palette search — a Raycast-style box in the centre of the screen that reaches across the
@@ -89,9 +90,7 @@ export function SearchPalette({ items, onSelect, onItemContextMenu, onClose }: P
   // straight into it for keyboard navigation across group boundaries.
   const q = query.trim().toLowerCase()
   const results = useMemo(() => {
-    const scored = items
-      .map((obj) => ({ obj, r: rank(obj, q) }))
-      .filter((x): x is { obj: SearchItem; r: number } => x.r !== null)
+    const scored = items.map((obj) => ({ obj, r: rank(obj, q) })).filter((x): x is { obj: SearchItem; r: number } => x.r !== null)
     return CATEGORY_ORDER.flatMap((cat) =>
       scored
         .filter((x) => categoryOf(x.obj) === cat)
@@ -271,5 +270,9 @@ function ResultMark({ obj }: { obj: SearchItem }) {
 }
 
 function Kbd({ children }: { children: React.ReactNode }) {
-  return <kbd className="grid h-16 min-w-16 place-items-center rounded-4 border border-white/15 bg-white/10 px-4 text-10 leading-120 font-medium text-white/70">{children}</kbd>
+  return (
+    <kbd className="grid h-16 min-w-16 place-items-center rounded-4 border border-white/15 bg-white/10 px-4 text-10 leading-120 font-medium text-white/70">
+      {children}
+    </kbd>
+  )
 }

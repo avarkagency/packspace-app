@@ -1,5 +1,6 @@
-import { dayChange } from "./data"
-import type { AssetObj } from "./types"
+import type { AssetObj } from "@/types/objects"
+
+import { dayChange } from "@/data/assets"
 
 /** Deterministic mock market data for an asset — the app models no price history, so this is a fixture
  *  seeded off the symbol (stable across renders): a unit price, its 24h move, a sparkline, high/low, vol.

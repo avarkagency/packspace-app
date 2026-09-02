@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react"
 
+import { coinView, registerCoinSlot } from "@/stores/coin"
+import { useDrag } from "@/stores/drag"
+import type { NavItem } from "@/types/objects"
+
 import { navDropKey } from "@/lib/asset-ops"
-import { coinView, registerCoinSlot } from "@/lib/coin-store"
-import { NAV_ITEMS } from "@/lib/data"
-import { useDrag } from "@/lib/drag-store"
-import type { NavItem } from "@/lib/types"
 import { cn } from "@/lib/utils"
+
+import { NAV_ITEMS } from "@/data/apps"
 
 // The dock along the bottom — a glass shelf of app tiles. Like every desktop icon, the DOM here only
 // lays out, hover-tests and labels: each tile registers the box its icon fills and the 3D scene draws

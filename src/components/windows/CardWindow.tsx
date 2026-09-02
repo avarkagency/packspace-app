@@ -2,15 +2,16 @@
 
 import { useMemo, useState } from "react"
 
+import type { Chain, PersonObj } from "@/types/objects"
 import { GradientAvatar } from "@outpacelabs/avatars"
 import { BadgeCheck, ChevronLeft, CreditCard, HelpCircle, Link2, ShieldCheck, X } from "lucide-react"
 
-import { isProjectG } from "@/lib/chain"
-import { ME } from "@/lib/data"
-import type { Chain, PersonObj } from "@/lib/types"
+import { BaseBtn } from "@/components/base/BaseBtn"
+import { ContactAvatar } from "@/components/shell/ContactAvatar"
 
-import { BaseBtn } from "../base/BaseBtn"
-import { ContactAvatar } from "../shell/ContactAvatar"
+import { isProjectG } from "@/lib/chain"
+
+import { ME } from "@/data/people"
 
 // PackSpace Card — a shareable business card for a wallet: avatar, handle, address, chain chips, a
 // verification chip, and a deterministic pseudo-QR. Share opens real Telegram / X / WhatsApp intents or
@@ -32,7 +33,9 @@ function qrCells(seed: string): boolean[] {
   }
   const finder = (r: number, c: number) => (r < 3 && c < 3) || (r < 3 && c >= N - 3) || (r >= N - 3 && c < 3)
   const cells: boolean[] = []
-  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) cells.push(finder(r, c) ? (r === 1 && c === 1) || (r === 1 && c === N - 2) || (r === N - 2 && c === 1) || (r % 2 === 0 && c % 2 === 0) : rnd() > 0.52)
+  for (let r = 0; r < N; r++)
+    for (let c = 0; c < N; c++)
+      cells.push(finder(r, c) ? (r === 1 && c === 1) || (r === 1 && c === N - 2) || (r === N - 2 && c === 1) || (r % 2 === 0 && c % 2 === 0) : rnd() > 0.52)
   return cells
 }
 
@@ -57,10 +60,20 @@ export function CardWindow({ contact, onImport, onClose }: Props) {
   // data
   const mine = !contact
   const name = mine ? ME.name : contact.label
-  const handle = mine ? ME.handle : contact.trust === "verified" ? `@${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.pack` : `@${name.toLowerCase().slice(0, 12)}.pack`
+  const handle = mine
+    ? ME.handle
+    : contact.trust === "verified"
+      ? `@${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.pack`
+      : `@${name.toLowerCase().slice(0, 12)}.pack`
   const address = mine ? ME.address : (contact.address ?? "")
   const chains: Chain[] = mine ? ME.chains : isProjectG(contact) ? ["Base", "Ethereum", "Solana", "Bitcoin"] : [contact.chain ?? "Base"]
-  const vKey: keyof typeof VCHIP = mine ? "Unverified" : contact.trust === "verified" ? "Verified" : contact.trust === "confirmed" || contact.trust === "mutual" ? "Confirmed" : "Unverified"
+  const vKey: keyof typeof VCHIP = mine
+    ? "Unverified"
+    : contact.trust === "verified"
+      ? "Verified"
+      : contact.trust === "confirmed" || contact.trust === "mutual"
+        ? "Confirmed"
+        : "Unverified"
   const vchip = VCHIP[vKey]
   const cells = useMemo(() => qrCells(address + name), [address, name])
 
@@ -145,7 +158,9 @@ export function CardWindow({ contact, onImport, onClose }: Props) {
                       <p className="truncate text-17 leading-120 font-extrabold text-white">{name}</p>
                       <p className="truncate font-mono text-12 leading-120 text-[#c7d2fe]">{handle}</p>
                     </div>
-                    <span className="flex w-fit items-center gap-4 rounded-full px-9 py-3 text-10 leading-120 font-bold tracking-wide" style={{ color: vchip.color, background: vchip.bg }}>
+                    <span
+                      className="flex w-fit items-center gap-4 rounded-full px-9 py-3 text-10 leading-120 font-bold tracking-wide"
+                      style={{ color: vchip.color, background: vchip.bg }}>
                       <vchip.Icon className="size-11" /> {vKey}
                     </span>
                     <div>
@@ -162,7 +177,9 @@ export function CardWindow({ contact, onImport, onClose }: Props) {
                   </div>
 
                   {/* the pseudo-QR */}
-                  <div className="grid size-104 shrink-0 gap-0 rounded-10 bg-white p-7" style={{ gridTemplateColumns: "repeat(13,1fr)", gridTemplateRows: "repeat(13,1fr)" }}>
+                  <div
+                    className="grid size-104 shrink-0 gap-0 rounded-10 bg-white p-7"
+                    style={{ gridTemplateColumns: "repeat(13,1fr)", gridTemplateRows: "repeat(13,1fr)" }}>
                     {cells.map((on, i) => (
                       <span key={i} style={{ background: on ? "#0b0e17" : "#fff" }} />
                     ))}

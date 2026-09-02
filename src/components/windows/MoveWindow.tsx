@@ -3,15 +3,15 @@
 import Image from "next/image"
 import { useState } from "react"
 
+import type { AssetObj } from "@/types/objects"
 import { ArrowRight, WalletCards, X } from "lucide-react"
 
-import type { AssetObj } from "@/lib/types"
+import { BaseBtn } from "@/components/base/BaseBtn"
+import { BaseSlider } from "@/components/base/BaseSlider"
+import { ObjectMark } from "@/components/canvas/ObjectMark"
+
 import { cn, units, usd } from "@/lib/utils"
 import { WALLETS, type Wallet } from "@/lib/wallets"
-
-import { BaseBtn } from "../base/BaseBtn"
-import { BaseSlider } from "../base/BaseSlider"
-import { ObjectMark } from "../canvas/ObjectMark"
 
 // Moving a holding between your OWN two wallets — the split view's cross-divider drop.
 //

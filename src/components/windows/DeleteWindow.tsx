@@ -1,12 +1,12 @@
 "use client"
 
+import type { PersonObj } from "@/types/objects"
 import { Trash2, X } from "lucide-react"
 
-import type { PersonObj } from "@/lib/types"
-import { shortAddr } from "@/lib/utils"
+import { BaseBtn } from "@/components/base/BaseBtn"
+import { ContactAvatar } from "@/components/shell/ContactAvatar"
 
-import { BaseBtn } from "../base/BaseBtn"
-import { ContactAvatar } from "../shell/ContactAvatar"
+import { shortAddr } from "@/lib/utils"
 
 // The trash's second look. Deleting a wallet is permanent — its address book entry, its trust state,
 // its place on the desk — so a drop on the trash asks before it acts. Wears the shared glass frame.

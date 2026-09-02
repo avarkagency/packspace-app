@@ -1,6 +1,6 @@
 // The rules for dividing and recombining objects, kept in one place because the grid, the split dock
 // and the window manager all have to agree on them.
-import type { AssetObj, PackObj } from "./types"
+import type { AssetObj, PackObj } from "@/types/objects"
 
 /** Fungible objects divide; a one-of-one has nothing to split. */
 export const isSplittable = (asset: AssetObj) => asset.kind !== "nft" && asset.balance > 0

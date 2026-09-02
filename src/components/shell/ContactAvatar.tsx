@@ -1,8 +1,8 @@
 import Image from "next/image"
 
-import { cn } from "@/lib/utils"
+import { contactImage } from "@/components/canvas/ObjectVisual"
 
-import { contactImage } from "../canvas/objectVisual"
+import { cn } from "@/lib/utils"
 
 // A contact's avatar as the desk's 3D coin wears it — the shipped photo, or the shared default face for a
 // bare address. Drawn from the same source as the canvas coin (`contactImage`), so a contact reads

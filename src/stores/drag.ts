@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react"
 
-import type { DesktopObj } from "./types"
+import type { DesktopObj } from "@/types/objects"
 
 // Shared drag state kept outside React (strict React Compiler lint: no mutating hook state in render).
 // Tracks what's in hand — one object, or a carried multi-selection — and which drop zone the pointer

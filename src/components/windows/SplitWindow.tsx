@@ -2,14 +2,14 @@
 
 import { useState } from "react"
 
+import type { AssetObj } from "@/types/objects"
 import { Scissors, X } from "lucide-react"
 
-import type { AssetObj } from "@/lib/types"
-import { cn, units, usd } from "@/lib/utils"
+import { BaseBtn } from "@/components/base/BaseBtn"
+import { BaseSlider } from "@/components/base/BaseSlider"
+import { ObjectMark } from "@/components/canvas/ObjectMark"
 
-import { BaseBtn } from "../base/BaseBtn"
-import { BaseSlider } from "../base/BaseSlider"
-import { ObjectMark } from "../canvas/ObjectMark"
+import { cn, units, usd } from "@/lib/utils"
 
 // Asset division — divides one fungible object into two so each can be sent or traded independently.
 // Object-level convenience only: nothing settles, no chain semantics are implied, both portions stay in
@@ -70,9 +70,7 @@ export function SplitWindow({ asset, z, onClose, onSplit }: Props) {
             </span>
             Split {units(asset.balance)} {asset.symbol}
           </h2>
-          <span className="tnum mt-8 inline-block rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">
-            {usd(asset.usd)}
-          </span>
+          <span className="tnum mt-8 inline-block rounded-full bg-white/20 px-6 py-2 text-10 leading-120 text-white/90">{usd(asset.usd)}</span>
 
           <div className="-mx-28 mt-24 h-px bg-white/20" aria-hidden />
 

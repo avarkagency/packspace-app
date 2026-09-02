@@ -10,7 +10,7 @@
 // half. That's deliberate: it means the panes need no clipping, and the 3D coins — which are drawn by a
 // single full-screen canvas that knows nothing about panes — stay correct for free. The only thing that
 // ever crosses the divider is an object in hand, which should.
-import type { View, Wallet } from "./wallets"
+import type { View, Wallet } from "@/lib/wallets"
 
 export type Pane = { left: number; top: number; width: number; height: number }
 
@@ -28,9 +28,7 @@ export const fullPane = (): Pane => ({ left: 0, top: 0, width: window.innerWidth
 export function paneFor(view: View, wallet: Wallet, ratio: number, vw: number, vh: number): Pane {
   if (view !== "split") return { left: 0, top: 0, width: vw, height: vh }
   const leftW = Math.round(vw * ratio)
-  return wallet === "openfort"
-    ? { left: 0, top: 0, width: leftW, height: vh }
-    : { left: leftW, top: 0, width: vw - leftW, height: vh }
+  return wallet === "openfort" ? { left: 0, top: 0, width: leftW, height: vh } : { left: leftW, top: 0, width: vw - leftW, height: vh }
 }
 
 /** Which wallet's half of the screen this viewport x lands in. Meaningless outside split view, where

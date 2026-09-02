@@ -1,6 +1,7 @@
 "use client"
 
-import type { PackObj } from "@/lib/types"
+import type { PackObj } from "@/types/objects"
+
 import { cn } from "@/lib/utils"
 
 import { ICON_W } from "./DesktopIcon"

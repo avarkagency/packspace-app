@@ -46,10 +46,10 @@ const colFromHue = (h: number): [number, number, number] => [trapezium(h - 1 / 3
 function xposition(time: number, angle: number, v: number, term: number) {
   const sinAmp = 20.0 * (1.0 - Math.exp(-Math.pow(time / 7.0, 2.0)))
   const xt = Math.sin(time / 5.0) * sinAmp + time * 3.0
-  return (v * term) / GRAVITY * (1.0 - Math.exp((-GRAVITY * time) / term)) * Math.cos(angle) + xt
+  return ((v * term) / GRAVITY) * (1.0 - Math.exp((-GRAVITY * time) / term)) * Math.cos(angle) + xt
 }
 function yposition(time: number, angle: number, v: number, term: number) {
-  return (v * term) / GRAVITY * (1.0 - Math.exp((-GRAVITY * time) / term)) * Math.sin(angle) - term * time
+  return ((v * term) / GRAVITY) * (1.0 - Math.exp((-GRAVITY * time) / term)) * Math.sin(angle) - term * time
 }
 
 // rotate(...) * size — returns the rotated quad's half-diagonals packed as (a.xy, a.z, b.x), exactly

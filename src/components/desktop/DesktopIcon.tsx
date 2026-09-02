@@ -3,15 +3,16 @@
 import Image from "next/image"
 import { memo, useEffect, useRef } from "react"
 
+import { clearCoinHover, registerCoinSlot, setCoinCursor, setCoinHover } from "@/stores/coin"
+import type { DesktopObj } from "@/types/objects"
 import { Check, History, ShieldX, TriangleAlert } from "lucide-react"
 
-import { clearCoinHover, registerCoinSlot, setCoinCursor, setCoinHover } from "@/lib/coin-store"
-import { dayChange } from "@/lib/data"
-import type { DesktopObj } from "@/lib/types"
+import { BaseChangeTag } from "@/components/base/BaseChangeTag"
+import { chainImage, objectNameColor } from "@/components/canvas/ObjectVisual"
+
 import { cn, usd } from "@/lib/utils"
 
-import { BaseChangeTag } from "../base/BaseChangeTag"
-import { chainImage, objectNameColor } from "../canvas/objectVisual"
+import { dayChange } from "@/data/assets"
 
 // One desktop item: the 3D object above, a small label under it — nothing else. The object itself is
 // drawn by the canvas overlay into the slot this registers; the DOM here only lays out, hit-tests and
@@ -136,10 +137,7 @@ export const DesktopIcon = memo(function DesktopIcon({
       )}>
       {/* the split flare rides its own layer so only opacity animates — the icon itself never moves */}
       {flash && (
-        <span
-          aria-hidden
-          className="split-flash pointer-events-none absolute inset-0 rounded-lg bg-action-split/20 outline-1 outline-action-split/50"
-        />
+        <span aria-hidden className="split-flash pointer-events-none absolute inset-0 rounded-lg bg-action-split/20 outline-1 outline-action-split/50" />
       )}
       {/* the object's box — drawn by the canvas overlay, not here. Empty by design: it exists only to
           be measured, so nothing shows if WebGL is unavailable. Hover lives here rather than on the
@@ -210,7 +208,10 @@ export const DesktopIcon = memo(function DesktopIcon({
             24h move as a tag inside), the address for a wallet — or the warning that the address was
             never saved. */}
         <span
-          className={cn("tnum flex max-w-full items-center gap-4 rounded-full bg-white/20 py-2 pl-6 text-10 leading-120 text-white/90", delta !== undefined ? "pr-2" : "pr-6")}
+          className={cn(
+            "tnum flex max-w-full items-center gap-4 rounded-full bg-white/20 py-2 pl-6 text-10 leading-120 text-white/90",
+            delta !== undefined ? "pr-2" : "pr-6"
+          )}
           style={sub.color ? { color: sub.color } : undefined}>
           <span className="truncate">{sub.text}</span>
           {delta !== undefined && <BaseChangeTag pct={delta} />}

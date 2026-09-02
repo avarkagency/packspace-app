@@ -2,7 +2,7 @@
 // Assets stay on their native chain; nothing bridges. A Project G wallet is multichain and accepts
 // anything; an external address only receives assets of its own chain family. Wrong-chain sends to a
 // single-chain external address are blocked — no bridging is performed (that's Phase 2).
-import type { AssetObj, Chain, PersonObj } from "./types"
+import type { AssetObj, Chain, PersonObj } from "@/types/objects"
 
 export type ChainFamily = "evm" | "solana" | "bitcoin"
 

@@ -2,15 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 
+import type { AssetObj, Chain, PersonObj } from "@/types/objects"
 import { Check, CloudOff, Loader2, Lock, Plus, X } from "lucide-react"
 
-import { canReceive, chainFamily, chainWord, isProjectG } from "@/lib/chain"
-import type { AssetObj, Chain, PersonObj } from "@/lib/types"
-import { cn, round4, units } from "@/lib/utils"
+import { BaseBtn } from "@/components/base/BaseBtn"
+import { BaseSlider } from "@/components/base/BaseSlider"
+import { ObjectMark } from "@/components/canvas/ObjectMark"
 
-import { BaseBtn } from "../base/BaseBtn"
-import { BaseSlider } from "../base/BaseSlider"
-import { ObjectMark } from "../canvas/ObjectMark"
+import { canReceive, chainFamily, chainWord, isProjectG } from "@/lib/chain"
+import { cn, round4, units } from "@/lib/utils"
 
 // The Handoff (Trade) body — a confirmed, two-sided exchange, rendered inside TransferWindow's frame.
 // It's LIVE: first a connection handshake reaches the counterparty (Project G wallets are always
@@ -97,7 +97,9 @@ export function HandoffWindow({ seeds, inventory, to, onClose, onLaunch }: Props
   const addAsset = (asset: AssetObj) => {
     if (!editable) return
     if (!canReceive(asset, to)) {
-      setIssue(`${asset.label} (${asset.chain ?? "Base"}) can't be part of a Handoff with ${to.label} — it's a ${chainWord(to.chain)}-only address. Use a Project G wallet for a mixed bundle.`)
+      setIssue(
+        `${asset.label} (${asset.chain ?? "Base"}) can't be part of a Handoff with ${to.label} — it's a ${chainWord(to.chain)}-only address. Use a Project G wallet for a mixed bundle.`
+      )
       return
     }
     resetNegotiation()
@@ -128,7 +130,8 @@ export function HandoffWindow({ seeds, inventory, to, onClose, onLaunch }: Props
     if (isProjectG(to)) return null
     const fams = new Set(give.map((g) => chainFamily(g.asset.chain)))
     const target = chainFamily(to.chain)
-    if ([...fams].some((f) => f !== target)) return `${to.label} is a ${chainWord(to.chain)}-only address — a Handoff with it can only include ${chainWord(to.chain)} assets. Use a Project G wallet for a mixed bundle.`
+    if ([...fams].some((f) => f !== target))
+      return `${to.label} is a ${chainWord(to.chain)}-only address — a Handoff with it can only include ${chainWord(to.chain)} assets. Use a Project G wallet for a mixed bundle.`
     return null
   }
   const lockYou = () => {
@@ -194,7 +197,11 @@ export function HandoffWindow({ seeds, inventory, to, onClose, onLaunch }: Props
   if (phase === "connecting")
     return (
       <div className="mt-24 flex flex-col items-center gap-16 py-24 text-center">
-        <span className="size-44 rounded-full border-[3px] border-[#c4b6ff]/25 border-t-[#c4b6ff]" style={{ animation: "hospin 0.8s linear infinite" }} aria-hidden />
+        <span
+          className="size-44 rounded-full border-[3px] border-[#c4b6ff]/25 border-t-[#c4b6ff]"
+          style={{ animation: "hospin 0.8s linear infinite" }}
+          aria-hidden
+        />
         <div>
           <p className="text-16 leading-120 font-medium text-white">Reaching {to.label}…</p>
           <p className="mx-auto mt-8 max-w-320 text-12 leading-140 text-white/60">
@@ -278,7 +285,13 @@ export function HandoffWindow({ seeds, inventory, to, onClose, onLaunch }: Props
 
         {/* the two trays */}
         <div className="grid min-w-0 flex-1 grid-cols-2 gap-10">
-          <Tray title="You give" status={youStatus} slots={give.map((g) => ({ key: g.key, asset: g.asset, amount: g.amount }))} editable={editable} onRemove={removeSlot} />
+          <Tray
+            title="You give"
+            status={youStatus}
+            slots={give.map((g) => ({ key: g.key, asset: g.asset, amount: g.amount }))}
+            editable={editable}
+            onRemove={removeSlot}
+          />
           <Tray
             title={`${to.label} gives`}
             status={themStatus}
@@ -298,9 +311,7 @@ export function HandoffWindow({ seeds, inventory, to, onClose, onLaunch }: Props
         {requesting ? "Cancel request" : "+ Request something back"}
       </button>
 
-      {issue && (
-        <p className="rounded-md border border-danger/40 bg-danger/10 p-10 text-12 leading-140 text-[#ffcdbf]">{issue}</p>
-      )}
+      {issue && <p className="rounded-md border border-danger/40 bg-danger/10 p-10 text-12 leading-140 text-[#ffcdbf]">{issue}</p>}
 
       {/* action row */}
       <div className="flex items-center gap-8">
@@ -389,7 +400,21 @@ export function HandoffWindow({ seeds, inventory, to, onClose, onLaunch }: Props
 // ── a single tray: 3×3 of placed offers ─────────────────────────────────────────
 type Cell = { key: string } & ({ asset: AssetObj; amount: number } | { receive: HandoffReceive })
 
-function Tray({ title, status, slots, editable, onRemove, dim = false }: { title: string; status: string; slots: Cell[]; editable: boolean; onRemove?: (key: string) => void; dim?: boolean }) {
+function Tray({
+  title,
+  status,
+  slots,
+  editable,
+  onRemove,
+  dim = false
+}: {
+  title: string
+  status: string
+  slots: Cell[]
+  editable: boolean
+  onRemove?: (key: string) => void
+  dim?: boolean
+}) {
   const statusColor = status === "Confirmed" ? "#3ddc84" : status === "Locked" ? "#f7c86a" : "rgba(255,255,255,0.5)"
   return (
     <div className="glass flex min-w-0 flex-col rounded-md">
@@ -402,11 +427,12 @@ function Tray({ title, status, slots, editable, onRemove, dim = false }: { title
       <div className="grid grid-cols-3 gap-6 p-10">
         {Array.from({ length: 9 }).map((_, i) => {
           const cell = slots[i]
-          if (!cell)
-            return <div key={i} className="h-64 rounded-md border border-dashed border-white/12" aria-hidden />
+          if (!cell) return <div key={i} className="h-64 rounded-md border border-dashed border-white/12" aria-hidden />
           const isReceive = "receive" in cell
           return (
-            <div key={cell.key} className={cn("relative grid h-64 place-items-center gap-2 rounded-md border border-white/10 bg-white/5 p-4", dim && "opacity-40 grayscale")}>
+            <div
+              key={cell.key}
+              className={cn("relative grid h-64 place-items-center gap-2 rounded-md border border-white/10 bg-white/5 p-4", dim && "opacity-40 grayscale")}>
               {isReceive ? (
                 <span className="grid size-32 place-items-center rounded-full text-14 font-bold text-white" style={{ background: cell.receive.color }}>
                   $
@@ -415,7 +441,11 @@ function Tray({ title, status, slots, editable, onRemove, dim = false }: { title
                 <ObjectMark obj={cell.asset} size={32} />
               )}
               <span className="tnum text-9 leading-100 text-white/70">
-                {isReceive ? `${units(cell.receive.amount)} ${cell.receive.symbol}` : cell.asset.kind === "nft" ? "1 of 1" : `${units(cell.amount)} ${cell.asset.symbol}`}
+                {isReceive
+                  ? `${units(cell.receive.amount)} ${cell.receive.symbol}`
+                  : cell.asset.kind === "nft"
+                    ? "1 of 1"
+                    : `${units(cell.amount)} ${cell.asset.symbol}`}
               </span>
               {editable && onRemove && !isReceive && (
                 <button

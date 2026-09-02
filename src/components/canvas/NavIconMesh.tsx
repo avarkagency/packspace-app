@@ -3,9 +3,8 @@
 import { useEffect, useMemo, useRef } from "react"
 
 import * as THREE from "three"
+import { coinView } from "@/stores/coin"
 import { useFrame } from "@react-three/fiber"
-
-import { coinView } from "@/lib/coin-store"
 
 // A dock icon in the scene: a flat textured plane riding the slot its tile registered, exactly as the
 // coins ride theirs. Flat on purpose — the nav artwork is an app tile, not an object you own — but it
