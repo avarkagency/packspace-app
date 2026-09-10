@@ -141,3 +141,16 @@ export type Receipt = {
   status: "Settled"
   at: string
 }
+
+/** Someone wants to trade with you, live — MMO-style, not a mailbox. Not a structured offer, nothing
+ *  to accept or decline up front: it lands on the desk as its own pulsing icon and opening it puts
+ *  you both at the trade table (WindowHandoff), where each side adds whatever it wants and it settles
+ *  on lock/lock, confirm/confirm. */
+export type TradeRequest = {
+  id: string
+  fromId: string
+  fromLabel: string
+  fromHandle?: string
+  wallet: Wallet
+  note?: string
+}

@@ -25,11 +25,14 @@ type Props = {
 export type GiveSlot = { key: string; asset: AssetObj; amount: number }
 
 const T_LOCK = 950
-const T_REVIEW = 2200
 const T_CONFIRM = 950
 const T_SETTLE = 1300
 const T_CONNECT = 1700
-const REQUEST_BACK: HandoffReceive = { label: "USD Coin", symbol: "USDC", amount: 500, usd: 500, color: "#2775ca", chain: "Base" }
+/** How long the other side sits at an empty table before they start adding something — the live,
+ *  MMO-style half of the negotiation is simulated, not driven by a second real user. */
+const T_THEIR_ITEM = 2000
+const T_THEM_LOCK = 1800
+const THEIR_ITEM: HandoffReceive = { label: "Doodles", symbol: "DOODLE", amount: 1, usd: 335, color: "#5db4f0", chain: "Ethereum" }
 
 type Phase = "connecting" | "failed" | "active" | "settled"
 
@@ -43,11 +46,12 @@ export function WindowHandoff({ seeds, inventory, to, onClose, onLaunch }: Props
 
   // state
   const [phase, setPhase] = useState<Phase>("connecting")
-  const [give, setGive] = useState<GiveSlot[]>(() => seeds.filter((s) => s.kind === "nft").map((s) => ({ key: s.id, asset: s, amount: 1 })))
-  const [requesting, setRequesting] = useState(false)
+  // whatever was dragged onto the contact before "Trade assets" was picked lands straight in your
+  // tray — an NFT whole, a fungible at its full balance — the same as if you'd tapped it in from the rail
+  const [give, setGive] = useState<GiveSlot[]>(() => seeds.map((s) => ({ key: s.id, asset: s, amount: s.kind === "nft" ? 1 : s.balance })))
+  const [theirItem, setTheirItem] = useState<HandoffReceive | null>(null)
   const [youLocked, setYouLocked] = useState(false)
   const [themLocked, setThemLocked] = useState(false)
-  const [reviewDone, setReviewDone] = useState(false)
   const [youConfirmed, setYouConfirmed] = useState(false)
   const [themConfirmed, setThemConfirmed] = useState(false)
   const [place, setPlace] = useState<{ asset: AssetObj; amount: number } | null>(null)
@@ -55,9 +59,8 @@ export function WindowHandoff({ seeds, inventory, to, onClose, onLaunch }: Props
 
   // data
   const reachable = isProjectG(to) || to.online === true
-  const receive = requesting ? [REQUEST_BACK] : []
+  const receive = theirItem ? [theirItem] : []
   const bothLocked = youLocked && themLocked
-  const reviewing = bothLocked && !reviewDone
   const settling = youConfirmed && themConfirmed
   const editable = !youLocked && phase === "active"
   const placedOf = (id: string) => give.filter((g) => g.asset.id === id).reduce((t, g) => t + g.amount, 0)
@@ -68,11 +71,12 @@ export function WindowHandoff({ seeds, inventory, to, onClose, onLaunch }: Props
   )
 
   // events
+  // resets YOUR side of the table — editing your offer means re-locking it. Their lock is
+  // deliberately untouched: once they've locked in, they stay locked regardless of what you do to
+  // your own side, until you lock yours too.
   const resetNegotiation = () => {
     clearTimers()
     setYouLocked(false)
-    setThemLocked(false)
-    setReviewDone(false)
     setYouConfirmed(false)
     setThemConfirmed(false)
     setIssue(null)
@@ -104,10 +108,6 @@ export function WindowHandoff({ seeds, inventory, to, onClose, onLaunch }: Props
     resetNegotiation()
     setGive((g) => g.filter((s) => s.key !== key))
   }
-  const toggleRequest = () => {
-    resetNegotiation()
-    setRequesting((v) => !v)
-  }
 
   // the lock/confirm actions
   const lockIssue = (): string | null => {
@@ -127,7 +127,7 @@ export function WindowHandoff({ seeds, inventory, to, onClose, onLaunch }: Props
   }
   const unlockYou = () => resetNegotiation()
   const confirmYou = () => {
-    if (!reviewDone) return
+    if (!bothLocked) return
     setYouConfirmed(true)
   }
   const cancel = () => {
@@ -142,19 +142,29 @@ export function WindowHandoff({ seeds, inventory, to, onClose, onLaunch }: Props
   }, [reachable])
 
   // effects
+  // the other side of the table isn't idle: they add something of their own a couple of seconds in,
+  // then lock it in shortly after — same as you would, just on their own clock rather than yours.
+  // Deliberately outside the `timers` ref `resetNegotiation`/`cancel` sweep: editing your own offer,
+  // or bailing out of the connecting screen, must never cancel what's happening on their side of the
+  // table — each of these three cleans up after itself via its own dependency change regardless.
   useEffect(() => {
-    if (phase !== "active" || !youLocked || themLocked) return
-    const t = setTimeout(() => setThemLocked(true), T_LOCK)
-    timers.current.push(t)
+    if (phase !== "active" || theirItem) return
+    const t = setTimeout(() => setTheirItem(THEIR_ITEM), T_THEIR_ITEM)
     return () => clearTimeout(t)
-  }, [phase, youLocked, themLocked])
+  }, [phase, theirItem])
 
   useEffect(() => {
-    if (!bothLocked || reviewDone) return
-    const t = setTimeout(() => setReviewDone(true), T_REVIEW)
-    timers.current.push(t)
+    if (phase !== "active" || !theirItem || themLocked) return
+    const t = setTimeout(() => setThemLocked(true), T_THEM_LOCK)
     return () => clearTimeout(t)
-  }, [bothLocked, reviewDone])
+  }, [phase, theirItem, themLocked])
+
+  // catches up if you lock before they have — they still won't lock nothing, though
+  useEffect(() => {
+    if (phase !== "active" || !youLocked || themLocked || !theirItem) return
+    const t = setTimeout(() => setThemLocked(true), T_LOCK)
+    return () => clearTimeout(t)
+  }, [phase, youLocked, themLocked, theirItem])
 
   useEffect(() => {
     if (!youConfirmed || themConfirmed) return
@@ -215,18 +225,16 @@ export function WindowHandoff({ seeds, inventory, to, onClose, onLaunch }: Props
 
   // ── the trade window ─────────────────────────────────────────────────────────
   const youStatus = youConfirmed ? "Confirmed" : youLocked ? "Locked" : "Editing"
-  const themStatus = themConfirmed ? "Confirmed" : themLocked ? "Locked" : requesting ? "Offering" : "Idle"
+  const themStatus = themConfirmed ? "Confirmed" : themLocked ? "Locked" : theirItem ? "Offering" : "Idle"
   const note = settling
     ? `Both confirmed — launching atomic settlement on ${give[0]?.asset.chain ?? "Base"}.`
     : youConfirmed && !themConfirmed
       ? `Waiting for ${to.label} to confirm…`
-      : reviewDone
-        ? "Locked in — Confirm on both sides to settle."
-        : bothLocked
-          ? "Both locked — final review…"
-          : youLocked
-            ? `Waiting for ${to.label} to lock…`
-            : "Both sides Lock, then Confirm, to settle."
+      : bothLocked
+        ? "Both locked — Confirm on both sides to settle."
+        : youLocked
+          ? `Waiting for ${to.label} to lock…`
+          : "Both sides Lock, then Confirm, to settle."
 
   return (
     <div className="mt-24 flex flex-col gap-14">
@@ -280,47 +288,43 @@ export function WindowHandoff({ seeds, inventory, to, onClose, onLaunch }: Props
             status={themStatus}
             slots={receive.map((r, i) => ({ key: `r${i}`, receive: r }))}
             editable={false}
-            dim={!themConfirmed}
           />
         </div>
       </div>
-
-      {/* request-back toggle */}
-      <button
-        type="button"
-        disabled={!editable}
-        onClick={toggleRequest}
-        className="glass self-start rounded-full px-12 py-6 text-12 leading-120 text-[#d8ceff] trans-base hover:bg-white/10 disabled:opacity-40">
-        {requesting ? "Cancel request" : "+ Request something back"}
-      </button>
 
       {issue && <p className="rounded-md border border-danger/40 bg-danger/10 p-10 text-12 leading-140 text-[#ffcdbf]">{issue}</p>}
 
       {/* action row */}
       <div className="flex items-center gap-8">
         {settling ? (
-          <div className="flex flex-1 items-center justify-center gap-8 py-8 text-13 text-[#c4b6ff]">
-            <Loader2 className="size-16 animate-spin" /> Launching — atomic settlement…
-          </div>
-        ) : youConfirmed ? (
-          <div className="flex flex-1 items-center justify-center gap-8 py-8 text-13 text-white/60">
-            <Loader2 className="size-16 animate-spin" /> Waiting for {to.label} to confirm…
-          </div>
-        ) : reviewDone ? (
-          <BaseBtn icon={Check} className="flex-1" onClick={confirmYou}>
-            Confirm
-          </BaseBtn>
-        ) : reviewing ? (
           <BaseBtn className="flex-1" disabled>
-            <Loader2 className="size-16 animate-spin" /> Final review…
+            <Loader2 className="size-16 animate-spin" /> Launching — atomic settlement…
           </BaseBtn>
+        ) : youConfirmed ? (
+          <>
+            <BaseBtn variant="secondary" className="flex-1" disabled>
+              Unlock &amp; edit
+            </BaseBtn>
+            <BaseBtn className="flex-1" disabled>
+              <Loader2 className="size-16 animate-spin" /> Waiting for {to.label} to confirm…
+            </BaseBtn>
+          </>
+        ) : bothLocked ? (
+          <>
+            <BaseBtn variant="secondary" className="flex-1" onClick={unlockYou}>
+              Unlock &amp; edit
+            </BaseBtn>
+            <BaseBtn icon={Check} className="flex-1" onClick={confirmYou}>
+              Confirm
+            </BaseBtn>
+          </>
         ) : youLocked ? (
           <>
+            <BaseBtn variant="secondary" className="flex-1" onClick={unlockYou}>
+              Unlock &amp; edit
+            </BaseBtn>
             <BaseBtn className="flex-1" disabled>
               <Loader2 className="size-16 animate-spin" /> Waiting for {to.label} to lock…
-            </BaseBtn>
-            <BaseBtn variant="secondary" onClick={unlockYou}>
-              Unlock &amp; edit
             </BaseBtn>
           </>
         ) : (
@@ -388,15 +392,13 @@ function Tray({
   status,
   slots,
   editable,
-  onRemove,
-  dim = false
+  onRemove
 }: {
   title: string
   status: string
   slots: Cell[]
   editable: boolean
   onRemove?: (key: string) => void
-  dim?: boolean
 }) {
   const statusColor = status === "Confirmed" ? "#3ddc84" : status === "Locked" ? "#f7c86a" : "rgba(255,255,255,0.5)"
   return (
@@ -413,17 +415,19 @@ function Tray({
           if (!cell) return <div key={i} className="h-64 rounded-md border border-dashed border-white/12" aria-hidden />
           const isReceive = "receive" in cell
           return (
-            <div
-              key={cell.key}
-              className={cn("relative grid h-64 place-items-center gap-2 rounded-md border border-white/10 bg-white/5 p-4", dim && "opacity-40 grayscale")}>
+            <div key={cell.key} className="relative grid h-64 place-items-center gap-2 rounded-md border border-white/10 bg-white/5 p-4">
               {isReceive ? (
-                <span className="grid size-32 place-items-center rounded-full text-14 font-bold text-white" style={{ background: cell.receive.color }}>
+                <span
+                  className="grid size-32 place-items-center rounded-full border border-white/10 text-14 font-bold text-white"
+                  style={{ background: cell.receive.color }}>
                   $
                 </span>
               ) : (
-                <ObjectMark obj={cell.asset} size={32} />
+                <span className="inline-flex shrink-0 rounded-full border border-white/10">
+                  <ObjectMark obj={cell.asset} size={32} />
+                </span>
               )}
-              <span className="tnum text-9 leading-100 text-white/70">
+              <span className="tnum text-center text-10 leading-100 text-white">
                 {isReceive
                   ? `${units(cell.receive.amount)} ${cell.receive.symbol}`
                   : cell.asset.kind === "nft"

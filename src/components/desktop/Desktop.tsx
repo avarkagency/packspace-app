@@ -34,7 +34,7 @@ import { chromeKeepout } from "@/stores/chrome-keepout"
 import { coinView, registerCoinViewport, setCoinHover } from "@/stores/coin"
 import { panesMirror, setDetailCards, setObjectWallets, setPanes, walletOfId } from "@/stores/desk"
 import { endDrag, setOver, startGroupDrag, useDrag } from "@/stores/drag"
-import type { Approval, AssetObj, DesktopObj, FolderSpec, PackObj, PersonObj } from "@/types/objects"
+import type { Approval, AssetObj, DesktopObj, FolderSpec, PackObj, PersonObj, TradeRequest } from "@/types/objects"
 import {
   ArrowDownUp,
   BadgeCheck,
@@ -100,6 +100,7 @@ import { NAV_ITEMS } from "@/data/apps"
 import { ASSETS, DUST_ASSETS, DUST_NFTS, EOA_ASSETS } from "@/data/assets"
 import { INITIAL_FOLDERS } from "@/data/folders"
 import { EOA_PEOPLE, PEOPLE } from "@/data/people"
+import { TRADE_REQUESTS } from "@/data/trades"
 
 import { DesktopBar } from "./DesktopBar"
 import { DesktopDetailCard } from "./DesktopDetailCard"
@@ -112,6 +113,7 @@ import { DesktopPack } from "./DesktopPack"
 import { DesktopPanes } from "./DesktopPanes"
 import { DesktopSearch, type SearchItem } from "./DesktopSearch"
 import { DesktopToast } from "./DesktopToast"
+import { DesktopTradeIcon } from "./DesktopTradeIcon"
 
 const ObjectScene = dynamic(() => import("@/components/desktop/object/ObjectScene").then((m) => m.ObjectScene), { ssr: false })
 type MenuSpec = { x: number; y: number; obj: DesktopObj; fromSearch?: boolean }
@@ -181,6 +183,8 @@ export function Desktop() {
   const [cardIds, setCardIds] = useState<ReadonlySet<string>>(new Set())
   const [packs, setPacks] = useState<PackObj[]>([])
   const [approvals, setApprovals] = useState<Approval[]>(APPROVAL_RADAR)
+  // arrives live a few seconds into the demo, not pre-seeded — see the mount effect below
+  const [tradeRequests, setTradeRequests] = useState<TradeRequest[]>([])
 
   // drag
   const { obj: dragged, carriedIds, over } = useDrag()
@@ -235,13 +239,18 @@ export function Desktop() {
     closeSearch,
     dismissWins,
     toggleSearch,
-    dismissSearch,
-    resetSurfaces
+    dismissSearch
   } = useDesktopSurfaces(activeWallet)
   const { toast, showToast } = useDesktopToast()
   const { flashIds, flash } = useDesktopFlash()
-  const { pulseId, pulse, clearPulse } = useDesktopPulse()
-  const { consumeAssets, applySend, applyHandoff, applyMove } = useDesktopSettlement({ setAssets, setPositions, setFolders, onSettle, flash })
+  const { pulseId, pulse } = useDesktopPulse()
+  const { consumeAssets, applySend, applyHandoff, applyMove } = useDesktopSettlement({
+    setAssets,
+    setPositions,
+    setFolders,
+    onSettle,
+    flash
+  })
   const { selectedIds, setSelectedIds, marquee, onDeskPointerDown } = useDesktopMarquee({
     rootRef,
     positions,
@@ -1104,46 +1113,20 @@ export function Desktop() {
   const whitelistAddress = (id: string) => setContacts((list) => list.map((c) => (c.id === id ? { ...c, whitelisted: true } : c)))
 
   // events
+  // a trade request has nothing to accept or decline — its icon lands straight on the desk, and
+  // opening it just sits you both at the table (WindowHandoff, no seed assets), where each side adds
+  // whatever and it settles lock/lock, confirm/confirm. The icon clears the moment you open it.
+  const openTradeWith = (req: TradeRequest) => {
+    const to = contacts.find((c) => c.id === req.fromId) ?? contacts.find((c) => c.label === req.fromLabel && walletOf(c) === req.wallet)
+    setTradeRequests((list) => list.filter((r) => r.id !== req.id))
+    if (!to) return showToast("alert", `${req.fromLabel} isn't in your ${walletLabel(req.wallet)} address book any more.`)
+    open({ kind: "transfer", assets: [], to, intent: "handoff", matchKey: `trade-${to.id}` })
+  }
+
+  // events
   const markRetired = (id: string) => setContacts((list) => list.map((c) => (c.id === id ? { ...c, retired: true, compromised: false } : c)))
   const markCompromised = (id: string) => setContacts((list) => list.map((c) => (c.id === id ? { ...c, compromised: true, retired: false } : c)))
   const clearFlags = (id: string) => setContacts((list) => list.map((c) => (c.id === id ? { ...c, retired: false, compromised: false } : c)))
-
-  // events
-  const resetDemo = () => {
-    const startAssets = [...ASSETS, ...DUST_ASSETS, ...DUST_NFTS, ...EOA_ASSETS]
-    const startPeople = [...PEOPLE, ...EOA_PEOPLE]
-    const filed = new Set(INITIAL_FOLDERS.flatMap((f) => f.contents))
-    setAssets(startAssets)
-    setContacts(startPeople)
-    setFolders(INITIAL_FOLDERS)
-    setPacks([])
-    setApprovals(APPROVAL_RADAR)
-    resetSurfaces()
-    setFolderWins([])
-    clearPulse()
-    setSelectedIds(new Set())
-    applyCardIds(new Set())
-    // both desks go back to their stock bento and wallpaper too — the whole workspace, not just this half
-    setWidgetsByWallet(initialWidgets())
-    setWallpapers(initialWallpapers())
-    // laid out at full width for each wallet, then pulled back into the panes if the split is open
-    const full: Pane = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
-    const seeded: Record<string, Pos> = {}
-    for (const wallet of WALLET_ORDER) {
-      Object.assign(
-        seeded,
-        defaultPositions(
-          startAssets.filter((a) => walletOf(a) === wallet && !filed.has(a.id)),
-          startPeople.filter((c) => walletOf(c) === wallet),
-          INITIAL_FOLDERS.filter((f) => f.wallet === wallet).map((f) => f.id),
-          full,
-          TOP
-        )
-      )
-    }
-    setPositions(seeded)
-    if (isSplit) requestAnimationFrame(() => settleIntoPanes(true))
-  }
 
   const onInspectAction = (kind: string) => {
     if (rightPanel?.kind !== "inspect") return
@@ -1436,6 +1419,19 @@ export function Desktop() {
       )
     }
     setPositions(seeded)
+  }, [])
+
+  // effects
+  // trade requests arrive live rather than sitting pre-seeded — staggered a few seconds apart so a
+  // second one (if there were more) never lands mid-click on the first
+  useEffect(() => {
+    const timers = TRADE_REQUESTS.map((req, i) =>
+      setTimeout(() => {
+        cue("bloom") // a new surface landing on the desk
+        setTradeRequests((list) => [...list, req])
+      }, 5000 + i * 4000)
+    )
+    return () => timers.forEach(clearTimeout)
   }, [])
 
   /** Pull every object back inside its own wallet's pane after the panes change shape. `settle` also runs
@@ -1800,7 +1796,6 @@ export function Desktop() {
           else if (id === "nav-approvals") openRadar()
           else if (id === "nav-cards") openCard()
           else if (id === "nav-receipts") openReceipts()
-          else if (id === "nav-reset") resetDemo()
         }}
       />
 
@@ -1845,6 +1840,8 @@ export function Desktop() {
               inventory={assets.filter((a) => walletOf(a) === walletOf(w.to))}
               to={w.to}
               z={z}
+              // a trade request opens straight on the Trade step with nothing staked yet
+              initialStep={w.intent === "handoff" ? "handoff" : undefined}
               onClose={() => close(w.id)}
               onSend={applySend}
               onLaunch={applyHandoff}
@@ -1881,7 +1878,9 @@ export function Desktop() {
               onMove={(amount, mergeIntoId) => applyMove(w.asset, w.to, amount, mergeIntoId, () => `mv-${assetIdc.current++}`)}
             />
           )
-        return <WindowReceipt key={w.id} receipt={w.receipt} z={z} onClose={() => close(w.id)} />
+        // the proof card sits above every other surface, Receipts included — it's the thing a
+        // settlement (or a click from the Receipts list) opens on top of, never behind
+        return <WindowReceipt key={w.id} receipt={w.receipt} z={230 + i} onClose={() => close(w.id)} />
       })}
 
       {/* Pack Builder + Unpack — full-screen glass modals over the desk. The builder only ever sees the
@@ -1897,6 +1896,17 @@ export function Desktop() {
       {unpacking && <WindowUnpack pack={unpacking} onClose={closeUnpack} onUnpack={unpackPack} />}
       {card && <WindowCard contact={card.contact} onImport={importContact} onClose={closeCard} />}
       {receiptsOpen && <WindowReceipts receipts={receipts} onOpen={(r) => open({ kind: "receipt", receipt: r, matchKey: r.id })} onClose={closeReceipts} />}
+
+      {/* live trade requests — pulsing icons landing on the desk itself, not the dock. A second one
+          lands beside the first rather than on top of it. */}
+      {tradeRequests.map((req, i) => (
+        <DesktopTradeIcon
+          key={req.id}
+          request={req}
+          offset={(i - (tradeRequests.length - 1) / 2) * 200}
+          onOpen={() => openTradeWith(req)}
+        />
+      ))}
 
       {/* the Approval Radar stays a right-docked panel; the AI Inspector is a full-screen bento takeover */}
       {rightPanel?.kind === "radar" && <PanelApprovals approvals={approvals} onRevoke={revokeApprovalEntry} onClose={closePanel} />}

@@ -8,7 +8,7 @@ import { cue } from "@/lib/sound"
 import { type Wallet, walletOf } from "@/lib/wallets"
 
 export type WinBody =
-  | { kind: "transfer"; assets: AssetObj[]; to: PersonObj }
+  | { kind: "transfer"; assets: AssetObj[]; to: PersonObj; intent?: "handoff" }
   | { kind: "split"; asset: AssetObj }
   | { kind: "combine"; a: AssetObj; b: AssetObj }
   | { kind: "contact"; contact: PersonObj }

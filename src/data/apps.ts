@@ -7,8 +7,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "nav-approvals", label: "Approvals", icon: "/images/nav-icons/3.png" },
   { id: "nav-cards", label: "Cards", icon: "/images/nav-icons/4.png" },
   { id: "nav-receipts", label: "Receipts", icon: "/images/nav-icons/5.png" },
-  { id: "nav-training", label: "Training", icon: "/images/nav-icons/6.png" },
-  { id: "nav-reset", label: "Reset Demo", icon: "/images/nav-icons/7.png" }
+  { id: "nav-training", label: "Training", icon: "/images/nav-icons/6.png" }
 ]
 
 // The launcher set (spec §3.13) — first run is never an empty canvas. href is linked, not built here.
