@@ -17,6 +17,7 @@ import {
   ROW_H,
   SPLIT_TOP,
   TOP,
+  TRADE_BOX,
   clampPos,
   defaultPositions,
   nearestFreeGroupOffset,
@@ -32,7 +33,7 @@ import { useDesktopSurfaces } from "@/hooks/useDesktopSurfaces"
 import { useDesktopToast } from "@/hooks/useDesktopToast"
 import { chromeKeepout } from "@/stores/chrome-keepout"
 import { coinView, registerCoinViewport, setCoinHover } from "@/stores/coin"
-import { panesMirror, setDetailCards, setObjectWallets, setPanes, walletOfId } from "@/stores/desk"
+import { objectWallet, panesMirror, setDetailCards, setObjectWallets, setPanes, setTradeIds, tradeIds, walletOfId } from "@/stores/desk"
 import { endDrag, setOver, startGroupDrag, useDrag } from "@/stores/drag"
 import type { Approval, AssetObj, DesktopObj, FolderSpec, PackObj, PersonObj, TradeRequest } from "@/types/objects"
 import {
@@ -44,6 +45,8 @@ import {
   History,
   Image as ImageIcon,
   LayoutGrid,
+  LogIn,
+  LogOut,
   Maximize2,
   Minimize2,
   Pencil,
@@ -62,6 +65,7 @@ import { PanelInspector } from "@/components/desktop/panel/PanelInspector"
 import { Widget } from "@/components/desktop/widget/Widget"
 import { WindowCard } from "@/components/desktop/window/WindowCard"
 import { WindowCombine } from "@/components/desktop/window/WindowCombine"
+import { WindowConnect } from "@/components/desktop/window/WindowConnect"
 import { WindowContact } from "@/components/desktop/window/WindowContact"
 import { WindowDelete } from "@/components/desktop/window/WindowDelete"
 import { WindowFolder } from "@/components/desktop/window/WindowFolder"
@@ -164,6 +168,8 @@ export function Desktop() {
   // state
   const [view, setView] = useState<View>("openfort")
   const [splitRatio, setSplitRatio] = useState(0.5)
+  // the demo opens on a connected Openfort; MetaMask has to be connected before its desk (or the split) opens
+  const [connected, setConnected] = useState<Record<Wallet, boolean>>({ openfort: true, eoa: false })
 
   const [screen, setScreen] = useState({ w: 0, h: 0 })
 
@@ -176,6 +182,7 @@ export function Desktop() {
   const [menu, setMenu] = useState<MenuSpec | null>(null)
   const [deskMenu, setDeskMenu] = useState<{ x: number; y: number; wallet: Wallet } | null>(null)
   const [folderMenu, setFolderMenu] = useState<{ x: number; y: number; id: string } | null>(null)
+  const [walletMenu, setWalletMenu] = useState<{ x: number; y: number; wallet: Wallet } | null>(null)
   const [wallpapers, setWallpapers] = useState<Record<Wallet, Wallpaper>>(initialWallpapers)
   const [widgetsByWallet, setWidgetsByWallet] = useState<Record<Wallet, WidgetInstance[]>>(initialWidgets)
   const [keepout, setKeepout] = useState({ ...chromeKeepout })
@@ -239,7 +246,10 @@ export function Desktop() {
     closeSearch,
     dismissWins,
     toggleSearch,
-    dismissSearch
+    dismissSearch,
+    connect,
+    openConnect,
+    closeConnect
   } = useDesktopSurfaces(activeWallet)
   const { toast, showToast } = useDesktopToast()
   const { flashIds, flash } = useDesktopFlash()
@@ -287,6 +297,46 @@ export function Desktop() {
     label: f.label,
     items: f.contents.map((cid) => allItems.find((o) => o.id === cid)).filter((o): o is DesktopObj => !!o)
   }))
+
+  // events
+  /** A view only opens once every wallet it shows is connected — otherwise the desk stays put and the
+   *  first missing wallet is asked for. Connecting re-asks, so the split walks through each in turn. */
+  const requestView = (next: View, sessions = connected) => {
+    const missing = visibleWallets(next).find((w) => !sessions[w])
+    if (missing) return openConnect({ wallet: missing, view: next })
+    setView(next)
+  }
+
+  /** Openfort is the demo's home session, so for now only MetaMask actually lets go. Whatever view was
+   *  showing the dropped wallet falls back to a desk that's still connected. */
+  const disconnectWallet = (wallet: Wallet) => {
+    if (wallet === "openfort") return
+    cue("error")
+    const sessions = { ...connected, [wallet]: false }
+    setConnected(sessions)
+    if (visibleWallets(view).includes(wallet)) setView(WALLET_ORDER.find((w) => sessions[w]) ?? "openfort")
+    showToast("success", `Disconnected ${walletLabel(wallet)}.`)
+  }
+
+  const onWalletMenu = (wallet: Wallet, e: React.MouseEvent) => {
+    cue("tick")
+    setMenu(null)
+    setDeskMenu(null)
+    setFolderMenu(null)
+    setWalletMenu({ x: e.clientX, y: e.clientY, wallet })
+  }
+
+  const walletMenuItems = (wallet: Wallet): DesktopMenuItem[] =>
+    connected[wallet]
+      ? [{ label: `Disconnect ${walletLabel(wallet)}`, icon: LogOut, onSelect: () => disconnectWallet(wallet) }]
+      : [{ label: `Connect ${walletLabel(wallet)}`, icon: LogIn, onSelect: () => requestView(wallet) }]
+
+  const onWalletConnected = (wallet: Wallet, next: View) => {
+    const sessions = { ...connected, [wallet]: true }
+    setConnected(sessions)
+    closeConnect()
+    requestView(next, sessions)
+  }
 
   // events
   const createPack = (draft: PackDraft, wallet: Wallet) => {
@@ -874,7 +924,7 @@ export function Desktop() {
       // a detail card is far wider and taller than a grid slot, so the tidy would sit it on top of the two
       // or three icons around it. Lay the grid out first, then walk each card out to the nearest spot that
       // clears them — never upward past the grid's top, or it reverses out and parks over the greeting.
-      for (const id of cardIds) {
+      for (const id of [...cardIds, ...tradeIds]) {
         const at = next[id]
         if (at && walletOfId(id) === wallet) next[id] = nearestFreeSpot(at, next, id, top)
       }
@@ -1038,6 +1088,13 @@ export function Desktop() {
 
   const startPackDrag = (pack: PackObj) => startTileDrag(pack.id, walletOf(pack))
 
+  // a request is addressed to one wallet address, so it can never be carried onto the other desk
+  const startTradeDrag = (req: TradeRequest) =>
+    startTileDrag(req.id, req.wallet, () => {
+      cue("error")
+      showToast("alert", `${req.fromLabel}'s trade request is for your ${walletLabel(req.wallet)} wallet — it stays on that desk.`)
+    })
+
   const startFolderDrag = (id: string) => (e: React.PointerEvent) => {
     if (e.button !== 0) return
     // part of a selection: the whole handful goes, folders included (they just can't be filed)
@@ -1117,8 +1174,11 @@ export function Desktop() {
   // opening it just sits you both at the table (WindowHandoff, no seed assets), where each side adds
   // whatever and it settles lock/lock, confirm/confirm. The icon clears the moment you open it.
   const openTradeWith = (req: TradeRequest) => {
+    // that gesture was a move, not an open
+    if (movedRef.current) return
     const to = contacts.find((c) => c.id === req.fromId) ?? contacts.find((c) => c.label === req.fromLabel && walletOf(c) === req.wallet)
     setTradeRequests((list) => list.filter((r) => r.id !== req.id))
+    forgetPosition(req.id)
     if (!to) return showToast("alert", `${req.fromLabel} isn't in your ${walletLabel(req.wallet)} address book any more.`)
     open({ kind: "transfer", assets: [], to, intent: "handoff", matchKey: `trade-${to.id}` })
   }
@@ -1382,10 +1442,12 @@ export function Desktop() {
       ...assets.map((a): [string, Wallet] => [a.id, walletOf(a)]),
       ...contacts.map((c): [string, Wallet] => [c.id, walletOf(c)]),
       ...folders.map((f): [string, Wallet] => [f.id, f.wallet]),
-      ...packs.map((p): [string, Wallet] => [p.id, walletOf(p)])
+      ...packs.map((p): [string, Wallet] => [p.id, walletOf(p)]),
+      ...tradeRequests.map((r): [string, Wallet] => [r.id, r.wallet])
     ])
+    setTradeIds(tradeRequests.map((r) => r.id))
     setPanes(panes)
-  }, [assets, contacts, folders, packs, panes])
+  }, [assets, contacts, folders, packs, tradeRequests, panes])
 
   // effects
   useEffect(() => {
@@ -1423,13 +1485,31 @@ export function Desktop() {
 
   // effects
   // trade requests arrive live rather than sitting pre-seeded — staggered a few seconds apart so a
-  // second one (if there were more) never lands mid-click on the first
+  // second one (if there were more) never lands mid-click on the first. Each arrives once per page load:
+  // Fast Refresh re-runs this effect but keeps state and refs, and a second copy of the same request
+  // would duplicate its key and leave orphaned tiles behind every time the desk remounts them.
+  const arrivedTradesRef = useRef(new Set<string>())
   useEffect(() => {
     const timers = TRADE_REQUESTS.map((req, i) =>
-      setTimeout(() => {
-        cue("bloom") // a new surface landing on the desk
-        setTradeRequests((list) => [...list, req])
-      }, 5000 + i * 4000)
+      setTimeout(
+        () => {
+          if (arrivedTradesRef.current.has(req.id)) return
+          arrivedTradesRef.current.add(req.id)
+          cue("bloom") // a new surface landing on the desk
+          // the mirrors are written now rather than by the layout effect, so the placement below already
+          // sizes and homes the request correctly
+          setTradeIds([...tradeIds, req.id])
+          setObjectWallets([...objectWallet, [req.id, req.wallet]])
+          setTradeRequests((list) => [...list, req])
+          setPositions((pos) => {
+            if (!pos) return pos
+            const pane = panesMirror[req.wallet]
+            const p = clampPos(pane.width / 2 - TRADE_BOX.w / 2, pane.height / 2 - TRADE_BOX.h / 2, req.id, req.wallet)
+            return { ...pos, [req.id]: nearestFreeSpot(p, pos, req.id, 0, req.wallet) }
+          })
+        },
+        5000 + i * 4000
+      )
     )
     return () => timers.forEach(clearTimeout)
   }, [])
@@ -1485,6 +1565,16 @@ export function Desktop() {
     }
     settleIntoPanes(true)
   }, [view, positions, settleIntoPanes])
+
+  // effects
+  // a resize re-tidies the stock objects, but anything the tidy doesn't lay out (a pack, a trade request,
+  // a user folder) still needs pulling back inside the new pane. Runs after the layout effect has
+  // written the new panes to the mirror the clamp reads. Skipped until the screen is measured: on mount
+  // the clamp would otherwise run against 0×0 panes and fold every icon into the top-left corner.
+  useEffect(() => {
+    if (!screen.w) return
+    settleIntoPanes(false)
+  }, [screen, settleIntoPanes])
 
   // effects
   // clamped live (cheap, and it reads as the icons being pushed along by the divider); the collision
@@ -1572,10 +1662,12 @@ export function Desktop() {
   const escapeRef = useRef(() => {})
   useEffect(() => {
     escapeRef.current = () => {
-      if (menu || deskMenu || folderMenu) {
+      if (connect) return closeConnect() // z-240, over everything
+      if (menu || deskMenu || folderMenu || walletMenu) {
         setMenu(null)
         setDeskMenu(null)
         setFolderMenu(null)
+        setWalletMenu(null)
         return
       }
       if (packBuilder) return closePackBuilder() // z-220 full-screen modals
@@ -1637,7 +1729,7 @@ export function Desktop() {
         <div aria-hidden className="fixed inset-0" style={{ background: wallpapers[activeWallet].css }} />
       )}
 
-      <DesktopBar onSearch={openSearch} view={view} onViewChange={setView} />
+      <DesktopBar onSearch={openSearch} view={view} onViewChange={requestView} onWalletMenu={onWalletMenu} />
       {/* the bento belongs to one desk at a time — in split view neither is drawn, so the two halves
           aren't buried under widgets sized for a full screen */}
       {!isSplit && (
@@ -1772,6 +1864,19 @@ export function Desktop() {
             )
           })}
 
+        {/* live trade requests — pulsing tiles on the desk of the wallet they were sent to, dragged like a
+            pack. Hidden with that wallet's desk. */}
+        {positions &&
+          tradeRequests.map((req) => {
+            const local = positions[req.id]
+            if (!local || !onScreen.has(req.wallet)) return null
+            return (
+              <Placed key={req.id} id={req.id} at={toScreen(req.wallet, local)} nodes={iconNodes.current}>
+                <DesktopTradeIcon request={req} onPointerDown={startTradeDrag(req)} onOpen={() => openTradeWith(req)} />
+              </Placed>
+            )
+          })}
+
         {/* the marquee — drawn while a selection is being dragged out on the desk itself */}
         {marquee && (
           <div
@@ -1897,16 +2002,15 @@ export function Desktop() {
       {card && <WindowCard contact={card.contact} onImport={importContact} onClose={closeCard} />}
       {receiptsOpen && <WindowReceipts receipts={receipts} onOpen={(r) => open({ kind: "receipt", receipt: r, matchKey: r.id })} onClose={closeReceipts} />}
 
-      {/* live trade requests — pulsing icons landing on the desk itself, not the dock. A second one
-          lands beside the first rather than on top of it. */}
-      {tradeRequests.map((req, i) => (
-        <DesktopTradeIcon
-          key={req.id}
-          request={req}
-          offset={(i - (tradeRequests.length - 1) / 2) * 200}
-          onOpen={() => openTradeWith(req)}
+      {connect && (
+        <WindowConnect
+          key={`${connect.wallet}-${connect.view}`}
+          wallet={connect.wallet}
+          z={240}
+          onClose={closeConnect}
+          onConnected={() => onWalletConnected(connect.wallet, connect.view)}
         />
-      ))}
+      )}
 
       {/* the Approval Radar stays a right-docked panel; the AI Inspector is a full-screen bento takeover */}
       {rightPanel?.kind === "radar" && <PanelApprovals approvals={approvals} onRevoke={revokeApprovalEntry} onClose={closePanel} />}
@@ -1928,6 +2032,7 @@ export function Desktop() {
       {/* the right-click menus — an icon's own, or the desk's housekeeping */}
       {menu && <DesktopMenu x={menu.x} y={menu.y} items={menu.fromSearch ? searchMenuItems(menu.obj) : menuItems(menu.obj)} onClose={() => setMenu(null)} />}
       {deskMenu && <DesktopMenu x={deskMenu.x} y={deskMenu.y} items={deskMenuItems(deskMenu, deskMenu.wallet)} onClose={() => setDeskMenu(null)} />}
+      {walletMenu && <DesktopMenu x={walletMenu.x} y={walletMenu.y} items={walletMenuItems(walletMenu.wallet)} onClose={() => setWalletMenu(null)} />}
       {folderMenu && <DesktopMenu x={folderMenu.x} y={folderMenu.y} items={folderMenuItems(folderMenu.id)} onClose={() => setFolderMenu(null)} />}
 
       <DesktopHover items={deskItems} folders={folderPeeks} />

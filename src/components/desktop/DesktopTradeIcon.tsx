@@ -1,5 +1,6 @@
 "use client"
 
+import { TRADE_W } from "@/const/desktop-layout"
 import type { TradeRequest } from "@/types/objects"
 import { ArrowRightLeft } from "lucide-react"
 
@@ -7,24 +8,22 @@ import { ObjectAvatar } from "@/components/desktop/object/ObjectAvatar"
 
 type Props = {
   request: TradeRequest
-  /** Horizontal px from screen centre — a second request lands beside the first, not on top of it. */
-  offset: number
+  onPointerDown: (e: React.PointerEvent) => void
   onOpen: () => void
 }
 
-/** A live trade request landing on the desk itself, not the dock — the MMO-style "someone wants to
- *  trade" moment. Pulses until opened; opening it is the only way it goes away (there's nothing to
- *  accept or decline here, just the table it leads to). */
-export function DesktopTradeIcon({ request, offset, onOpen }: Props) {
+export function DesktopTradeIcon({ request, onPointerDown, onOpen }: Props) {
   return (
     <button
       type="button"
-      data-cue-press
+      onPointerDown={onPointerDown}
       onClick={onOpen}
-      style={{ left: `calc(50% + ${offset}px)` }}
-      className="fixed top-1/2 z-[151] -translate-x-1/2 -translate-y-1/2 cursor-pointer">
-      {/* the entrance scale lives on this inner wrapper — the button itself only ever carries the
-          translate that centres it, so the two transforms never fight over one property */}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
+      style={{ width: TRADE_W }}
+      className="flex cursor-grab touch-none justify-center select-none active:cursor-grabbing">
       <span className="panel-in flex flex-col items-center gap-8">
         <span className="relative grid size-64 place-items-center">
           <span className="absolute inset-0 animate-ping rounded-full bg-accent/50 motion-reduce:hidden" aria-hidden />

@@ -1,7 +1,7 @@
 // The desk's geometry and the maths that places things on it. No React and no DOM writes, so every
 // function here is safe to call from a pointer handler. Coordinates are pane-relative throughout.
 import { chromeKeepout } from "@/stores/chrome-keepout"
-import { detailCardIds, panesMirror, walletOfId } from "@/stores/desk"
+import { detailCardIds, panesMirror, tradeIds, walletOfId } from "@/stores/desk"
 import type { AssetObj, PersonObj } from "@/types/objects"
 
 import type { Wallet } from "@/lib/wallets"
@@ -20,6 +20,9 @@ export const ICON_FOOT = 64
 export const CARD_W = 260
 export const CARD_H = 140
 
+export const TRADE_W = 200
+export const TRADE_H = 128
+
 export const DOCK_W = 368
 export const DOCK_H = 56
 export const DOCK_GAP = 8
@@ -30,8 +33,9 @@ export const LABEL_H = 28
 export type Box = { w: number; h: number }
 export const ICON_BOX: Box = { w: ICON_W, h: ICON_SLOT + ICON_FOOT }
 export const CARD_BOX: Box = { w: CARD_W, h: CARD_H }
+export const TRADE_BOX: Box = { w: TRADE_W, h: TRADE_H }
 
-export const boxOf = (id?: string): Box => (id && detailCardIds.has(id) ? CARD_BOX : ICON_BOX)
+export const boxOf = (id?: string): Box => (!id ? ICON_BOX : detailCardIds.has(id) ? CARD_BOX : tradeIds.has(id) ? TRADE_BOX : ICON_BOX)
 
 export const EDGE = 32
 export const TOP = 192
@@ -91,9 +95,9 @@ export function clampPos(x: number, y: number, id?: string, wallet?: Wallet): Po
 export const MIN_DIST = 100
 
 export function clashes(aId: string, a: Pos, bId: string, b: Pos) {
-  if (!detailCardIds.has(aId) && !detailCardIds.has(bId)) return Math.hypot(a.x - b.x, a.y - b.y) < MIN_DIST
   const ba = boxOf(aId)
   const bb = boxOf(bId)
+  if (ba === ICON_BOX && bb === ICON_BOX) return Math.hypot(a.x - b.x, a.y - b.y) < MIN_DIST
   return a.x < b.x + bb.w && a.x + ba.w > b.x && a.y < b.y + bb.h && a.y + ba.h > b.y
 }
 

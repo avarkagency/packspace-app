@@ -73,7 +73,7 @@ All feature code is `src/components/desktop/`, one folder per cluster:
   `Object` shadows the JS global in its own module and in every file that imports it.
 - **`window/`** — the modals, one file per action: `WindowSend`, `WindowTransfer`, `WindowHandoff`,
   `WindowSplit`, `WindowCombine`, `WindowMove`, `WindowUnpack`, `WindowPackBuilder`, `WindowFolder`,
-  `WindowCard`, `WindowContact`, `WindowDelete`, `WindowReceipt`, `WindowReceipts`. `WindowShell` is the
+  `WindowCard`, `WindowContact`, `WindowDelete`, `WindowReceipt`, `WindowReceipts`, `WindowConnect` (the wallet-session gate every view switch passes through). `WindowShell` is the
   furniture they share — the backdrop, the corner dismiss and the glass card — and `WindowHeading` the
   title / pill / rule each opens with. Everything inside the card is still the window's own; the shell
   takes only what was byte-identical across all of them.

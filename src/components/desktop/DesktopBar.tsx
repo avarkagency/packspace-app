@@ -4,7 +4,7 @@ import { Search, Volume2, VolumeX } from "lucide-react"
 
 import { cue, toggleMuted, useMuted } from "@/lib/sound"
 import { cn } from "@/lib/utils"
-import { type View, WALLETS, WALLET_ORDER } from "@/lib/wallets"
+import { type View, WALLETS, WALLET_ORDER, type Wallet } from "@/lib/wallets"
 
 const VIEW_TABS: { view: View; label: string }[] = [
   ...WALLET_ORDER.map((w) => ({ view: w as View, label: WALLETS[w].label })),
@@ -15,9 +15,10 @@ type Props = {
   onSearch: () => void
   view: View
   onViewChange: (view: View) => void
+  onWalletMenu: (wallet: Wallet, e: React.MouseEvent) => void
 }
 
-export function DesktopBar({ onSearch, view, onViewChange }: Props) {
+export function DesktopBar({ onSearch, view, onViewChange, onWalletMenu }: Props) {
   // hooks
   const muted = useMuted()
 
@@ -67,6 +68,10 @@ export function DesktopBar({ onSearch, view, onViewChange }: Props) {
               type="button"
               aria-pressed={view === tab.view}
               onClick={() => onViewChange(tab.view)}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                if (tab.view !== "split") onWalletMenu(tab.view, e)
+              }}
               className={cn(
                 "rounded-full px-12 h-24 text-12 leading-120 tracking-tight text-white trans-base",
                 view === tab.view ? "bg-white/20" : "hover:bg-white/10"

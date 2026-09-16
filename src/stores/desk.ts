@@ -4,6 +4,8 @@ import type { Wallet } from "@/lib/wallets"
 
 export const detailCardIds = new Set<string>()
 
+export const tradeIds = new Set<string>()
+
 export const objectWallet = new Map<string, Wallet>()
 export const panesMirror: Record<Wallet, Pane> = {
   openfort: { left: 0, top: 0, width: 0, height: 0 },
@@ -15,6 +17,11 @@ export const walletOfId = (id?: string): Wallet => (id ? (objectWallet.get(id) ?
 export function setDetailCards(ids: Iterable<string>) {
   detailCardIds.clear()
   for (const id of ids) detailCardIds.add(id)
+}
+
+export function setTradeIds(ids: Iterable<string>) {
+  tradeIds.clear()
+  for (const id of ids) tradeIds.add(id)
 }
 
 export function setObjectWallets(entries: Iterable<[string, Wallet]>) {

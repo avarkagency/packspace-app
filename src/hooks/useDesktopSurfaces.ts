@@ -5,7 +5,7 @@ import { useCallback, useRef, useState } from "react"
 import type { AssetObj, PackObj, PersonObj, Receipt } from "@/types/objects"
 
 import { cue } from "@/lib/sound"
-import { type Wallet, walletOf } from "@/lib/wallets"
+import { type View, type Wallet, walletOf } from "@/lib/wallets"
 
 export type WinBody =
   | { kind: "transfer"; assets: AssetObj[]; to: PersonObj; intent?: "handoff" }
@@ -19,6 +19,8 @@ export type WinBody =
 
 export type WinDraft = WinBody & { matchKey: string }
 export type WinSpec = WinDraft & { id: string }
+/** A wallet to connect before the desk can switch to `view`. */
+export type ConnectRequest = { wallet: Wallet; view: View }
 export type RightPanel = { kind: "inspect"; id: string } | { kind: "radar" }
 
 /** Every surface blooms open and errors closed. Routing all of them through this pair is what keeps that
@@ -43,6 +45,7 @@ export function useDesktopSurfaces(activeWallet: Wallet) {
   const [rightPanel, setRightPanel] = useState<RightPanel | null>(null)
   const [card, setCard] = useState<{ contact?: PersonObj } | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [connect, setConnect] = useState<ConnectRequest | null>(null)
 
   const open = useCallback((spec: WinDraft) => {
     cue("bloom")
@@ -70,6 +73,9 @@ export function useDesktopSurfaces(activeWallet: Wallet) {
 
   const closePanel = () => hide(setRightPanel, null)
 
+  const openConnect = (request: ConnectRequest) => show(setConnect, request)
+  const closeConnect = () => hide(setConnect, null)
+
   const openSearch = () => show(setSearchOpen, true)
   const closeSearch = () => hide(setSearchOpen, false)
 
@@ -90,6 +96,7 @@ export function useDesktopSurfaces(activeWallet: Wallet) {
     setRightPanel(null)
     setCard(null)
     setSearchOpen(false)
+    setConnect(null)
   }
 
   const onSettle = useCallback(
@@ -126,6 +133,9 @@ export function useDesktopSurfaces(activeWallet: Wallet) {
     closeSearch,
     toggleSearch,
     dismissSearch,
+    connect,
+    openConnect,
+    closeConnect,
     resetSurfaces
   }
 }
