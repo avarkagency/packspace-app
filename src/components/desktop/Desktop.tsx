@@ -74,6 +74,7 @@ import { type PackDraft, WindowPackBuilder } from "@/components/desktop/window/W
 import { WindowReceipt } from "@/components/desktop/window/WindowReceipt"
 import { WindowReceipts } from "@/components/desktop/window/WindowReceipts"
 import type { SendDeal } from "@/components/desktop/window/WindowSend"
+import { WindowSettings } from "@/components/desktop/window/WindowSettings"
 import { WindowSplit } from "@/components/desktop/window/WindowSplit"
 import { WindowTransfer } from "@/components/desktop/window/WindowTransfer"
 import { WindowUnpack } from "@/components/desktop/window/WindowUnpack"
@@ -247,6 +248,9 @@ export function Desktop() {
     dismissWins,
     toggleSearch,
     dismissSearch,
+    settingsOpen,
+    openSettings,
+    closeSettings,
     connect,
     openConnect,
     closeConnect
@@ -1729,7 +1733,7 @@ export function Desktop() {
         <div aria-hidden className="fixed inset-0" style={{ background: wallpapers[activeWallet].css }} />
       )}
 
-      <DesktopBar onSearch={openSearch} view={view} onViewChange={requestView} onWalletMenu={onWalletMenu} />
+      <DesktopBar onSettings={openSettings} onSearch={openSearch} view={view} onViewChange={requestView} onWalletMenu={onWalletMenu} />
       {/* the bento belongs to one desk at a time — in split view neither is drawn, so the two halves
           aren't buried under widgets sized for a full screen */}
       {!isSplit && (
@@ -2001,6 +2005,8 @@ export function Desktop() {
       {unpacking && <WindowUnpack pack={unpacking} onClose={closeUnpack} onUnpack={unpackPack} />}
       {card && <WindowCard contact={card.contact} onImport={importContact} onClose={closeCard} />}
       {receiptsOpen && <WindowReceipts receipts={receipts} onOpen={(r) => open({ kind: "receipt", receipt: r, matchKey: r.id })} onClose={closeReceipts} />}
+
+      {settingsOpen && <WindowSettings z={240} onClose={closeSettings} />}
 
       {connect && (
         <WindowConnect

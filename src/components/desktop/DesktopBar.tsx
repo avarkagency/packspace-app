@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, Volume2, VolumeX } from "lucide-react"
+import { Search, Settings, Volume2, VolumeX } from "lucide-react"
 
 import { cue, toggleMuted, useMuted } from "@/lib/sound"
 import { cn } from "@/lib/utils"
@@ -12,13 +12,14 @@ const VIEW_TABS: { view: View; label: string }[] = [
 ]
 
 type Props = {
+  onSettings: () => void
   onSearch: () => void
   view: View
   onViewChange: (view: View) => void
   onWalletMenu: (wallet: Wallet, e: React.MouseEvent) => void
 }
 
-export function DesktopBar({ onSearch, view, onViewChange, onWalletMenu }: Props) {
+export function DesktopBar({ onSettings, onSearch, view, onViewChange, onWalletMenu }: Props) {
   // hooks
   const muted = useMuted()
 
@@ -43,8 +44,15 @@ export function DesktopBar({ onSearch, view, onViewChange, onWalletMenu }: Props
         </div>
       )}
 
-      {/* sound + search + view toggles */}
+      {/* settings + search + sound + view toggles */}
       <div className="fixed top-8 right-8 z-[100] flex items-center gap-8">
+        <button
+          type="button"
+          aria-label="Settings"
+          onClick={onSettings}
+          className="glass grid size-32 place-items-center rounded-full trans-base hover:bg-white/20">
+          <Settings className="size-12 text-white" strokeWidth={2.5} />
+        </button>
         <button
           type="button"
           aria-label="Search"

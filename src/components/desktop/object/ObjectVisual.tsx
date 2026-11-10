@@ -1,6 +1,7 @@
 import { createElement } from "react"
 
 import type { CanvasObj, Chain } from "@/types/objects"
+import { gradientToDataURL } from "@outpacelabs/avatars"
 import {
   Archive,
   Box,
@@ -39,7 +40,27 @@ const CONTACT_IMAGE: Record<string, string> = {
   "p-uniswap": "/images/contacts/uniswap.jpg"
 }
 
-export const contactImage = (contact: { id: string; avatarKey?: string }) => CONTACT_IMAGE[contact.avatarKey ?? contact.id] ?? "/images/contacts/default.jpg"
+/** `photo` is an override for a face that isn't a fixture — your own uploaded PFP. */
+export type AvatarSubject = { id: string; avatarKey?: string; address?: string; photo?: string | null }
+
+export const contactPhoto = (contact: AvatarSubject) => contact.photo ?? CONTACT_IMAGE[contact.avatarKey ?? contact.id] ?? null
+
+export const avatarSeed = (contact: AvatarSubject) => contact.address ?? contact.id
+
+const gradients = new Map<string, string>()
+
+/** The 3D layer needs a URL, so a face without a photo is its address gradient baked to a data URL. Browser only. */
+export function contactImage(contact: AvatarSubject) {
+  const photo = contactPhoto(contact)
+  if (photo) return photo
+  const seed = avatarSeed(contact)
+  let url = gradients.get(seed)
+  if (!url) {
+    url = gradientToDataURL(seed, { size: 256 })
+    gradients.set(seed, url)
+  }
+  return url
+}
 
 const APP_ICON: Record<string, LucideIcon> = {
   gacha: Ticket,

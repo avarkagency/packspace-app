@@ -3,13 +3,17 @@
 import Image from "next/image"
 import { useLayoutEffect, useRef, useState } from "react"
 
+import { useProfilePhoto } from "@/stores/profile"
 import type { AssetObj } from "@/types/objects"
 import { createPortal } from "react-dom"
+
+import { ObjectAvatar } from "@/components/desktop/object/ObjectAvatar"
 
 import { cn, shortAddr, usd } from "@/lib/utils"
 import { WALLETS, type Wallet } from "@/lib/wallets"
 
 import { C } from "@/data/colors"
+import { ME } from "@/data/people"
 
 type Slice = { label: string; color: string; usd: number; pct: number }
 
@@ -47,6 +51,9 @@ export function WidgetBalance({ assets, span, wallet }: { assets: AssetObj[]; sp
   // state
   const [hovered, setHovered] = useState<{ row: Slice; rect: DOMRect } | null>(null)
 
+  // hooks
+  const photo = useProfilePhoto()
+
   // data
   const { total, rows } = slices(assets)
 
@@ -57,7 +64,21 @@ export function WidgetBalance({ assets, span, wallet }: { assets: AssetObj[]; sp
     <div className={cn("glass flex h-full rounded-16 p-16", span === 2 && "gap-32")}>
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-8">
-          <Image src={WALLETS[wallet].image} alt="" width={24} height={24} unoptimized className="size-24 shrink-0" />
+          {wallet === "openfort" ? (
+            <span className="relative flex shrink-0">
+              <ObjectAvatar contact={{ id: "me", address: ME.address, photo }} size={24} />
+              <Image
+                src={WALLETS.openfort.image}
+                alt=""
+                width={12}
+                height={12}
+                unoptimized
+                className="absolute -right-3 -bottom-3 size-12 rounded-full ring-1 ring-black/40"
+              />
+            </span>
+          ) : (
+            <Image src={WALLETS[wallet].image} alt="" width={24} height={24} unoptimized className="size-24 shrink-0" />
+          )}
           <div className="min-w-0">
             <p className="truncate text-12 leading-120 tracking-tight text-white mb-2">{WALLETS[wallet].label} balance</p>
             <p className="tnum truncate text-10 leading-120 text-white/70">{shortAddr(WALLETS[wallet].address)}</p>

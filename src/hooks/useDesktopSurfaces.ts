@@ -45,6 +45,7 @@ export function useDesktopSurfaces(activeWallet: Wallet) {
   const [rightPanel, setRightPanel] = useState<RightPanel | null>(null)
   const [card, setCard] = useState<{ contact?: PersonObj } | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [connect, setConnect] = useState<ConnectRequest | null>(null)
 
   const open = useCallback((spec: WinDraft) => {
@@ -79,6 +80,9 @@ export function useDesktopSurfaces(activeWallet: Wallet) {
   const openSearch = () => show(setSearchOpen, true)
   const closeSearch = () => hide(setSearchOpen, false)
 
+  const openSettings = () => show(setSettingsOpen, true)
+  const closeSettings = () => hide(setSettingsOpen, false)
+
   /** For a window whose subject has gone. Silent: nobody closed it, it stopped being about anything. */
   const dismissWins = (match: (w: WinSpec) => boolean) => setWins((w) => w.filter((x) => !match(x)))
 
@@ -96,6 +100,7 @@ export function useDesktopSurfaces(activeWallet: Wallet) {
     setRightPanel(null)
     setCard(null)
     setSearchOpen(false)
+    setSettingsOpen(false)
     setConnect(null)
   }
 
@@ -133,6 +138,9 @@ export function useDesktopSurfaces(activeWallet: Wallet) {
     closeSearch,
     toggleSearch,
     dismissSearch,
+    settingsOpen,
+    openSettings,
+    closeSettings,
     connect,
     openConnect,
     closeConnect,

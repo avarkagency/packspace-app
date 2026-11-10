@@ -46,7 +46,7 @@ src/hooks/      the desk's own hooks (useDesktop*)
 src/shaders/    <name>/{vertex,fragment}.glsl, imported as raw strings
 src/lib/        rules + helpers (asset-ops, chain, wallets, widgets, inspect, market, sound,
                 utils, drag-loop, receipt, object-art, coin-geometry, nft-geometry)
-src/stores/     mutable module singletons (desk, coin, drag, chrome-keepout, clip-planes)
+src/stores/     mutable module singletons (desk, coin, drag, chrome-keepout, clip-planes, profile)
 src/types/      objects.ts — the whole domain model
 ```
 
@@ -73,7 +73,7 @@ All feature code is `src/components/desktop/`, one folder per cluster:
   `Object` shadows the JS global in its own module and in every file that imports it.
 - **`window/`** — the modals, one file per action: `WindowSend`, `WindowTransfer`, `WindowHandoff`,
   `WindowSplit`, `WindowCombine`, `WindowMove`, `WindowUnpack`, `WindowPackBuilder`, `WindowFolder`,
-  `WindowCard`, `WindowContact`, `WindowDelete`, `WindowReceipt`, `WindowReceipts`, `WindowConnect` (the wallet-session gate every view switch passes through). `WindowShell` is the
+  `WindowCard`, `WindowContact`, `WindowDelete`, `WindowReceipt`, `WindowReceipts`, `WindowConnect` (the wallet-session gate every view switch passes through), `WindowSettings` (your PFP: upload, crop, remove). `WindowShell` is the
   furniture they share — the backdrop, the corner dismiss and the glass card — and `WindowHeading` the
   title / pill / rule each opens with. Everything inside the card is still the window's own; the shell
   takes only what was byte-identical across all of them.
