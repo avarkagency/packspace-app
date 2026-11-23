@@ -19,8 +19,8 @@ export type WinBody =
 
 export type WinDraft = WinBody & { matchKey: string }
 export type WinSpec = WinDraft & { id: string }
-/** A wallet to connect before the desk can switch to `view`. */
-export type ConnectRequest = { wallet: Wallet; view: View }
+/** A wallet to connect before the desk can switch to `view`. `required` when no session is left, so it can't be dismissed. */
+export type ConnectRequest = { wallet: Wallet; view: View; required?: boolean }
 export type RightPanel = { kind: "inspect"; id: string } | { kind: "radar" }
 
 /** Every surface blooms open and errors closed. Routing all of them through this pair is what keeps that

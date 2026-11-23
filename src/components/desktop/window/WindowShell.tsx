@@ -13,7 +13,8 @@ type Props = {
   cardClassName?: string
   cardStyle?: CSSProperties
   children: ReactNode
-  onClose: () => void
+  /** Absent for a window that can't be dismissed — no corner button, and the backdrop doesn't close it. */
+  onClose?: () => void
 }
 
 export function WindowShell({ z, width, onClose, behind, cardClassName, cardStyle, children }: Props) {
@@ -23,13 +24,15 @@ export function WindowShell({ z, width, onClose, behind, cardClassName, cardStyl
 
       {behind}
 
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        className="glass absolute top-28 right-28 grid size-40 cursor-pointer place-items-center rounded-12 text-white trans-base hover:bg-white/20 active:scale-97">
-        <X className="size-16" />
-      </button>
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="glass absolute top-28 right-28 grid size-40 cursor-pointer place-items-center rounded-12 text-white trans-base hover:bg-white/20 active:scale-97">
+          <X className="size-16" />
+        </button>
+      )}
 
       <div className={cn("glass panel-in relative overflow-hidden rounded-16", cardClassName)} style={{ width, ...cardStyle }}>
         {children}

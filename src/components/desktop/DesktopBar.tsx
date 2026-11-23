@@ -1,6 +1,8 @@
 "use client"
 
-import { Search, Settings, Volume2, VolumeX } from "lucide-react"
+import { useLayoutEffect, useRef } from "react"
+
+import { LogOut, Search, Settings, Volume2, VolumeX } from "lucide-react"
 
 import { cue, toggleMuted, useMuted } from "@/lib/sound"
 import { cn } from "@/lib/utils"
@@ -17,9 +19,14 @@ type Props = {
   view: View
   onViewChange: (view: View) => void
   onWalletMenu: (wallet: Wallet, e: React.MouseEvent) => void
+  onSessionMenu: (anchor: DOMRect) => void
+  onWidthChange: (w: number) => void
 }
 
-export function DesktopBar({ onSettings, onSearch, view, onViewChange, onWalletMenu }: Props) {
+export function DesktopBar({ onSettings, onSearch, view, onViewChange, onWalletMenu, onSessionMenu, onWidthChange }: Props) {
+  // refs
+  const barRef = useRef<HTMLDivElement>(null)
+
   // hooks
   const muted = useMuted()
 
@@ -28,6 +35,17 @@ export function DesktopBar({ onSettings, onSearch, view, onViewChange, onWalletM
     toggleMuted()
     if (muted) cue("toggle")
   }
+
+  // effects
+  useLayoutEffect(() => {
+    const el = barRef.current
+    if (!el) return
+    const report = () => onWidthChange(Math.round(el.getBoundingClientRect().width))
+    report()
+    const ro = new ResizeObserver(report)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [onWidthChange])
 
   return (
     <>
@@ -44,21 +62,21 @@ export function DesktopBar({ onSettings, onSearch, view, onViewChange, onWalletM
         </div>
       )}
 
-      {/* settings + search + sound + view toggles */}
-      <div className="fixed top-8 right-8 z-[100] flex items-center gap-8">
+      {/* settings + search + sound + view toggles + sign out */}
+      <div ref={barRef} className="fixed top-8 right-8 z-[100] flex items-center gap-8">
         <button
           type="button"
           aria-label="Settings"
           onClick={onSettings}
           className="glass grid size-32 place-items-center rounded-full trans-base hover:bg-white/20">
-          <Settings className="size-12 text-white" strokeWidth={2.5} />
+          <Settings className="size-14 text-white" strokeWidth={2.5} />
         </button>
         <button
           type="button"
           aria-label="Search"
           onClick={onSearch}
           className="glass grid size-32 place-items-center rounded-full trans-base hover:bg-white/20">
-          <Search className="size-12 text-white" strokeWidth={2.5} />
+          <Search className="size-14 text-white" strokeWidth={2.5} />
         </button>
         <button
           type="button"
@@ -67,7 +85,7 @@ export function DesktopBar({ onSettings, onSearch, view, onViewChange, onWalletM
           aria-pressed={muted}
           onClick={onToggleSound}
           className="glass grid size-32 place-items-center rounded-full trans-base hover:bg-white/20">
-          {muted ? <VolumeX className="size-12 text-white/60" strokeWidth={2.5} /> : <Volume2 className="size-12 text-white" strokeWidth={2.5} />}
+          {muted ? <VolumeX className="size-14 text-white/60" strokeWidth={2.5} /> : <Volume2 className="size-14 text-white" strokeWidth={2.5} />}
         </button>
         <div className="glass h-32 flex items-center rounded-full p-4">
           {VIEW_TABS.map((tab) => (
@@ -88,6 +106,15 @@ export function DesktopBar({ onSettings, onSearch, view, onViewChange, onWalletM
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          data-no-cue
+          aria-label="Sign out"
+          aria-haspopup="menu"
+          onClick={(e) => onSessionMenu(e.currentTarget.getBoundingClientRect())}
+          className="glass grid size-32 place-items-center rounded-full trans-base hover:bg-white/20">
+          <LogOut className="size-14 text-white" strokeWidth={2.5} />
+        </button>
       </div>
     </>
   )

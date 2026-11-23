@@ -121,6 +121,9 @@ import { DesktopToast } from "./DesktopToast"
 import { DesktopTradeIcon } from "./DesktopTradeIcon"
 
 const ObjectScene = dynamic(() => import("@/components/desktop/object/ObjectScene").then((m) => m.ObjectScene), { ssr: false })
+
+// DesktopMenu's own width (w-180), so the sign-out dropdown's right edge lines up with its button
+const SESSION_MENU_W = 180
 type MenuSpec = { x: number; y: number; obj: DesktopObj; fromSearch?: boolean }
 type TidyKey = "name" | "kind" | "value"
 
@@ -184,9 +187,11 @@ export function Desktop() {
   const [deskMenu, setDeskMenu] = useState<{ x: number; y: number; wallet: Wallet } | null>(null)
   const [folderMenu, setFolderMenu] = useState<{ x: number; y: number; id: string } | null>(null)
   const [walletMenu, setWalletMenu] = useState<{ x: number; y: number; wallet: Wallet } | null>(null)
+  const [sessionMenu, setSessionMenu] = useState<{ x: number; y: number } | null>(null)
   const [wallpapers, setWallpapers] = useState<Record<Wallet, Wallpaper>>(initialWallpapers)
   const [widgetsByWallet, setWidgetsByWallet] = useState<Record<Wallet, WidgetInstance[]>>(initialWidgets)
   const [keepout, setKeepout] = useState({ ...chromeKeepout })
+  const [barWidth, setBarWidth] = useState(328)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [cardIds, setCardIds] = useState<ReadonlySet<string>>(new Set())
   const [packs, setPacks] = useState<PackObj[]>([])
@@ -311,15 +316,16 @@ export function Desktop() {
     setView(next)
   }
 
-  /** Openfort is the demo's home session, so for now only MetaMask actually lets go. Whatever view was
-   *  showing the dropped wallet falls back to a desk that's still connected. */
+  /** Whatever view was showing the dropped wallet falls back to a desk that's still connected. With no
+   *  session left there's no desk to show, so Openfort's connect window opens and can't be dismissed. */
   const disconnectWallet = (wallet: Wallet) => {
-    if (wallet === "openfort") return
     cue("error")
     const sessions = { ...connected, [wallet]: false }
     setConnected(sessions)
-    if (visibleWallets(view).includes(wallet)) setView(WALLET_ORDER.find((w) => sessions[w]) ?? "openfort")
-    showToast("success", `Disconnected ${walletLabel(wallet)}.`)
+    const fallback = WALLET_ORDER.find((w) => sessions[w])
+    if (visibleWallets(view).includes(wallet)) setView(fallback ?? "openfort")
+    showToast("success", `Signed out of ${walletLabel(wallet)}.`)
+    if (!fallback) openConnect({ wallet: "openfort", view: "openfort", required: true })
   }
 
   const onWalletMenu = (wallet: Wallet, e: React.MouseEvent) => {
@@ -329,6 +335,21 @@ export function Desktop() {
     setFolderMenu(null)
     setWalletMenu({ x: e.clientX, y: e.clientY, wallet })
   }
+
+  const onSessionMenu = (anchor: DOMRect) => {
+    cue("tick")
+    setMenu(null)
+    setDeskMenu(null)
+    setFolderMenu(null)
+    setWalletMenu(null)
+    setSessionMenu({ x: anchor.right - SESSION_MENU_W, y: anchor.bottom + 8 })
+  }
+
+  const sessionMenuItems = WALLET_ORDER.filter((wallet) => connected[wallet]).map((wallet): DesktopMenuItem => ({
+    label: `Sign out of ${walletLabel(wallet)}`,
+    icon: LogOut,
+    onSelect: () => disconnectWallet(wallet)
+  }))
 
   const walletMenuItems = (wallet: Wallet): DesktopMenuItem[] =>
     connected[wallet]
@@ -1456,10 +1477,12 @@ export function Desktop() {
   // effects
   useEffect(() => {
     if (!isSplit) return
-    chromeKeepout.w = SPLIT_KEEPOUT.w
+    // the bar is the only chrome in split view, so it's at least as wide as the bar itself
+    const w = Math.max(SPLIT_KEEPOUT.w, barWidth + 16)
+    chromeKeepout.w = w
     chromeKeepout.h = SPLIT_KEEPOUT.h
-    setKeepout({ ...SPLIT_KEEPOUT })
-  }, [isSplit])
+    setKeepout({ w, h: SPLIT_KEEPOUT.h })
+  }, [isSplit, barWidth])
 
   // effects
   useEffect(() => {
@@ -1666,12 +1689,16 @@ export function Desktop() {
   const escapeRef = useRef(() => {})
   useEffect(() => {
     escapeRef.current = () => {
-      if (connect) return closeConnect() // z-240, over everything
-      if (menu || deskMenu || folderMenu || walletMenu) {
+      if (connect) {
+        if (!connect.required) closeConnect() // z-240, over everything
+        return
+      }
+      if (menu || deskMenu || folderMenu || walletMenu || sessionMenu) {
         setMenu(null)
         setDeskMenu(null)
         setFolderMenu(null)
         setWalletMenu(null)
+        setSessionMenu(null)
         return
       }
       if (packBuilder) return closePackBuilder() // z-220 full-screen modals
@@ -1733,7 +1760,15 @@ export function Desktop() {
         <div aria-hidden className="fixed inset-0" style={{ background: wallpapers[activeWallet].css }} />
       )}
 
-      <DesktopBar onSettings={openSettings} onSearch={openSearch} view={view} onViewChange={requestView} onWalletMenu={onWalletMenu} />
+      <DesktopBar
+        onSettings={openSettings}
+        onSearch={openSearch}
+        view={view}
+        onViewChange={requestView}
+        onWalletMenu={onWalletMenu}
+        onSessionMenu={onSessionMenu}
+        onWidthChange={setBarWidth}
+      />
       {/* the bento belongs to one desk at a time — in split view neither is drawn, so the two halves
           aren't buried under widgets sized for a full screen */}
       {!isSplit && (
@@ -1742,7 +1777,9 @@ export function Desktop() {
           setWidgets={setActiveWidgets}
           assets={assets.filter((a) => walletOf(a) === activeWallet)}
           wallet={activeWallet}
+          width={barWidth}
           onAdd={addWidget}
+          onSettings={openSettings}
           onKeepoutChange={onKeepoutChange}
         />
       )}
@@ -2013,7 +2050,7 @@ export function Desktop() {
           key={`${connect.wallet}-${connect.view}`}
           wallet={connect.wallet}
           z={240}
-          onClose={closeConnect}
+          onClose={connect.required ? undefined : closeConnect}
           onConnected={() => onWalletConnected(connect.wallet, connect.view)}
         />
       )}
@@ -2039,6 +2076,9 @@ export function Desktop() {
       {menu && <DesktopMenu x={menu.x} y={menu.y} items={menu.fromSearch ? searchMenuItems(menu.obj) : menuItems(menu.obj)} onClose={() => setMenu(null)} />}
       {deskMenu && <DesktopMenu x={deskMenu.x} y={deskMenu.y} items={deskMenuItems(deskMenu, deskMenu.wallet)} onClose={() => setDeskMenu(null)} />}
       {walletMenu && <DesktopMenu x={walletMenu.x} y={walletMenu.y} items={walletMenuItems(walletMenu.wallet)} onClose={() => setWalletMenu(null)} />}
+      {sessionMenu && sessionMenuItems.length > 0 && (
+        <DesktopMenu x={sessionMenu.x} y={sessionMenu.y} items={sessionMenuItems} onClose={() => setSessionMenu(null)} />
+      )}
       {folderMenu && <DesktopMenu x={folderMenu.x} y={folderMenu.y} items={folderMenuItems(folderMenu.id)} onClose={() => setFolderMenu(null)} />}
 
       <DesktopHover items={deskItems} folders={folderPeeks} />

@@ -5,6 +5,7 @@ import { useLayoutEffect, useRef, useState } from "react"
 
 import { useProfilePhoto } from "@/stores/profile"
 import type { AssetObj } from "@/types/objects"
+import { Settings } from "lucide-react"
 import { createPortal } from "react-dom"
 
 import { ObjectAvatar } from "@/components/desktop/object/ObjectAvatar"
@@ -47,7 +48,14 @@ function slices(assets: AssetObj[]) {
   return { total, rows: all.map((s) => ({ ...s, pct: Math.round((s.usd / total) * 100) })) }
 }
 
-export function WidgetBalance({ assets, span, wallet }: { assets: AssetObj[]; span: 1 | 2; wallet: Wallet }) {
+type Props = {
+  assets: AssetObj[]
+  span: 1 | 2
+  wallet: Wallet
+  onSettings: () => void
+}
+
+export function WidgetBalance({ assets, span, wallet, onSettings }: Props) {
   // state
   const [hovered, setHovered] = useState<{ row: Slice; rect: DOMRect } | null>(null)
 
@@ -65,8 +73,16 @@ export function WidgetBalance({ assets, span, wallet }: { assets: AssetObj[]; sp
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-8">
           {wallet === "openfort" ? (
-            <span className="relative flex shrink-0">
+            <button
+              type="button"
+              aria-label="Profile settings"
+              onClick={onSettings}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="group relative flex shrink-0 cursor-pointer rounded-full">
               <ObjectAvatar contact={{ id: "me", address: ME.address, photo }} size={24} />
+              <span className="absolute inset-0 grid place-items-center rounded-full bg-black/50 opacity-0 trans-base group-hover:opacity-100">
+                <Settings className="size-14 text-white" strokeWidth={2.5} />
+              </span>
               <Image
                 src={WALLETS.openfort.image}
                 alt=""
@@ -75,7 +91,7 @@ export function WidgetBalance({ assets, span, wallet }: { assets: AssetObj[]; sp
                 unoptimized
                 className="absolute -right-3 -bottom-3 size-12 rounded-full ring-1 ring-black/40"
               />
-            </span>
+            </button>
           ) : (
             <Image src={WALLETS[wallet].image} alt="" width={24} height={24} unoptimized className="size-24 shrink-0" />
           )}

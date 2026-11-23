@@ -15,7 +15,8 @@ import { WALLETS, type Wallet, walletLabel } from "@/lib/wallets"
 type Props = {
   wallet: Wallet
   z: number
-  onClose: () => void
+  /** Absent when there's no desk left to fall back to — the window is then the only way forward. */
+  onClose?: () => void
   onConnected: () => void
 }
 
@@ -86,9 +87,11 @@ export function WindowConnect({ wallet, z, onClose, onConnected }: Props) {
           <>
             <p className="mt-8 text-14 leading-160 text-white/70">{copy.body}</p>
             <div className="mt-28 flex gap-8">
-              <BaseBtn variant="secondary" className="flex-1" onClick={onClose}>
-                Not now
-              </BaseBtn>
+              {onClose && (
+                <BaseBtn variant="secondary" className="flex-1" onClick={onClose}>
+                  Not now
+                </BaseBtn>
+              )}
               <BaseBtn className="flex-1" onClick={() => setStep(0)}>
                 Connect {walletLabel(wallet)}
               </BaseBtn>

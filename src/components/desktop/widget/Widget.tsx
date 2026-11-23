@@ -15,8 +15,7 @@ import { WIDGET_TYPES, type WidgetInstance, type WidgetType, packWidgets } from 
 import { WidgetBalance } from "./WidgetBalance"
 import { WidgetNft } from "./WidgetNft"
 
-// the bento's own grid — deliberately not the desk's COL_W / ROW_H
-const CELL_W = 160
+// the bento's own grid — deliberately not the desk's COL_W / ROW_H. Its width tracks the top bar's.
 const CELL_H = 160
 const GAP = 8
 
@@ -24,19 +23,21 @@ type Props = {
   widgets: WidgetInstance[]
   assets: AssetObj[]
   wallet: Wallet
+  width: number
   setWidgets: (updater: (ws: WidgetInstance[]) => WidgetInstance[]) => void
   onAdd: (type: WidgetType) => void
+  onSettings: () => void
   onKeepoutChange?: (w: number, h: number) => void
 }
 
-function renderWidget(w: WidgetInstance, assets: AssetObj[], wallet: Wallet) {
-  if (w.type === "balance") return <WidgetBalance assets={assets} span={w.span} wallet={wallet} />
+function renderWidget(w: WidgetInstance, assets: AssetObj[], wallet: Wallet, onSettings: () => void) {
+  if (w.type === "balance") return <WidgetBalance assets={assets} span={w.span} wallet={wallet} onSettings={onSettings} />
   return <WidgetNft assets={assets} span={w.span} />
 }
 
 type Drop = { kind: "swap"; overId: string } | { kind: "cell"; row: number; col: 1 | 2 }
 
-export function Widget({ widgets, setWidgets, assets, wallet, onAdd, onKeepoutChange }: Props) {
+export function Widget({ widgets, setWidgets, assets, wallet, width, onAdd, onSettings, onKeepoutChange }: Props) {
   // refs
   const gridRef = useRef<HTMLDivElement>(null)
   const cellRefs = useRef(new Map<string, HTMLElement>())
@@ -194,7 +195,7 @@ export function Widget({ widgets, setWidgets, assets, wallet, onAdd, onKeepoutCh
           setMenu({ x: e.clientX, y: e.clientY, id: null })
         }}
         className="fixed top-48 right-8 z-[100] grid"
-        style={{ gridTemplateColumns: `repeat(2, ${CELL_W}px)`, gridAutoRows: `minmax(${CELL_H}px, max-content)`, gap: GAP }}>
+        style={{ width, gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gridAutoRows: `minmax(${CELL_H}px, max-content)`, gap: GAP }}>
         {/* while dragging, the grid's empty cells show as faint guides, with the drop target lit. The cells
             under the dragged widget itself are skipped — it still sits there, and a 2-column widget must not
             read as two split slots. */}
@@ -239,7 +240,7 @@ export function Widget({ widgets, setWidgets, assets, wallet, onAdd, onKeepoutCh
               dragId === p.id && "opacity-40",
               drop?.kind === "swap" && drop.overId === p.id && "outline-1 outline-dashed outline-white"
             )}>
-            {renderWidget(p, assets, wallet)}
+            {renderWidget(p, assets, wallet, onSettings)}
           </div>
         ))}
       </div>
